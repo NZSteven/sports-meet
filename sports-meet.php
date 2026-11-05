@@ -2,7 +2,7 @@
 /**
  * Plugin Name: 运动会报名与赛事管理 Sports Meet
  * Description: CSV报名、并发检录、裁判确认、预赛晋级、决赛名次与参赛积分、混合接力及会员照片相册。
- * Version: 2.4.10
+ * Version: 2.4.11
  * Requires at least: 6.4
  * Requires PHP: 8.1
  * Author: Sports Meet
@@ -43,7 +43,7 @@ function activate(bool $network_wide=false): void {
         install_races();
         install_distances();
         race_ensure_day_pages();
-        update_option('sports_meet_db_version','2.4.10',false);
+        update_option('sports_meet_db_version','2.4.11',false);
     } catch(\Throwable $e) { wp_die(esc_html('建表失败。请检查数据库CREATE、ALTER权限和InnoDB支持，排除问题后重新启用。'.$e->getMessage())); }
 }
 register_activation_hook(__FILE__,__NAMESPACE__.'\\activate');
@@ -81,6 +81,6 @@ function shortcode_view(string $view): string {
 }
 add_shortcode('sports_meet_board',fn()=>shortcode_view('board'));
 add_shortcode('sports_meet_results',fn()=>shortcode_view('results'));
-function enqueue_style(): void {wp_enqueue_style('sports-meet',plugins_url('style.css',__FILE__),[],'2.4.10');wp_enqueue_style('sports-meet-photos',plugins_url('photos.css',__FILE__),[],'2.4.10');wp_enqueue_style('sports-meet-races',plugins_url('races.css',__FILE__),[],'2.4.10');wp_enqueue_script('sports-meet-distance',plugins_url('distance-results.js',__FILE__),[],'2.4.10',true);wp_enqueue_script('sports-meet-registration-filter',plugins_url('registration-filter.js',__FILE__),[],'2.4.10',true);}
+function enqueue_style(): void {wp_enqueue_style('sports-meet',plugins_url('style.css',__FILE__),[],'2.4.11');wp_enqueue_style('sports-meet-photos',plugins_url('photos.css',__FILE__),[],'2.4.11');wp_enqueue_style('sports-meet-races',plugins_url('races.css',__FILE__),[],'2.4.11');wp_enqueue_script('sports-meet-distance',plugins_url('distance-results.js',__FILE__),[],'2.4.11',true);wp_enqueue_script('sports-meet-registration-filter',plugins_url('registration-filter.js',__FILE__),[],'2.4.11',true);}
 add_action('wp_enqueue_scripts',__NAMESPACE__.'\\enqueue_style');
 add_action('admin_enqueue_scripts',function($hook){if($hook==='toplevel_page_sports-meet')enqueue_style();});

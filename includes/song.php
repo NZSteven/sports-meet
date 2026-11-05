@@ -11,7 +11,7 @@ function song_section():string {
     return '<section class="sm-song" aria-label="运动会主题曲"><div class="sm-song-cover">'.$cover.'</div><div class="sm-song-body"><p class="sm-eyebrow">运动会主题曲</p><h2>《奔Fun赛道》</h2><p>青春不散场，梦想写满，奔Fun人生</p><audio controls preload="none" aria-label="播放主题曲奔Fun赛道"><source src="'.esc_url($base.'ben-fun-track.mp3').'" type="audio/mpeg">你的浏览器不支持音频播放。<a href="'.esc_url($base.'ben-fun-track.mp3').'">打开歌曲</a></audio><p class="sm-song-hint">点击播放，一起为Fun而奔。</p><details><summary>展开完整歌词</summary><div class="sm-song-lyrics">'.nl2br(esc_html($lyrics)).'</div></details></div></section>';
 }
 add_shortcode('sports_meet_song',__NAMESPACE__.'\\song_section');
-add_action('wp_enqueue_scripts',function(){wp_enqueue_style('sports-meet-song',plugins_url('song.css',dirname(__DIR__).'/sports-meet.php'),[],'2.4.10');});
+add_action('wp_enqueue_scripts',function(){wp_enqueue_style('sports-meet-song',plugins_url('song.css',dirname(__DIR__).'/sports-meet.php'),[],'2.4.11');});
 add_filter('the_content',function($content){
     if(is_admin()||!is_front_page()||!is_main_query()||!in_the_loop()||has_shortcode($content,'sports_meet_home')||has_shortcode($content,'sports_meet_song')||str_contains($content,'class="sm-song"'))return $content;
     return $content.song_section();
