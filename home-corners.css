@@ -1,0 +1,9 @@
+/* A continuous, quiet center with color carried into the viewport corners. */
+body.sm-brand-home{background:#f9fbff;isolation:isolate}
+.sm-brand-home::before{content:"";position:fixed;inset:0;z-index:-1;pointer-events:none;background:url("media/home-corners.svg") center/100% 100% no-repeat;opacity:.72}
+.sm-brand-home .sd-header{background:rgba(255,255,255,.86);border-bottom-color:#dbe6f2}
+.sm-brand-home .sm-site .sm-hero{background:linear-gradient(120deg,rgba(255,255,255,.97),rgba(238,246,255,.94));border-color:#d7e4f2;box-shadow:0 14px 40px #304e7c12}
+.sm-brand-home .sm-hero-poster{box-shadow:0 12px 30px #2344741f}
+.sm-brand-home .sm-song{background:rgba(255,255,255,.94);border-color:#d7e4f2}
+.sm-brand-home .sd-footer{background:rgba(255,255,255,.88);border-top-color:#dbe6f2}
+@media(max-width:600px){.sm-brand-home::before{opacity:.51}.sm-brand-home .sd-header{background:rgba(255,255,255,.91)}}

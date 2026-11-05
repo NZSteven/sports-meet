@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1440 900" preserveAspectRatio="none">
+  <defs>
+    <linearGradient id="plum" x2="1" y2=".65"><stop stop-color="#375cab"/><stop offset="1" stop-color="#c9598d"/></linearGradient>
+    <linearGradient id="ocean" x2="1" y2="1"><stop stop-color="#344da6"/><stop offset="1" stop-color="#26a9d0"/></linearGradient>
+    <linearGradient id="sky" x2="1" y2="1"><stop stop-color="#2eafce"/><stop offset="1" stop-color="#5b55a8"/></linearGradient>
+    <linearGradient id="sun" x2="1" y2="0"><stop stop-color="#f7b93f"/><stop offset="1" stop-color="#e77868"/></linearGradient>
+  </defs>
+  <path fill="url(#plum)" d="M0 0H356C312 62 255 78 198 52C133 23 94 47 63 113C43 156 21 183 0 189Z"/>
+  <path fill="url(#ocean)" d="M1091 0H1440V225C1375 245 1344 212 1315 144C1287 80 1257 53 1195 64C1132 75 1083 61 1087 23Z"/>
+  <path fill="url(#sky)" d="M0 641C55 603 87 639 115 708C143 778 170 797 232 789C312 778 375 804 403 900H0Z"/>
+  <path fill="url(#sun)" d="M1440 697C1390 703 1364 731 1335 781C1303 838 1267 854 1208 829C1149 804 1117 827 1095 900H1440Z"/>
+</svg>
