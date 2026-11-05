@@ -16,3 +16,8 @@ function apply_site_identity():void {
     } catch(\Throwable $e) {error_log('Sports Meet identity: '.$e->getMessage());}
 }
 add_action('init',__NAMESPACE__.'\\apply_site_identity',30);
+add_action('wp_enqueue_scripts',function(){
+    $main=dirname(__DIR__).'/sports-meet.php';
+    wp_enqueue_style('sports-meet-header',plugins_url('header-identity.css',$main),[],'2.4.12');
+    wp_enqueue_script('sports-meet-header',plugins_url('header-identity.js',$main),[],'2.4.12',true);
+});

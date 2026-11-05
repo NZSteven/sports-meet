@@ -1,0 +1,4 @@
+/* Show only the mascot region of the supplied artwork without modifying it. */
+.sd-brand .sd-mark.sd-mascot-mark{flex:0 0 68px;width:68px;height:46px;border-radius:0;background-color:transparent;background-repeat:no-repeat;background-size:172.8px 115.36px;background-position:-58px -14px;font-size:0}
+.sd-brand small{letter-spacing:.06em;line-height:1.8}
+@media(max-width:600px){.sd-brand{gap:9px}.sd-brand .sd-mark.sd-mascot-mark{flex-basis:60px;width:60px;height:41px;background-size:153.6px 102.54px;background-position:-51.5px -12.5px}}
