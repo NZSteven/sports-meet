@@ -1,0 +1,19 @@
+.sports-meet{font-family:system-ui,"Microsoft YaHei",sans-serif;line-height:1.65;color:#192e43;max-width:1180px}.sports-meet *{box-sizing:border-box}.sports-meet nav{display:flex;gap:16px;flex-wrap:wrap;margin:20px 0}
+.sports-meet h2{margin-top:28px}
+.sports-meet a{color:#075c94}
+.sports-meet form{background:white;border:1px solid #d5e0e9;border-radius:10px;padding:20px;display:flex;flex-wrap:wrap;gap:16px;align-items:flex-end;margin:16px 0}
+.sports-meet label{display:flex;flex-direction:column;gap:5px;flex:1 1 230px;max-width:100%}
+.sports-meet input,.sports-meet select,.sports-meet button{font:inherit;padding:10px;border:1px solid #9fb3c4;border-radius:6px;min-width:0}
+.sports-meet button{background:#126384;color:white;cursor:pointer;border:0;padding:11px 24px}
+.sports-meet input:focus,.sports-meet select:focus,.sports-meet button:focus,.sports-meet a:focus{outline:3px solid #e3aa24;outline-offset:2px}
+.sports-meet .scroll{overflow:auto;background:white;border-radius:8px;border:1px solid #d5e0e9}
+.sports-meet table{width:100%;border-collapse:collapse;text-align:left;white-space:nowrap}
+.sports-meet th,.sports-meet td{padding:12px 16px;border-bottom:1px solid #e2e9ef}
+.sports-meet th{background:#e5eef4}
+.sports-meet tr:nth-child(even){background:#f7fafc}
+.sports-meet .error{background:#ffe9e5;color:#8b201b;padding:12px;border-radius:6px}
+.sports-meet .error:empty{display:none}
+.sports-meet .notice{background:#daf1e4;padding:12px;border-radius:6px}
+.sports-meet details{margin:32px 0}
+.sports-meet summary{cursor:pointer}
+@media(max-width:600px){.sports-meet form{padding:14px}.sports-meet label{flex-basis:100%}.sports-meet th,.sports-meet td{padding:10px}}
