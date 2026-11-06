@@ -67,7 +67,7 @@
             timer = playing ? setInterval(() => {
                 if (!document.hidden && !track.matches(':hover, :focus-within') && !document.querySelector('.sm-photo-viewer[open]')) move(1);
             }, 3500) : null;
-            play.textContent = playing ? '暂停走马灯' : '播放走马灯';
+            play.textContent = playing ? '暂停' : '播放';
         }
 
         function sizeChanged() {
