@@ -82,10 +82,27 @@
     .sm-photo-grid.sm-admin-photo-grid {grid-template-columns: repeat(2, minmax(0, 1fr));}
 }
 
-.sm-site .sm-moderation-filters, .sm-message-admin .sm-moderation-filters {
-    display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; padding: 8px 10px;
+[data-sm-photo-admin] form.sm-moderation-filters,
+[data-sm-photo-admin] form.sm-author-controls {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 220px), 1fr));
+    align-items: end;
+    gap: 16px 24px;
+    padding: 14px 16px;
 }
-.sm-moderation-filters label {display: inline-flex; align-items: center; gap: 5px;}
+[data-sm-photo-admin] :is(.sm-moderation-filters, .sm-author-controls) > label {
+    display: grid;
+    gap: 5px;
+    min-width: 0;
+    margin: 0;
+}
+[data-sm-photo-admin] :is(.sm-moderation-filters, .sm-author-controls) select {
+    width: 100%; max-width: none; min-height: 36px; margin: 0;
+}
+[data-sm-photo-admin] .sm-moderation-actions {display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px;}
+[data-sm-photo-admin] .sm-moderation-actions :is(button, label) {margin: 0;}
+[data-sm-photo-admin] .sm-author-delete {border-inline-start: 1px solid #d5e1eb; padding-inline-start: 12px;}
+[data-sm-photo-admin] .sm-pagination {padding: 12px 0;}
 .sm-site .sm-admin-photo-grid button.sm-moderation-pin, .sm-message-admin button.sm-moderation-pin {
     background: #fff; color: #1d3444; border: 1px solid #98aab6; border-radius: 4px;
 }

@@ -160,7 +160,7 @@ function moderation_filter_form(string $tab,array $filters): void {
     foreach(['pinned'=>'已置顶','unpinned'=>'未置顶'] as $value=>$label){
         echo '<option value="'.$value.'" '.selected($filters['sm_pin']??'',$value,false).'>'.$label.'</option>';
     }
-    echo '</select></label><button type="submit">筛选</button> <a href="'.esc_url(view_url($tab)).'">重置</a></form>';
+    echo '</select></label><div class="sm-moderation-actions"><button type="submit">筛选</button> <a href="'.esc_url(view_url($tab)).'">重置</a></div></form>';
 }
 
 function moderation_pin_button(bool $pinned,string $pin,string $unpin): string {
@@ -200,17 +200,17 @@ function guestbook_admin(): void {
 
 function community_author_admin(string $scope): void {
     $label=$scope==='photos'?'照片':'留言';
-    echo '<h4>按作者管理</h4><form method="post" action="'.esc_url(admin_url('admin-post.php')).'">'
+    echo '<h4>按作者管理</h4><form class="sm-author-controls" method="post" action="'.esc_url(admin_url('admin-post.php')).'">'
         .'<input type="hidden" name="action" value="sports_meet_community_moderate">'.wp_nonce_field('sports_meet_community_moderate','sm_nonce',false,false)
         .'<input type="hidden" name="scope" value="'.esc_attr($scope).'">'
         .'<label>作者<select name="author" required><option value="">请选择作者</option>';
     foreach(get_users(['fields'=>['ID','display_name'],'orderby'=>'display_name']) as $user){
         echo '<option value="'.(int)$user->ID.'">'.esc_html($user->display_name.(community_banned((int)$user->ID,$scope)?'（已禁止发布）':'')).'</option>';
     }
-    echo '</select></label><button name="decision" value="ban_author">'.($scope==='photos'?'禁止上传照片':'禁止发布留言').'</button>'
-        .'<button name="decision" value="unban_author">恢复发布权限</button>'
-        .'<label><input type="checkbox" name="confirm_delete" value="1"> 确认删除该作者的'.$label.'</label>'
-        .'<button name="decision" value="delete_author_content">删除作者的'.$label.'</button></form>';
+    echo '</select></label><div class="sm-moderation-actions"><button name="decision" value="ban_author">'.($scope==='photos'?'禁止上传照片':'禁止发布留言').'</button>'
+        .'<button name="decision" value="unban_author">恢复发布权限</button></div>'
+        .'<div class="sm-moderation-actions sm-author-delete"><label><input type="checkbox" name="confirm_delete" value="1"> 确认删除该作者的'.$label.'</label>'
+        .'<button name="decision" value="delete_author_content">删除作者的'.$label.'</button></div></form>';
 }
 
 function community_delete_author_photos(int $author,int $lastId): bool {
