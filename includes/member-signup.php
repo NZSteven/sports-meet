@@ -42,10 +42,9 @@ function athlete_signup_form(): string {
         .wp_nonce_field('sports_meet_athlete_signup','sm_nonce',false,false).athlete_account_fields()
         .'<label>邮箱<input type="email" name="email" autocomplete="email" required></label>'
         .'<label>密码<input type="password" name="password" minlength="10" maxlength="128" autocomplete="new-password" required></label>'
-        .'<label><input type="checkbox" name="confirm_identity" value="1" required> 本人确认所选高校和姓名是我的报名资料</label>'
+        .'<label><input type="checkbox" name="confirm_identity" value="1" required> 我确认所选高校和姓名与参赛者报名资料一致</label>'
         .'<input type="hidden" name="statement_hash" value="'.hash('sha256',disclaimer_text()).'">'
-        .'<label><input type="checkbox" name="agree" value="1" required> 本人同意以上免责声明</label>'
-        .'<button type="submit">注册并提交同意</button></form></details>';
+        .disclaimer_signature_fields().'<button type="submit">注册并提交电子签名</button></form></details>';
 }
 
 add_action('admin_post_nopriv_sports_meet_athlete_signup',function(){
@@ -70,6 +69,7 @@ add_action('admin_post_nopriv_sports_meet_athlete_signup',function(){
         $user=race_transaction(function() use($data,$email,$password,$hash){
             $athlete=q('SELECT id,name,team_id FROM athletes WHERE id=? AND team_id=?',[(int)$data['athlete_id'],(int)$data['school_id']])->fetch();
             if(!$athlete)throw new \RuntimeException('所选高校和姓名不匹配。');
+            $signature=disclaimer_signature_data($athlete,$data);
             if(email_exists($email))throw new \RuntimeException('该邮箱已有账号，请登录。');
             if(q('SELECT user_id FROM athlete_accounts WHERE athlete_id=?',[(int)$athlete['id']])->fetchColumn()){
                 throw new \RuntimeException('该报名已有账号，请登录或联系组委会。');
@@ -78,7 +78,7 @@ add_action('admin_post_nopriv_sports_meet_athlete_signup',function(){
                 'user_pass'=>$password,'display_name'=>$athlete['name'],'role'=>'subscriber']);
             if(is_wp_error($user))throw new \RuntimeException($user->get_error_message());
             bind_athlete_account((int)$athlete['id'],(int)$user);
-            record_disclaimer_acceptance($athlete,$hash,(int)$user);
+            record_disclaimer_acceptance($athlete,$hash,(int)$user,$signature);
             return (int)$user;
         });
     }catch(\Throwable $error){wp_die(esc_html($error->getMessage()),'',['response'=>400,'back_link'=>true]);}
