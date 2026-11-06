@@ -5,7 +5,7 @@ defined('ABSPATH') || exit;
 function install_photos(): void {
     q("CREATE TABLE IF NOT EXISTS photos (id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT, owner BIGINT UNSIGNED NOT NULL, title VARCHAR(180) NOT NULL, image LONGBLOB NOT NULL, width SMALLINT UNSIGNED NOT NULL, height SMALLINT UNSIGNED NOT NULL, bytes INT UNSIGNED NOT NULL, status VARCHAR(12) NOT NULL DEFAULT 'pending', created DATETIME NOT NULL, PRIMARY KEY(id), KEY gallery(status,id), KEY user_date(owner,created)) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
 }
-add_action('admin_init',function(){if(current_user_can('manage_options') && get_option('sports_meet_db_version')!=='2.5.6')activate();});
+add_action('admin_init',function(){if(current_user_can('manage_options') && get_option('sports_meet_db_version')!=='2.5.7')activate();});
 function page_url(string $key): string {
     $pages=get_option('sports_meet_pages',[]);
     $id=(int)($pages[$key]??0);
@@ -145,24 +145,26 @@ function photo_cards(array $rows,bool $manage=false,bool $batch=false): string {
     if(!$rows)return '<div class="sm-empty"><span aria-hidden="true">◎</span><h3>精彩，等你来记录。</h3><p>上传运动场上的瞬间，让每一份热爱都有回忆。</p></div>';
     $admin=$manage&&current_user_can('manage_options');
     $hero=$admin?hero_photo_ids():[];
-    $html='<div class="sm-photo-grid'.($manage?'':' sm-public-gallery').'">';foreach($rows as $r){$id=(int)$r['id'];$html.='<figure><a href="'.esc_url(photo_url($id)).'" target="_blank" rel="noopener"><img loading="lazy" src="'.esc_url(photo_url($id)).'" alt="'.esc_attr($r['title']).'" width="'.(int)$r['width'].'" height="'.(int)$r['height'].'"></a><figcaption>';
+    $html='<div class="sm-photo-grid'.($batch?' sm-admin-photo-grid':($manage?'':' sm-public-gallery')).'">';foreach($rows as $r){$id=(int)$r['id'];$html.='<figure><a href="'.esc_url(photo_url($id)).'" target="_blank" rel="noopener"><img loading="lazy" src="'.esc_url(photo_url($id)).'" alt="'.esc_attr($r['title']).'" width="'.(int)$r['width'].'" height="'.(int)$r['height'].'"></a><figcaption>';
         $uploader=!empty($r['owner'])?get_userdata((int)$r['owner']):false;
         $name=$uploader?trim((string)$uploader->display_name):'';
         if($name===''||is_email($name))$name='会员上传';
         $title=$r['title']?:'运动会瞬间';
-        $details='来源：'.$name.' · '.substr($r['created'],0,10).' · '.(int)$r['width'].'×'.(int)$r['height'];
+        $details='来源：'.$name;
+        if(!$batch)$details.=' · '.substr($r['created'],0,10).' · '.(int)$r['width'].'×'.(int)$r['height'];
         $html.='<div class="sm-photo-details" title="'.esc_attr($title.' · '.$details).'"><strong>'.esc_html($title).'</strong> · '.esc_html($details).'</div>';
         if($batch && $r['status']==='pending')$html.='<label class="sm-review-choice"><input type="checkbox" name="photo_ids[]" form="sm-batch-review" value="'.$id.'"> 选中审核</label>';
         if($manage){
             $status=['pending'=>'待审核','hidden'=>'已隐藏','published'=>'已公开'][$r['status']]??'未公开';
             $selected=in_array($id,$hero,true);
-            $html.='<span>'.$status.($selected?' · 版头照片':'').'</span><form method="post" action="'.esc_url(admin_url('admin-post.php')).'">'
+            $html.=($batch?'':'<span>'.$status.'</span>').'<form method="post" action="'.esc_url(admin_url('admin-post.php')).'">'
                 .'<input type="hidden" name="action" value="sports_meet_moderate"><input type="hidden" name="id" value="'.$id.'">'.wp_nonce_field('sports_meet_photo_'.$id,'sm_nonce',false,false);
+            if($batch)$html.='<span class="sm-admin-photo-status">'.$status.'</span>';
             if($admin){
-                $html.=$r['status']==='published'?'<button name="decision" value="hide">隐藏照片</button>':'<button name="decision" value="publish">公开照片</button>';
-                if($selected||$r['status']==='published')$html.='<button name="decision" value="'.($selected?'hero_off':'hero_on').'">'.($selected?'移出版头':'设为版头照片').'</button>';
+                $html.=$r['status']==='published'?'<button name="decision" value="hide">隐藏</button>':'<button name="decision" value="publish">公开</button>';
+                if($selected||$r['status']==='published')$html.='<button name="decision" value="'.($selected?'hero_off':'hero_on').'">'.($selected?'移出版头':'设为版头').'</button>';
             }
-            $html.='<button name="decision" value="delete">删除照片</button></form>';
+            $html.='<button name="decision" value="delete">'.($batch?'删除':'删除照片').'</button></form>';
         }
         $html.='</figcaption></figure>';}
     return $html.'</div>';
@@ -202,6 +204,14 @@ function photo_delete_record(int $id): void {
     update_option('sports_meet_hero_photos',array_values(array_diff(hero_photo_ids(),[$id])),false);
 }
 
+function photo_admin_return_url(): string {
+    $url=view_url('photos');
+    $page=max(1,absint($_POST['sm_photo_page']??1));
+    if($page===1)return $url;
+    $lastPage=max(1,(int)ceil((int)q('SELECT COUNT(*) FROM photos')->fetchColumn()/12));
+    return add_query_arg('sm_photo_page',min($page,$lastPage),$url);
+}
+
 function moderate_photo(): void {
     photo_require_login();$id=absint($_POST['id']??0);check_admin_referer('sports_meet_photo_'.$id,'sm_nonce');
     $r=q('SELECT id,owner,status FROM photos WHERE id=?',[$id])->fetch();$admin=current_user_can('manage_options');
@@ -222,7 +232,7 @@ function moderate_photo(): void {
         }
         update_option('sports_meet_hero_photos',$ids,false);
     }else wp_die('无效操作。','',['response'=>403]);
-    wp_safe_redirect($admin?view_url('photos'):page_url('upload'));exit;
+    wp_safe_redirect($admin?photo_admin_return_url():page_url('upload'));exit;
 }
 add_action('admin_post_sports_meet_moderate',__NAMESPACE__.'\\moderate_photo');
 
@@ -249,7 +259,7 @@ function batch_publish_photos(): void {
         foreach($published as $id)photo_sync_media_safely((int)$id);
     }
     photo_notice($published?'已审核通过并公开 '.count($published).' 张照片。':'没有选中待审核的照片。');
-    wp_safe_redirect(view_url('photos'));exit;
+    wp_safe_redirect(photo_admin_return_url());exit;
 }
 add_action('admin_post_sports_meet_batch_publish',__NAMESPACE__.'\\batch_publish_photos');
 function home_section_original(): string {
@@ -306,17 +316,18 @@ function setup_site(): void {
     }
     race_ensure_day_pages();
     if(!empty($_POST['set_home'])){update_option('show_on_front','page');update_option('page_on_front',$pages['home']);}
-    wp_safe_redirect(view_url('photos'));exit;
+    wp_safe_redirect(photo_admin_return_url());exit;
 }
 add_action('admin_post_sports_meet_setup',__NAMESPACE__.'\\setup_site');
 function photo_options(): void {
     if(!current_user_can('manage_options'))wp_die('没有权限。','',['response'=>403]);check_admin_referer('sports_meet_photo_options','sm_nonce');
     update_option('sports_meet_photo_upload_enabled',empty($_POST['upload_enabled'])?0:1,false);
     update_option('sports_meet_photo_gallery_enabled',empty($_POST['gallery_enabled'])?0:1,false);
-    wp_safe_redirect(view_url('photos'));exit;
+    wp_safe_redirect(photo_admin_return_url());exit;
 }
 add_action('admin_post_sports_meet_photo_options',__NAMESPACE__.'\\photo_options');
 function photo_admin(): void {
+    echo '<div data-sm-photo-admin>';
     song_admin();
     echo '<p>压缩后的照片保存在上传目录。备份时请同时备份数据库及上传目录。</p>';
     echo '<p>已公开的照片也可在 WordPress 媒体库查看。已有照片会分批登记，待审核照片在此管理。</p>';
@@ -333,5 +344,5 @@ function photo_admin(): void {
     }
     echo photo_cards($rows,true,true);
     echo '<nav class="sm-pagination">';if($page>1)echo '<a href="'.esc_url(add_query_arg('sm_photo_page',$page-1,view_url('photos'))).'">← 上一页</a>';echo '<span>共'.$total.'张</span>';if($page*12<$total)echo '<a href="'.esc_url(add_query_arg('sm_photo_page',$page+1,view_url('photos'))).'">下一页 →</a>';echo '</nav>';
-    community_author_admin('photos');echo '</div>';
+    community_author_admin('photos');echo '</div></div>';
 }

@@ -35,3 +35,23 @@
 .sm-photo-picker:focus-within {outline: 3px solid #e58a41; outline-offset: 3px;}
 .sm-upload-form .sm-btn:disabled {background: #e5ebe6; color: #58685d; cursor: default;}
 .sm-photo-details{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:12px;color:#536655}.sm-photo-grid .sm-photo-details strong{display:inline;color:#193e30}
+.sm-photo-grid.sm-admin-photo-grid {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 12px;
+}
+.sm-admin-photo-grid figure > a {aspect-ratio: 16 / 9;}
+.sm-admin-photo-grid figcaption {padding: 6px 8px;}
+.sm-admin-photo-grid .sm-photo-details {font-size: 12px;}
+.sm-admin-photo-grid .sm-photo-details strong {font-size: inherit;}
+.sm-admin-photo-grid figcaption form {
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 4px !important;
+    margin: 4px 0 0 !important;
+}
+.sm-admin-photo-status {font-size: 11px; color: #52695f;}
+.sm-admin-photo-grid button {padding: 2px 6px; line-height: 1.4;}
+.sm-admin-photo-grid .sm-review-choice {margin: 4px 0 0; font-size: 12px;}
+@media (max-width: 960px) {
+    .sm-photo-grid.sm-admin-photo-grid {grid-template-columns: repeat(2, minmax(0, 1fr));}
+}

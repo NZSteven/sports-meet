@@ -152,6 +152,25 @@
         });
     });
 
+    const admin = document.querySelector('[data-sm-photo-admin]');
+    if (admin) {
+        const key = 'sports-meet-photo-admin-scroll';
+        const page = new URLSearchParams(location.search).get('sm_photo_page') || '1';
+        admin.addEventListener('submit', event => {
+            const field = document.createElement('input');
+            field.type = 'hidden';
+            field.name = 'sm_photo_page';
+            field.value = page;
+            event.target.append(field);
+            try { sessionStorage.setItem(key, String(window.scrollY)); } catch {}
+        });
+        try {
+            const position = sessionStorage.getItem(key);
+            sessionStorage.removeItem(key);
+            if (position !== null) requestAnimationFrame(() => window.scrollTo(0, Number(position)));
+        } catch {}
+    }
+
     const form = document.getElementById('sm-batch-review');
     if (!form) return;
     const selectAll = form.querySelector('[data-sm-select-all]');

@@ -213,13 +213,13 @@ add_action('admin_post_sports_meet_community_moderate',function(){
             }
             $lastId=(int)q('SELECT MAX(id) FROM photos WHERE owner=?',[$author])->fetchColumn();
             try{$done=community_delete_author_photos($author,$lastId);}
-            catch(\Throwable $error){photo_notice($error->getMessage());wp_safe_redirect(view_url('photos'));exit;}
+            catch(\Throwable $error){photo_notice($error->getMessage());wp_safe_redirect(photo_admin_return_url());exit;}
             if(!$done){
                 photo_notice('该作者的照片将分批删除。');
-                wp_safe_redirect(view_url('photos'));exit;
+                wp_safe_redirect(photo_admin_return_url());exit;
             }
         }
         photo_notice('作者内容设置已更新。');
     }else wp_die('无效操作。','',['response'=>400]);
-    wp_safe_redirect(view_url($returnTab));exit;
+    wp_safe_redirect($returnTab==='photos'?photo_admin_return_url():view_url($returnTab));exit;
 });

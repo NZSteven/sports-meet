@@ -20,7 +20,7 @@ body.sm-brand-home{background:#f9fbff;isolation:isolate}
     margin: 8px 0 16px;
     text-align: center;
     font-family: "Noto Sans CJK SC", "Source Han Sans SC", "Microsoft YaHei", "PingFang SC", sans-serif;
-    font-size: clamp(36px, 4.8vw, 64px);
+    font-size: clamp(28px, 3.5vw, 46px);
     font-weight: 900;
     transform: skewX(-12deg);
 }
@@ -91,6 +91,16 @@ body.sm-brand-home{background:#f9fbff;isolation:isolate}
 .sm-ranking-score {grid-column: 3; color: #617668; filter: blur(2px); user-select: none;}
 .sm-ranking-list:not(:empty) + .sm-ranking-empty {display: none;}
 .sm-ranking-link {margin: 12px 0 0; text-align: right;}
+.sm-hero-copy .sm-live-board {padding: 10px 12px;}
+.sm-hero-copy .sm-ranking-list li {padding-block: 4px;}
+.sm-hero-copy .sm-ranking-note {margin-bottom: 5px;}
+.sm-hero-copy .sm-ranking-link {margin-top: 6px;}
+@media (min-width: 801px) {
+    .sm-hero-showcase .sm-hero-copy {padding-bottom: 0;}
+    .sm-site .sm-hero-showcase h1 {margin-bottom: auto; padding-bottom: 12px;}
+    .sm-hero-right {display: flex; flex-direction: column; gap: 18px;}
+    .sm-hero-right .sm-song {margin-top: auto;}
+}
 @media (max-width: 600px) {
     .sm-hero-right .sm-song {grid-template-columns: minmax(0, 1fr);}
     .sm-hero-copy .sm-live-board {padding: 14px 10px;}

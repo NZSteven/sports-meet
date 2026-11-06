@@ -32,8 +32,8 @@ function song_section():string {
 add_shortcode('sports_meet_song',__NAMESPACE__.'\\song_section');
 add_action('wp_enqueue_scripts',function(){
     $main=dirname(__DIR__).'/sports-meet.php';
-    wp_enqueue_style('sports-meet-song',plugins_url('song.css',$main),[],'2.5.6');
-    wp_enqueue_script('sports-meet-song-sync',plugins_url('song-sync.js',$main),[],'2.5.6',true);
+    wp_enqueue_style('sports-meet-song',plugins_url('song.css',$main),[],'2.5.7');
+    wp_enqueue_script('sports-meet-song-sync',plugins_url('song-sync.js',$main),[],'2.5.7',true);
 });
 add_filter('the_content',function($content){
     if(is_admin()||!is_front_page()||!is_main_query()||!in_the_loop()||has_shortcode($content,'sports_meet_home')||has_shortcode($content,'sports_meet_song')||str_contains($content,'class="sm-song"'))return $content;
@@ -48,5 +48,5 @@ add_action('admin_post_sports_meet_song_options',function(){
     check_admin_referer('sports_meet_song_options','sm_nonce');
     $value=wp_unslash($_POST['poster']??'');if(!is_string($value))wp_die('图片地址格式错误。');
     update_option('sports_meet_song_poster',esc_url_raw($value,['http','https']));
-    wp_safe_redirect(view_url('photos'));exit;
+    wp_safe_redirect(photo_admin_return_url());exit;
 });
