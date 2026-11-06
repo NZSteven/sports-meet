@@ -29,7 +29,7 @@
     line-height: 2;
     overflow-wrap: anywhere;
 }
-.sm-song-credit {margin: 0 0 8px; padding: 2px 8px; font-weight: 700;}
+.sm-song-credit {margin: 0 0 8px; padding: 2px 8px; font-weight: 400;}
 .sm-song-lyrics:focus-visible {outline: 2px solid #267956; outline-offset: 3px;}
 .sm-lyric-line {padding: 2px 8px; border-radius: 4px;}
 .sm-lyric-line[aria-current=true] {background: #e4f2dc; color: #174735; font-weight: 700;}

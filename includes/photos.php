@@ -5,7 +5,7 @@ defined('ABSPATH') || exit;
 function install_photos(): void {
     q("CREATE TABLE IF NOT EXISTS photos (id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT, owner BIGINT UNSIGNED NOT NULL, title VARCHAR(180) NOT NULL, image LONGBLOB NOT NULL, width SMALLINT UNSIGNED NOT NULL, height SMALLINT UNSIGNED NOT NULL, bytes INT UNSIGNED NOT NULL, status VARCHAR(12) NOT NULL DEFAULT 'pending', created DATETIME NOT NULL, PRIMARY KEY(id), KEY gallery(status,id), KEY user_date(owner,created)) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
 }
-add_action('admin_init',function(){if(current_user_can('manage_options') && get_option('sports_meet_db_version')!=='2.4.21')activate();});
+add_action('admin_init',function(){if(current_user_can('manage_options') && get_option('sports_meet_db_version')!=='2.4.22')activate();});
 function page_url(string $key): string {$pages=get_option('sports_meet_pages',[]);$id=(int)($pages[$key]??0);return $id&&get_post_status($id)==='publish'?get_permalink($id):home_url('/');}
 function photo_url(int $id): string {return add_query_arg(['action'=>'sports_meet_photo','id'=>$id],admin_url('admin-post.php'));}
 function photo_upload_enabled(): bool {return (bool)get_option('sports_meet_photo_upload_enabled',1);}
@@ -104,7 +104,7 @@ add_action('admin_post_sports_meet_photo',__NAMESPACE__.'\\serve_photo');
 add_action('admin_post_nopriv_sports_meet_photo',__NAMESPACE__.'\\serve_photo');
 function photo_cards(array $rows,bool $manage=false,bool $batch=false): string {
     if(!$rows)return '<div class="sm-empty"><span aria-hidden="true">◎</span><h3>精彩，等你来记录。</h3><p>上传运动场上的瞬间，让每一份热爱都有回忆。</p></div>';
-    $html='<div class="sm-photo-grid">';foreach($rows as $r){$id=(int)$r['id'];$html.='<figure><a href="'.esc_url(photo_url($id)).'" target="_blank" rel="noopener"><img loading="lazy" src="'.esc_url(photo_url($id)).'" alt="'.esc_attr($r['title']).'" width="'.(int)$r['width'].'" height="'.(int)$r['height'].'"></a><figcaption><strong>'.esc_html($r['title']?:'运动会瞬间').'</strong><span>'.esc_html(substr($r['created'],0,10)).' · '.(int)$r['width'].'×'.(int)$r['height'].'</span>';
+    $html='<div class="sm-photo-grid'.($manage?'':' sm-public-gallery').'">';foreach($rows as $r){$id=(int)$r['id'];$html.='<figure><a href="'.esc_url(photo_url($id)).'" target="_blank" rel="noopener"><img loading="lazy" src="'.esc_url(photo_url($id)).'" alt="'.esc_attr($r['title']).'" width="'.(int)$r['width'].'" height="'.(int)$r['height'].'"></a><figcaption><strong>'.esc_html($r['title']?:'运动会瞬间').'</strong><span>'.esc_html(substr($r['created'],0,10)).' · '.(int)$r['width'].'×'.(int)$r['height'].'</span>';
         if($batch && $r['status']==='pending')$html.='<label class="sm-review-choice"><input type="checkbox" name="photo_ids[]" form="sm-batch-review" value="'.$id.'"> 选中审核</label>';
         if($manage){$html.='<span>'.($r['status']==='pending'?'待审核':'已公开').'</span><form method="post" action="'.esc_url(admin_url('admin-post.php')).'"><input type="hidden" name="action" value="sports_meet_moderate"><input type="hidden" name="id" value="'.$id.'">'.wp_nonce_field('sports_meet_photo_'.$id,'sm_nonce',false,false);if(current_user_can('manage_options') && $r['status']==='pending')$html.='<button name="decision" value="publish">公开</button>';$html.='<button name="decision" value="delete">删除照片</button></form>';}
         $html.='</figcaption></figure>';}
@@ -181,10 +181,37 @@ function batch_publish_photos(): void {
 }
 add_action('admin_post_sports_meet_batch_publish',__NAMESPACE__.'\\batch_publish_photos');
 function home_section_original(): string {
-    $name=q('SELECT title FROM settings WHERE id=1')->fetchColumn();
-    $photos=(int)q("SELECT COUNT(*) FROM photos WHERE status='published'")->fetchColumn();$teams=count(all('teams'));$athletes=count(all('athletes'));
-    $rows=q("SELECT id,title,width,height,status,created FROM photos WHERE status='published' ORDER BY id DESC LIMIT 6")->fetchAll();
-    return '<div class="sm-site"><section class="sm-hero"><div class="sm-hero-copy"><p class="sm-eyebrow">新西兰中国高校校友 奔Fun运动会</p><h1>为Fun而奔，<br><em>奔而得分</em></h1><p>'.esc_html($name).' · 成绩、荣誉，还有属于我们的每一个瞬间。</p><div class="sm-actions">'.(photo_gallery_enabled()?'<a class="sm-btn" href="'.esc_url(page_url('gallery')).'">看看精彩瞬间 ↗</a>':'').'<a class="sm-text-link" href="'.esc_url(page_url('board')).'">查看排行榜 →</a></div></div><a class="sm-hero-poster" href="'.esc_url(plugins_url('media/sports-day-brand.jpg',dirname(__DIR__).'/sports-meet.php')).'" target="_blank" rel="noopener" aria-label="查看奔Fun运动会品牌图片"><img src="'.esc_url(plugins_url('media/sports-day-brand.jpg',dirname(__DIR__).'/sports-meet.php')).'" alt="新西兰中国高校校友奔Fun运动会，戴蓝色围巾的奔跑吉祥物" width="1080" height="721" fetchpriority="high" decoding="async"></a></section><section class="sm-stats"><div><strong>'.$teams.'</strong><span>参赛高校</span></div><div><strong>'.$athletes.'</strong><span>运动员</span></div>'.(photo_gallery_enabled()?'<div><strong>'.$photos.'</strong><span>精彩瞬间</span></div>':'').''.(photo_upload_enabled()?'<a href="'.esc_url(page_url('upload')).'">你的镜头，也是赛场的一部分。<b>分享照片 ↗</b></a>':'').'</section>'.(photo_gallery_enabled()?'<section class="sm-gallery-preview"><div class="sm-section-head"><div><p class="sm-eyebrow">THE HIGHLIGHTS</p><h2>不止终点，还有沿途的精彩。</h2></div><a href="'.esc_url(page_url('gallery')).'">查看全部相册 →</a></div>'.photo_cards($rows).'</section>':'').'</div>';
+    $showGallery=photo_gallery_enabled();
+    $rows=$showGallery?q("SELECT id,title,width,height,status,created FROM photos WHERE status='published' ORDER BY id DESC LIMIT 8")->fetchAll():[];
+    $media=plugins_url('media/',dirname(__DIR__).'/sports-meet.php');
+    $slides=[];
+    foreach($rows as $row)$slides[]=[photo_url((int)$row['id']),$row['title']?:'运动会精彩瞬间'];
+    if(count($slides)<2)$slides[]=[$media.'sports-day-brand.jpg','奔Fun运动会吉祥物'];
+    if(count($slides)<2)$slides[]=[$media.'poster.png','第五届奔Fun运动会海报'];
+
+    $counts=[
+        [count(all('teams')),'参赛高校'],
+        [count(all('athletes')),'运动员'],
+        [(int)q("SELECT COUNT(*) FROM photos WHERE status='published'")->fetchColumn(),'照片'],
+    ];
+    $html='<div class="sm-site"><section class="sm-hero sm-hero-showcase">'
+        .'<div class="sm-hero-copy"><div class="sm-hero-mascot" aria-hidden="true"></div>'
+        .'<h1>为Fun而奔<br><em>奔而得分</em></h1><dl class="sm-hero-counts">';
+    foreach($counts as [$count,$label])$html.='<div><dt>'.esc_html($label).'</dt><dd>'.(int)$count.'</dd></div>';
+    $html.='</dl></div><section class="sm-hero-slides" aria-label="运动会照片轮播">';
+    foreach($slides as $index=>[$url,$alt]){
+        $html.='<div class="sm-hero-slide'.($index===0?' is-active':'').'" aria-hidden="'.($index===0?'false':'true').'">'
+            .'<img src="'.esc_url($url).'" alt="'.esc_attr($alt).'" decoding="async"></div>';
+    }
+    $html.='<div class="sm-slide-controls" hidden><button type="button" data-sm-prev aria-label="上一张">‹</button>'
+        .'<button type="button" data-sm-play>暂停轮播</button><button type="button" data-sm-next aria-label="下一张">›</button></div></section></section>';
+    $html.=song_section();
+    if($showGallery){
+        $html.='<section class="sm-gallery-preview"><div class="sm-section-head"><div><p class="sm-eyebrow">THE HIGHLIGHTS</p>'
+            .'<h2>不止终点，还有沿途的精彩。</h2></div><a href="'.esc_url(page_url('gallery')).'">查看全部相册 →</a></div>'
+            .photo_cards($rows).'</section>';
+    }
+    return $html.'</div>';
 }
 add_shortcode('sports_meet_home',__NAMESPACE__.'\\home_section');
 function setup_site(): void {

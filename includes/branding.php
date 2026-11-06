@@ -17,12 +17,13 @@ function apply_site_identity():void {
 }
 add_action('init',__NAMESPACE__.'\\apply_site_identity',30);
 add_filter('body_class',function(array $classes):array {
-    if(is_front_page())$classes[]='sm-brand-home';
+    $classes[]='sm-brand-home';
     return $classes;
 });
 add_action('wp_enqueue_scripts',function(){
     $main=dirname(__DIR__).'/sports-meet.php';
-    wp_enqueue_style('sports-meet-header',plugins_url('header-identity.css',$main),[],'2.4.21');
-    wp_enqueue_script('sports-meet-header',plugins_url('header-identity.js',$main),[],'2.4.21',true);
-    if(is_front_page())wp_enqueue_style('sports-meet-home-corners',plugins_url('home-corners.css',$main),['sports-meet-photos'],'2.4.21');
+    wp_enqueue_style('sports-meet-header',plugins_url('header-identity.css',$main),[],'2.4.22');
+    wp_enqueue_script('sports-meet-header',plugins_url('header-identity.js',$main),[],'2.4.22',true);
+    wp_enqueue_style('sports-meet-home-corners',plugins_url('home-corners.css',$main),['sports-meet-photos'],'2.4.22');
+    wp_enqueue_script('sports-meet-slides',plugins_url('photo-slides.js',$main),[],'2.4.22',true);
 });

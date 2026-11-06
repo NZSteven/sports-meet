@@ -19,7 +19,7 @@ function race_day_links():string {
     foreach(race_day_definitions() as $key=>$def)$html.='<a href="'.esc_url(page_url($key)).'"><strong>'.esc_html($def[0]).' ↗</strong><span>'.esc_html(['checkin'=>'搜索选手 · 按高校筛选 · 发放号码','heats'=>'确认参赛 · 录入名次 · 自动晋级','finals'=>'确认决赛 · 录入名次 · 汇总积分'][$key]).'</span><small>需裁判账号密码</small></a>';
     return $html.'</div></section>';
 }
-function home_section():string {return str_replace('<section class="sm-stats">',song_section().'<section class="sm-stats">',home_section_original());}
+function home_section():string {return home_section_original();}
 function race_checkin_params(?array $source=null):array {
     $source=$source??wp_unslash($_REQUEST);$out=[];foreach(['find','checkin_school','checkin_page'] as $key){$v=$source[$key]??'';if(!is_scalar($v))continue;$v=trim((string)$v);if($key==='find')$v=mb_substr(sanitize_text_field($v),0,120);else $v=ctype_digit($v)&&(int)$v>0?(string)(int)$v:'';if($v!=='')$out[$key]=$v;}return $out;
 }
