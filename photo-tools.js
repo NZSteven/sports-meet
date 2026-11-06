@@ -1,4 +1,43 @@
 (() => {
+    async function preparePhoto(file) {
+        if (!/^(image\/(jpeg|png|webp))$/i.test(file.type) && !/\.(jpe?g|png|webp)$/i.test(file.name)) return file;
+
+        let source;
+        let objectUrl;
+        try {
+            if (typeof createImageBitmap === 'function') {
+                try { source = await createImageBitmap(file, {imageOrientation:'from-image'}); } catch (error) {}
+            }
+            if (!source) {
+                objectUrl = URL.createObjectURL(file);
+                source = new Image();
+                source.src = objectUrl;
+                await source.decode();
+            }
+            const width = source.naturalWidth || source.width;
+            const height = source.naturalHeight || source.height;
+            const scale = Math.min(1, 1920 / width, 1080 / height);
+            if (scale === 1 && file.size <= 512 * 1024) return file;
+
+            const canvas = document.createElement('canvas');
+            canvas.width = Math.max(1, Math.floor(width * scale));
+            canvas.height = Math.max(1, Math.floor(height * scale));
+            const context = canvas.getContext('2d', {alpha:false});
+            if (!context) throw new Error('浏览器无法缩小这张照片。');
+            context.fillStyle = '#fff';
+            context.fillRect(0, 0, canvas.width, canvas.height);
+            context.drawImage(source, 0, 0, canvas.width, canvas.height);
+            const resized = await new Promise(resolve => canvas.toBlob(resolve, 'image/jpeg', 0.89));
+            if (!resized) throw new Error('浏览器无法压缩这张照片。');
+            return resized;
+        } catch (error) {
+            throw new Error('无法在浏览器缩小这张照片，请换一个较小的版本。');
+        } finally {
+            source?.close?.();
+            if (objectUrl) URL.revokeObjectURL(objectUrl);
+        }
+    }
+
     document.querySelectorAll('.sm-upload-form').forEach(form => {
         const input = form.querySelector('input[type="file"]');
         const previews = form.querySelector('.sm-photo-previews');
@@ -67,12 +106,16 @@
             let pending = 0;
             try {
                 for (const [index, file] of files.entries()) {
-                    progress.textContent = `正在上传第 ${index + 1} / ${files.length} 张…`;
+                    progress.textContent = `正在准备第 ${index + 1} / ${files.length} 张…`;
                     const result = document.createElement('li');
-                    body.set(input.name, file);
-                    const controller = new AbortController();
-                    const timeout = setTimeout(() => controller.abort(), 90000);
+                    let timeout;
                     try {
+                        const prepared = await preparePhoto(file);
+                        const filename = prepared === file ? file.name : file.name.replace(/\.[^.]+$/, '') + '.jpg';
+                        body.set(input.name, prepared, filename);
+                        progress.textContent = `正在上传第 ${index + 1} / ${files.length} 张…`;
+                        const controller = new AbortController();
+                        timeout = setTimeout(() => controller.abort(), 90000);
                         const response = await fetch(url, {method:'POST', body, credentials:'same-origin', signal:controller.signal});
                         const reply = await response.json().catch(() => null);
                         if (!response.ok || !reply?.success) {
