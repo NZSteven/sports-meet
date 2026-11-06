@@ -19,9 +19,17 @@ function race_public_roster():string {
     race_roster_select('roster_category','组别',array_map(fn($c)=>['id'=>$c,'name'=>$c],array_keys(race_categories())),$params['roster_category']??'');
     race_roster_select('roster_event','比赛项目',all('events'),$params['roster_event']??'');
     echo '<div class="race-roster-filter-actions"><button type="submit">筛选</button><a href="'.esc_url($url).'#sports-public-roster">重置</a></div></form><p role="status">显示 '.count($result['rows']).' 人，共 '.$result['total'].' 人。按所属高校排序，筛选条件同时生效。</p>';
-    $rows=[];foreach($result['rows'] as $a)$rows[]=[$a['team_name'],$a['name'],race_category($a),$a['race_bib']??'待检录',$a['entry_names']];
-    if(!$rows)echo '<p>没有符合条件的报名记录，请调整筛选条件。</p>';
-    else table(['所属高校','姓名','组别','比赛号码','参赛项目'],$rows);
+    if(!$result['rows'])echo '<p>没有符合条件的报名记录，请调整筛选条件。</p>';
+    else{
+        $accepted=disclaimer_acceptances();
+        echo '<div class="scroll"><table><thead><tr><th>所属高校</th><th>姓名</th><th>组别</th><th>比赛号码</th><th>参赛项目</th><th>免责声明</th></tr></thead><tbody>';
+        foreach($result['rows'] as $a){
+            echo '<tr>';
+            foreach([$a['team_name'],$a['name'],race_category($a),$a['race_bib']??'待检录',$a['entry_names']] as $value)echo '<td>'.esc_html((string)$value).'</td>';
+            echo '<td>'.disclaimer_dot($a,$accepted).'</td></tr>';
+        }
+        echo '</tbody></table></div>';
+    }
     echo '</section>';return ob_get_clean();
 }
 function race_admin_board():string {

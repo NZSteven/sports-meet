@@ -5,7 +5,7 @@ defined('ABSPATH') || exit;
 function install_photos(): void {
     q("CREATE TABLE IF NOT EXISTS photos (id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT, owner BIGINT UNSIGNED NOT NULL, title VARCHAR(180) NOT NULL, image LONGBLOB NOT NULL, width SMALLINT UNSIGNED NOT NULL, height SMALLINT UNSIGNED NOT NULL, bytes INT UNSIGNED NOT NULL, status VARCHAR(12) NOT NULL DEFAULT 'pending', created DATETIME NOT NULL, PRIMARY KEY(id), KEY gallery(status,id), KEY user_date(owner,created)) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
 }
-add_action('admin_init',function(){if(current_user_can('manage_options') && get_option('sports_meet_db_version')!=='2.4.33')activate();});
+add_action('admin_init',function(){if(current_user_can('manage_options') && get_option('sports_meet_db_version')!=='2.4.34')activate();});
 function page_url(string $key): string {
     $pages=get_option('sports_meet_pages',[]);
     $id=(int)($pages[$key]??0);
@@ -137,11 +137,13 @@ add_action('admin_post_sports_meet_photo',__NAMESPACE__.'\\serve_photo');
 add_action('admin_post_nopriv_sports_meet_photo',__NAMESPACE__.'\\serve_photo');
 function photo_cards(array $rows,bool $manage=false,bool $batch=false): string {
     if(!$rows)return '<div class="sm-empty"><span aria-hidden="true">◎</span><h3>精彩，等你来记录。</h3><p>上传运动场上的瞬间，让每一份热爱都有回忆。</p></div>';
-    $html='<div class="sm-photo-grid'.($manage?'':' sm-public-gallery').'">';foreach($rows as $r){$id=(int)$r['id'];$html.='<figure><a href="'.esc_url(photo_url($id)).'" target="_blank" rel="noopener"><img loading="lazy" src="'.esc_url(photo_url($id)).'" alt="'.esc_attr($r['title']).'" width="'.(int)$r['width'].'" height="'.(int)$r['height'].'"></a><figcaption><strong>'.esc_html($r['title']?:'运动会瞬间').'</strong><span>'.esc_html(substr($r['created'],0,10)).' · '.(int)$r['width'].'×'.(int)$r['height'].'</span>';
+    $html='<div class="sm-photo-grid'.($manage?'':' sm-public-gallery').'">';foreach($rows as $r){$id=(int)$r['id'];$html.='<figure><a href="'.esc_url(photo_url($id)).'" target="_blank" rel="noopener"><img loading="lazy" src="'.esc_url(photo_url($id)).'" alt="'.esc_attr($r['title']).'" width="'.(int)$r['width'].'" height="'.(int)$r['height'].'"></a><figcaption>';
         $uploader=!empty($r['owner'])?get_userdata((int)$r['owner']):false;
         $name=$uploader?trim((string)$uploader->display_name):'';
         if($name===''||is_email($name))$name='会员上传';
-        $html.='<span class="sm-photo-source">来源：'.esc_html($name).'</span>';
+        $title=$r['title']?:'运动会瞬间';
+        $details='来源：'.$name.' · '.substr($r['created'],0,10).' · '.(int)$r['width'].'×'.(int)$r['height'];
+        $html.='<div class="sm-photo-details" title="'.esc_attr($title.' · '.$details).'"><strong>'.esc_html($title).'</strong> · '.esc_html($details).'</div>';
         if($batch && $r['status']==='pending')$html.='<label class="sm-review-choice"><input type="checkbox" name="photo_ids[]" form="sm-batch-review" value="'.$id.'"> 选中审核</label>';
         if($manage){$html.='<span>'.($r['status']==='pending'?'待审核':'已公开').'</span><form method="post" action="'.esc_url(admin_url('admin-post.php')).'"><input type="hidden" name="action" value="sports_meet_moderate"><input type="hidden" name="id" value="'.$id.'">'.wp_nonce_field('sports_meet_photo_'.$id,'sm_nonce',false,false);if(current_user_can('manage_options') && $r['status']==='pending')$html.='<button name="decision" value="publish">公开</button>';$html.='<button name="decision" value="delete">删除照片</button></form>';}
         $html.='</figcaption></figure>';}

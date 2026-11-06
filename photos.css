@@ -34,3 +34,4 @@
 .sm-photo-picker:hover {background: #dfeee4;}
 .sm-photo-picker:focus-within {outline: 3px solid #e58a41; outline-offset: 3px;}
 .sm-upload-form .sm-btn:disabled {background: #e5ebe6; color: #58685d; cursor: default;}
+.sm-photo-details{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:12px;color:#536655}.sm-photo-grid .sm-photo-details strong{display:inline;color:#193e30}
