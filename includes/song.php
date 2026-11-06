@@ -19,13 +19,20 @@ function song_section():string {
     if($poster==='')$poster=$base.'song-logo.jpg';
     $cover='<a href="'.esc_url($poster).'" target="_blank" rel="noopener"><img src="'.esc_url($poster).'" alt="《奔FUN赛道》主题曲吉祥物封面" loading="lazy"></a>';
     $lyrics=song_lyrics_markup();
-    return '<section class="sm-song" aria-label="运动会主题曲"><div class="sm-song-cover">'.$cover.'</div><div class="sm-song-body"><p class="sm-eyebrow">运动会主题曲</p><h2>《奔Fun赛道》</h2><p>青春不散场，梦想写满，奔Fun人生</p><audio controls preload="none" aria-label="播放主题曲奔Fun赛道"><source src="'.esc_url($base.'ben-fun-track.mp3').'" type="audio/mpeg">你的浏览器不支持音频播放。<a href="'.esc_url($base.'ben-fun-track.mp3').'">打开歌曲</a></audio><p class="sm-song-hint">点击播放，一起为Fun而奔。</p><p class="sm-song-current" hidden></p><details><summary>展开完整歌词</summary><label class="sm-song-follow"><input type="checkbox" data-sm-follow-lyrics checked> 跟随歌曲滚动</label><div class="sm-song-lyrics" tabindex="0" role="region" aria-label="完整歌词，可上下滚动">'.$lyrics.'</div></details></div></section>';
+    $audio=esc_url($base.'ben-fun-track.mp3');
+    return '<section class="sm-song" aria-label="运动会主题曲《奔Fun赛道》">'
+        .'<div class="sm-song-cover">'.$cover
+        .'<audio controls preload="none" aria-label="播放主题曲奔Fun赛道">'
+        .'<source src="'.$audio.'" type="audio/mpeg">你的浏览器不支持音频播放。<a href="'.$audio.'">打开歌曲</a></audio></div>'
+        .'<div class="sm-song-body"><div class="sm-song-toolbar"><h2>歌词</h2>'
+        .'<label class="sm-song-follow"><input type="checkbox" data-sm-follow-lyrics checked> 跟随歌曲滚动</label></div>'
+        .'<div class="sm-song-lyrics" tabindex="0" role="region" aria-label="完整歌词，可上下滚动">'.$lyrics.'</div></div></section>';
 }
 add_shortcode('sports_meet_song',__NAMESPACE__.'\\song_section');
 add_action('wp_enqueue_scripts',function(){
     $main=dirname(__DIR__).'/sports-meet.php';
-    wp_enqueue_style('sports-meet-song',plugins_url('song.css',$main),[],'2.4.19');
-    wp_enqueue_script('sports-meet-song-sync',plugins_url('song-sync.js',$main),[],'2.4.19',true);
+    wp_enqueue_style('sports-meet-song',plugins_url('song.css',$main),[],'2.4.20');
+    wp_enqueue_script('sports-meet-song-sync',plugins_url('song-sync.js',$main),[],'2.4.20',true);
 });
 add_filter('the_content',function($content){
     if(is_admin()||!is_front_page()||!is_main_query()||!in_the_loop()||has_shortcode($content,'sports_meet_home')||has_shortcode($content,'sports_meet_song')||str_contains($content,'class="sm-song"'))return $content;
