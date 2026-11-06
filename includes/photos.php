@@ -5,7 +5,7 @@ defined('ABSPATH') || exit;
 function install_photos(): void {
     q("CREATE TABLE IF NOT EXISTS photos (id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT, owner BIGINT UNSIGNED NOT NULL, title VARCHAR(180) NOT NULL, image LONGBLOB NOT NULL, width SMALLINT UNSIGNED NOT NULL, height SMALLINT UNSIGNED NOT NULL, bytes INT UNSIGNED NOT NULL, status VARCHAR(12) NOT NULL DEFAULT 'pending', created DATETIME NOT NULL, PRIMARY KEY(id), KEY gallery(status,id), KEY user_date(owner,created)) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
 }
-add_action('admin_init',function(){if(current_user_can('manage_options') && get_option('sports_meet_db_version')!=='2.5.0')activate();});
+add_action('admin_init',function(){if(current_user_can('manage_options') && get_option('sports_meet_db_version')!=='2.5.1')activate();});
 function page_url(string $key): string {
     $pages=get_option('sports_meet_pages',[]);
     $id=(int)($pages[$key]??0);
@@ -98,14 +98,14 @@ function upload_photos(): void {
     $async=($_GET['sm_async']??'')==='1';
     if($async){
         if(!is_user_logged_in()||!current_user_can('read'))wp_send_json_error(['message'=>'登录已失效，请重新登录。'],403);
-        if(community_banned(get_current_user_id()))wp_send_json_error(['message'=>'该账号的照片上传功能已暂停。'],403);
+        if(community_banned(get_current_user_id(),'photos'))wp_send_json_error(['message'=>'该账号的照片上传功能已暂停。'],403);
         if(!photo_upload_enabled())wp_send_json_error(['message'=>'照片上传已暂停。'],403);
         if(!$_POST && !$_FILES && !empty($_SERVER['CONTENT_LENGTH']))wp_send_json_error(['message'=>'服务器未收到照片，文件可能超过主机的上传限制。'],413);
         $nonce=$_POST['sm_nonce']??'';
         if(!is_string($nonce)||!wp_verify_nonce(wp_unslash($nonce),'sports_meet_upload'))wp_send_json_error(['message'=>'上传页面已过期，请刷新后重试。'],403);
     }else{
         photo_require_login();check_admin_referer('sports_meet_upload','sm_nonce');
-        if(community_banned(get_current_user_id()))wp_die('该账号的照片上传功能已暂停。','',['response'=>403]);
+        if(community_banned(get_current_user_id(),'photos'))wp_die('该账号的照片上传功能已暂停。','',['response'=>403]);
         if(!photo_upload_enabled())wp_die('照片上传已暂停。','',['response'=>403]);
     }
     $success=0;$mediaPending=0;$errors=[];$files=$_FILES['photos']??null;
@@ -181,7 +181,7 @@ function photo_upload_form(): string {
     if(!photo_upload_enabled())return '<section class="sm-site sm-upload"><p>照片上传已暂停。</p></section>';
     $html='<section class="sm-site sm-upload"><p class="sm-eyebrow">SHARE THE ENERGY / 分享热爱</p><h2>把精彩，留在这里。</h2><p>大照片会先在浏览器保持原比例缩小到不超过1920×1080，再逐张上传。</p>';
     if(!is_user_logged_in())return $html.'<div class="sm-login"><h3>登录后分享照片</h3>'.wp_login_form(['echo'=>false,'redirect'=>page_url('upload'),'label_username'=>'用户名或邮箱','label_password'=>'密码','label_remember'=>'记住我','label_log_in'=>'登录并上传']).'<p><a href="'.esc_url(wp_lostpassword_url(page_url('upload'))).'">忘记密码？</a></p><p><a href="'.esc_url(page_url('disclaimer')).'#sports-meet-signup">参赛者自助注册</a></p></div></section>';
-    if(community_banned(get_current_user_id()))return $html.'<p>该账号的照片上传功能已暂停。</p></section>';
+    if(community_banned(get_current_user_id(),'photos'))return $html.'<p>该账号的照片上传功能已暂停。</p></section>';
     $html.=photo_notice_html().'<form class="sm-upload-form" method="post" enctype="multipart/form-data" action="'.esc_url(admin_url('admin-post.php','relative')).'"><input type="hidden" name="action" value="sports_meet_upload">'.wp_nonce_field('sports_meet_upload','sm_nonce',false,false).'<label>照片说明（可选）<input name="photo_title" maxlength="180" placeholder="例如：最后一棒，向终点冲刺"></label><label class="sm-drop sm-photo-picker"><strong class="sm-picker-label">① 选择照片</strong><input type="file" name="photos[]" accept="image/jpeg,image/png,image/webp" multiple required><span>每批最多5张 · JPG / PNG / WebP · 每张不超过'.esc_html(size_format(min(12582912,wp_max_upload_size()))).'</span></label><p>照片上传后会立即公开。 请只上传你有权分享的活动照片。</p><button class="sm-btn" type="submit">② 上传已选照片</button></form>';
     $preview='<p class="sm-preview-status" role="status"></p><div class="sm-photo-previews" aria-label="所选照片预览"></div><p class="sm-upload-progress" role="status"></p><ul class="sm-upload-results" aria-label="各张照片上传结果"></ul>';
     $html=str_replace('</span></label>','</span></label>'.$preview,$html);
@@ -332,5 +332,5 @@ function photo_admin(): void {
     }
     echo photo_cards($rows,true,true);
     echo '<nav class="sm-pagination">';if($page>1)echo '<a href="'.esc_url(add_query_arg('sm_photo_page',$page-1,view_url('photos'))).'">← 上一页</a>';echo '<span>共'.$total.'张</span>';if($page*12<$total)echo '<a href="'.esc_url(add_query_arg('sm_photo_page',$page+1,view_url('photos'))).'">下一页 →</a>';echo '</nav>';
-    community_admin();echo '</div>';
+    community_author_admin('photos');echo '</div>';
 }

@@ -31,7 +31,11 @@ function install_community(): void {
     update_option('sports_meet_community_ready',1,false);
 }
 
-function community_banned(int $user): bool {return (bool)get_user_meta($user,'sports_meet_community_banned',true);}
+function community_banned(int $user,string $scope): bool {
+    $key='sports_meet_community_banned_'.$scope;
+    if(metadata_exists('user',$user,$key))return (bool)get_user_meta($user,$key,true);
+    return (bool)get_user_meta($user,'sports_meet_community_banned',true);
+}
 
 function community_buttons(array $links): string {
     $html='<div class="sm-community-actions">';
@@ -66,7 +70,7 @@ function community_hub($attrs=[]): string {
         .community_buttons([['回到首页',home_url('/')],['进入赛场',page_url('race_hub')]]);
     elseif($key==='race_hub')$html.=community_buttons([['报名名单',page_url('roster')],['成绩榜',page_url('results')],['积分榜',page_url('board')],['免责声明与注册',page_url('disclaimer')]]);
     elseif($key==='committee')$html.=current_user_can('manage_options')
-        ?community_buttons([['赛事管理',view_url('races')],['照片与留言管理',view_url('photos')],['免责声明设置',view_url('disclaimer')]])
+        ?community_buttons([['赛事管理',view_url('races')],['照片管理',view_url('photos')],['留言管理',view_url('messages')],['免责声明设置',view_url('disclaimer')]])
         :'<p>组委会负责赛事和网站管理。组委会成员请用管理员账号登录。</p>'.(!is_user_logged_in()?wp_login_form(['echo'=>false,'redirect'=>page_url('committee')]):'');
     elseif($key==='sponsors')$html.='<p>感谢支持奔Fun运动会的伙伴。</p><p>赞助伙伴资料待公布。</p>';
     elseif($key==='media_hub'){
@@ -110,7 +114,7 @@ function guestbook_page(): string {
     $rows=q("SELECT * FROM guest_messages WHERE status='published' ORDER BY id DESC LIMIT 25 OFFSET $offset")->fetchAll();
     $html='<section class="sm-site sm-community">'.photo_notice_html();
     if(!is_user_logged_in())$html.='<p>登录后可以留言。</p>'.community_buttons([['登录或注册',page_url('disclaimer')]]);
-    elseif(community_banned(get_current_user_id()))$html.='<p>该账号的留言功能已暂停。</p>';
+    elseif(community_banned(get_current_user_id(),'messages'))$html.='<p>该账号的留言功能已暂停。</p>';
     else $html.='<form id="sm-message-form" method="post" action="'.esc_url(admin_url('admin-post.php')).'">'
         .'<input type="hidden" name="action" value="sports_meet_guest_message">'.wp_nonce_field('sports_meet_guest_message','sm_nonce',false,false)
         .'<label>写留言<textarea name="message" rows="4" maxlength="1000" required></textarea></label><button class="sm-btn" type="submit">发布留言</button></form>';
@@ -123,7 +127,7 @@ function guestbook_page(): string {
 add_action('admin_post_sports_meet_guest_message',function(){
     photo_require_login();check_admin_referer('sports_meet_guest_message','sm_nonce');
     $user=get_current_user_id();
-    if(community_banned($user))wp_die('该账号的留言功能已暂停。','',['response'=>403]);
+    if(community_banned($user,'messages'))wp_die('该账号的留言功能已暂停。','',['response'=>403]);
     $value=wp_unslash($_POST['message']??'');
     $message=is_string($value)?trim(sanitize_textarea_field($value)):'';
     if($message===''||mb_strlen($message)>1000)wp_die('请输入 1 到 1000 字留言。','',['response'=>400,'back_link'=>true]);
@@ -131,8 +135,8 @@ add_action('admin_post_sports_meet_guest_message',function(){
     photo_notice('留言已发布。');wp_safe_redirect(page_url('messages'));exit;
 });
 
-function community_admin(): void {
-    echo '<h3>留言与作者管理</h3>'.photo_notice_html();
+function guestbook_admin(): void {
+    echo '<h2>留言管理</h2>'.photo_notice_html();
     $page=min(100000,max(1,absint($_GET['admin_message_page']??1)));
     $offset=($page-1)*30;
     $rows=q("SELECT * FROM guest_messages ORDER BY id DESC LIMIT 31 OFFSET $offset")->fetchAll();
@@ -146,18 +150,24 @@ function community_admin(): void {
             .'<button name="decision" value="'.($hidden?'restore_message':'hide_message').'">'.($hidden?'恢复留言':'隐藏留言').'</button>'
             .'<label><input type="checkbox" name="confirm_delete" value="1"> 确认删除</label><button name="decision" value="delete_message">删除留言</button></form>';
     }
-    if($page>1)echo '<a href="'.esc_url(add_query_arg('admin_message_page',$page-1,view_url('photos'))).'">上一页留言</a> ';
-    if(count($rows)>30)echo '<a href="'.esc_url(add_query_arg('admin_message_page',$page+1,view_url('photos'))).'">下一页留言</a>';
+    if($page>1)echo '<a href="'.esc_url(add_query_arg('admin_message_page',$page-1,view_url('messages'))).'">上一页留言</a> ';
+    if(count($rows)>30)echo '<a href="'.esc_url(add_query_arg('admin_message_page',$page+1,view_url('messages'))).'">下一页留言</a>';
+    community_author_admin('messages');
+}
+
+function community_author_admin(string $scope): void {
+    $label=$scope==='photos'?'照片':'留言';
     echo '<h4>按作者管理</h4><form method="post" action="'.esc_url(admin_url('admin-post.php')).'">'
         .'<input type="hidden" name="action" value="sports_meet_community_moderate">'.wp_nonce_field('sports_meet_community_moderate','sm_nonce',false,false)
+        .'<input type="hidden" name="scope" value="'.esc_attr($scope).'">'
         .'<label>作者<select name="author" required><option value="">请选择作者</option>';
     foreach(get_users(['fields'=>['ID','display_name'],'orderby'=>'display_name']) as $user){
-        echo '<option value="'.(int)$user->ID.'">'.esc_html($user->display_name.(community_banned((int)$user->ID)?'（已禁止发布）':'')).'</option>';
+        echo '<option value="'.(int)$user->ID.'">'.esc_html($user->display_name.(community_banned((int)$user->ID,$scope)?'（已禁止发布）':'')).'</option>';
     }
-    echo '</select></label><button name="decision" value="ban_author">禁止上传和留言</button>'
+    echo '</select></label><button name="decision" value="ban_author">'.($scope==='photos'?'禁止上传照片':'禁止发布留言').'</button>'
         .'<button name="decision" value="unban_author">恢复发布权限</button>'
-        .'<label><input type="checkbox" name="confirm_delete" value="1"> 确认删除该作者的照片和留言</label>'
-        .'<button name="decision" value="delete_author_content">删除作者内容</button></form>';
+        .'<label><input type="checkbox" name="confirm_delete" value="1"> 确认删除该作者的'.$label.'</label>'
+        .'<button name="decision" value="delete_author_content">删除作者的'.$label.'</button></form>';
 }
 
 function community_delete_author_photos(int $author,int $lastId): bool {
@@ -183,27 +193,33 @@ add_action('admin_post_sports_meet_community_moderate',function(){
     $delete=($_POST['confirm_delete']??'')==='1';
     $message=absint($_POST['message_id']??0);
     $author=absint($_POST['author']??0);
+    $scope=$_POST['scope']??'';
+    $returnTab='messages';
     if($message&&in_array($decision,['hide_message','restore_message','delete_message'],true)){
         if($decision==='delete_message'){
             if(!$delete)wp_die('请先勾选确认删除。','',['response'=>400,'back_link'=>true]);
             q('DELETE FROM guest_messages WHERE id=?',[$message]);
         }else q('UPDATE guest_messages SET status=? WHERE id=?',[$decision==='hide_message'?'hidden':'published',$message]);
         photo_notice('留言已更新。');
-    }elseif($author&&get_userdata($author)&&in_array($decision,['ban_author','unban_author','delete_author_content'],true)){
-        if($decision==='ban_author')update_user_meta($author,'sports_meet_community_banned',1);
-        elseif($decision==='unban_author')delete_user_meta($author,'sports_meet_community_banned');
+    }elseif($author&&get_userdata($author)&&in_array($scope,['photos','messages'],true)&&in_array($decision,['ban_author','unban_author','delete_author_content'],true)){
+        $returnTab=$scope;
+        if($decision==='ban_author'||$decision==='unban_author')update_user_meta($author,'sports_meet_community_banned_'.$scope,$decision==='ban_author'?1:0);
         else{
             if(!$delete)wp_die('请先勾选确认删除。','',['response'=>400,'back_link'=>true]);
-            q('DELETE FROM guest_messages WHERE owner=?',[$author]);
+            if($scope==='messages'){
+                q('DELETE FROM guest_messages WHERE owner=?',[$author]);
+                photo_notice('已删除该作者的留言。');
+                wp_safe_redirect(view_url($returnTab));exit;
+            }
             $lastId=(int)q('SELECT MAX(id) FROM photos WHERE owner=?',[$author])->fetchColumn();
             try{$done=community_delete_author_photos($author,$lastId);}
             catch(\Throwable $error){photo_notice($error->getMessage());wp_safe_redirect(view_url('photos'));exit;}
             if(!$done){
-                photo_notice('已删除该作者的留言，照片将分批删除。');
+                photo_notice('该作者的照片将分批删除。');
                 wp_safe_redirect(view_url('photos'));exit;
             }
         }
         photo_notice('作者内容设置已更新。');
     }else wp_die('无效操作。','',['response'=>400]);
-    wp_safe_redirect(view_url('photos'));exit;
+    wp_safe_redirect(view_url($returnTab));exit;
 });
