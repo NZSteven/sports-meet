@@ -35,16 +35,27 @@
 
         const progress = form.querySelector('.sm-upload-progress');
         const results = form.querySelector('.sm-upload-results');
-        if (!progress || !results || typeof fetch !== 'function') return;
+        if (!progress || !results || typeof fetch !== 'function' || typeof AbortController !== 'function') return;
         let uploading = false;
+        input.addEventListener('invalid', () => {
+            progress.textContent = input.files.length ? input.validationMessage : '请先选择照片，再点击上传。';
+        });
+        input.addEventListener('change', () => { if (!uploading) progress.textContent = ''; });
         form.addEventListener('submit', async event => {
-            event.preventDefault();
-            if (uploading) return;
+            if (uploading) { event.preventDefault(); return; }
             const files = Array.from(input.files);
             if (files.length < 1 || files.length > 5) return;
 
-            const url = new URL(form.action);
-            const body = new FormData(form);
+            let url;
+            let body;
+            try {
+                // A named form control called "action" shadows form.action.
+                url = new URL(form.getAttribute('action'), location.href);
+                body = new FormData(form);
+            } catch (error) {
+                return; // Let the normal form submission handle incompatible browsers.
+            }
+            event.preventDefault();
             url.searchParams.set('action', body.get('action'));
             url.searchParams.set('sm_async', '1');
             body.delete(input.name);
@@ -59,8 +70,10 @@
                     progress.textContent = `正在上传第 ${index + 1} / ${files.length} 张…`;
                     const result = document.createElement('li');
                     body.set(input.name, file);
+                    const controller = new AbortController();
+                    const timeout = setTimeout(() => controller.abort(), 90000);
                     try {
-                        const response = await fetch(url, {method:'POST', body, credentials:'same-origin'});
+                        const response = await fetch(url, {method:'POST', body, credentials:'same-origin', signal:controller.signal});
                         const reply = await response.json().catch(() => null);
                         if (!response.ok || !reply?.success) {
                             const message = reply?.data?.message || (response.status === 413
@@ -71,8 +84,12 @@
                         if (!reply.data.media_ready) pending++;
                         result.textContent = `${file.name} · ${reply.data.media_ready ? '已上传并加入媒体库' : '已保存，媒体库登记待完成'}`;
                     } catch (error) {
-                        result.textContent = `${file.name} · ${error instanceof TypeError ? '连接中断，未能确认上传结果。' : error.message}`;
+                        const message = error.name === 'AbortError' ? '等待超时，请先查看最近照片再决定是否重传。'
+                            : error instanceof TypeError ? '连接中断，未能确认上传结果。' : error.message;
+                        result.textContent = `${file.name} · ${message}`;
                         result.className = 'sm-upload-result-error';
+                    } finally {
+                        clearTimeout(timeout);
                     }
                     results.append(result);
                 }
