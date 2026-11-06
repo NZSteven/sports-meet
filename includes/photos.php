@@ -6,7 +6,7 @@ function install_photos(): void {
     q("CREATE TABLE IF NOT EXISTS photos (id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT, owner BIGINT UNSIGNED NOT NULL, title VARCHAR(180) NOT NULL, image LONGBLOB NOT NULL, width SMALLINT UNSIGNED NOT NULL, height SMALLINT UNSIGNED NOT NULL, bytes INT UNSIGNED NOT NULL, status VARCHAR(12) NOT NULL DEFAULT 'pending', created DATETIME NOT NULL, PRIMARY KEY(id), KEY gallery(status,id), KEY user_date(owner,created)) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
     add_option('sports_meet_photo_review',1,'',false);
 }
-add_action('admin_init',function(){if(current_user_can('manage_options') && get_option('sports_meet_db_version')!=='2.4.13')activate();});
+add_action('admin_init',function(){if(current_user_can('manage_options') && get_option('sports_meet_db_version')!=='2.4.14')activate();});
 function page_url(string $key): string {$pages=get_option('sports_meet_pages',[]);$id=(int)($pages[$key]??0);return $id&&get_post_status($id)==='publish'?get_permalink($id):home_url('/');}
 function photo_url(int $id): string {return add_query_arg(['action'=>'sports_meet_photo','id'=>$id],admin_url('admin-post.php'));}
 function photo_require_login(): void {if(!is_user_logged_in() || !current_user_can('read'))wp_die('请先登录后再上传照片。','',['response'=>403]);}
@@ -47,15 +47,17 @@ function normalize_photo(string $path): array {
 }
 function store_photo(string $path,string $title,int $owner): int {
     global $wpdb;
-    $data=normalize_photo($path);$transaction=false;
+    $data=normalize_photo($path);$transaction=false;$reference=null;$committing=false;
     try {
         q('START TRANSACTION');$transaction=true;q('SELECT id FROM settings WHERE id=1 FOR UPDATE')->fetch();
         $count=(int)q('SELECT COUNT(*) FROM photos WHERE owner=? AND created>=?',[$owner,current_time('Y-m-d').' 00:00:00'])->fetchColumn();
         if($count>=30)throw new \RuntimeException('每人每天最多上传30张照片。');
+        $reference=photo_write_file($data['image']);
+        $data['image']=$reference;
         $data+=['owner'=>$owner,'title'=>mb_substr(sanitize_text_field($title),0,180),'status'=>get_option('sports_meet_photo_review',1)?'pending':'published','created'=>current_time('mysql')];
-        if($wpdb->insert($wpdb->prefix.'sm_photos',$data,['%s','%d','%d','%d','%d','%s','%s','%s'])===false)throw new \RuntimeException('照片保存失败，请检查数据库空间。');
-        $id=(int)$wpdb->insert_id;q('COMMIT');return $id;
-    }catch(\Throwable $e){if($transaction)q('ROLLBACK');throw $e;}
+        if($wpdb->insert($wpdb->prefix.'sm_photos',$data,['%s','%d','%d','%d','%d','%s','%s','%s'])===false)throw new \RuntimeException('照片资料保存失败。');
+        $id=(int)$wpdb->insert_id;$committing=true;q('COMMIT');return $id;
+    }catch(\Throwable $e){try{if($transaction)q('ROLLBACK');}finally{if($reference!==null&&!$committing)photo_remove_file($reference);}throw $e;}
 }
 function upload_photos(): void {
     photo_require_login();check_admin_referer('sports_meet_upload','sm_nonce');
@@ -78,7 +80,9 @@ add_action('admin_post_nopriv_sports_meet_upload',__NAMESPACE__.'\\upload_photos
 function serve_photo(): void {
     $id=absint($_GET['id']??0);$row=q('SELECT * FROM photos WHERE id=?',[$id])->fetch();
     if(!$row || ($row['status']!=='published' && !current_user_can('manage_options') && (!is_user_logged_in() || (int)$row['owner']!==get_current_user_id()))){status_header(404);exit;}
-    nocache_headers();header('Content-Type: image/jpeg');header('X-Content-Type-Options: nosniff');header('Content-Disposition: inline; filename="sports-photo-'.$id.'.jpg"');header('Content-Length: '.strlen($row['image']));echo $row['image'];exit;
+    try{$jpeg=photo_read_bytes($row['image'],(int)$row['bytes']);}
+    catch(\Throwable $e){error_log('Sports Meet photo: '.$e->getMessage());status_header(404);exit;}
+    nocache_headers();header('Content-Type: image/jpeg');header('X-Content-Type-Options: nosniff');header('Content-Disposition: inline; filename="sports-photo-'.$id.'.jpg"');header('Content-Length: '.strlen($jpeg));echo $jpeg;exit;
 }
 add_action('admin_post_sports_meet_photo',__NAMESPACE__.'\\serve_photo');
 add_action('admin_post_nopriv_sports_meet_photo',__NAMESPACE__.'\\serve_photo');
@@ -111,7 +115,15 @@ function moderate_photo(): void {
     $r=q('SELECT id,owner FROM photos WHERE id=?',[$id])->fetch();$admin=current_user_can('manage_options');
     if(!$r || (!$admin && (int)$r['owner']!==get_current_user_id()))wp_die('没有操作权限。','',['response'=>403]);
     $decision=sanitize_key($_POST['decision']??'');
-    if($decision==='delete')q('DELETE FROM photos WHERE id=?',[$id]);elseif($decision==='publish' && $admin)q("UPDATE photos SET status='published' WHERE id=?",[$id]);else wp_die('无效操作。','',['response'=>403]);
+    if($decision==='delete'){
+        q('START TRANSACTION');
+        try{
+            $row=q('SELECT image FROM photos WHERE id=? FOR UPDATE',[$id])->fetch();
+            q('DELETE FROM photos WHERE id=?',[$id]);
+            q('COMMIT');
+        }catch(\Throwable $e){q('ROLLBACK');throw $e;}
+        if($row)photo_remove_file($row['image']);
+    }elseif($decision==='publish' && $admin)q("UPDATE photos SET status='published' WHERE id=?",[$id]);else wp_die('无效操作。','',['response'=>403]);
     wp_safe_redirect($admin?view_url('photos'):page_url('upload'));exit;
 }
 add_action('admin_post_sports_meet_moderate',__NAMESPACE__.'\\moderate_photo');
@@ -142,6 +154,10 @@ function photo_options(): void {
 add_action('admin_post_sports_meet_photo_options',__NAMESPACE__.'\\photo_options');
 function photo_admin(): void {
     song_admin();
+    echo '<p>压缩后的照片保存在上传目录。备份时请同时备份数据库及上传目录。</p>';
+    $migrationError=get_option('sports_meet_photo_files_error');
+    if($migrationError)echo '<p class="error">照片迁移将重试：'.esc_html($migrationError).'</p>';
+    elseif(!get_option('sports_meet_photo_files_done'))echo '<p>旧照片正在分批迁移，迁移期间可以继续查看和上传。</p>';
     echo '<div class="sm-site"><h2>网站页面与相册</h2><form method="post" action="'.esc_url(admin_url('admin-post.php')).'"><input type="hidden" name="action" value="sports_meet_setup">'.wp_nonce_field('sports_meet_setup','sm_nonce',false,false).'<p>建立首页、相册、上传照片、排行榜、项目成绩、报名名单及裁判工作台七个页面。已有的本插件页面不会被覆盖；从旧版升级后请再点击一次，补齐新增页面。</p><label><input type="checkbox" name="set_home" value="1" checked> 将运动会首页设为网站首页</label><button>创建／补齐网站页面</button></form><p>普通参与者角色选订阅者可上传照片；裁判账号角色选“运动会裁判”，可在前台裁判工作台检录及录入比赛。</p><form method="post" action="'.esc_url(admin_url('admin-post.php')).'"><input type="hidden" name="action" value="sports_meet_photo_options">'.wp_nonce_field('sports_meet_photo_options','sm_nonce',false,false).'<label><input type="checkbox" name="review" value="1" '.checked(get_option('sports_meet_photo_review',1),1,false).'> 照片经管理员审核后公开</label><button>保存相册设置</button></form>';
     if(!extension_loaded('gd') || !function_exists('exif_read_data'))echo '<p class="error">请在主机PHP设置中启用GD及exif扩展。</p>';
     $page=max(1,absint($_GET['sm_photo_page']??1));$offset=($page-1)*12;$total=(int)q('SELECT COUNT(*) FROM photos')->fetchColumn();
