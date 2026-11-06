@@ -99,6 +99,8 @@
 [data-sm-photo-admin] :is(.sm-moderation-filters, .sm-author-controls) select {
     width: 100%; max-width: none; min-height: 36px; margin: 0;
 }
+[data-sm-photo-admin] .sm-author-search {display: grid; gap: 6px; min-width: 0;}
+[data-sm-photo-admin] .sm-author-search input[type="search"] {width: 100%; min-height: 36px; margin: 0;}
 [data-sm-photo-admin] .sm-moderation-actions {display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px;}
 [data-sm-photo-admin] .sm-moderation-actions :is(button, label) {margin: 0;}
 [data-sm-photo-admin] .sm-author-delete {border-inline-start: 1px solid #d5e1eb; padding-inline-start: 12px;}

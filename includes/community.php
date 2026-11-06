@@ -95,10 +95,10 @@ function guestbook_cards(array $rows,bool $short=false): string {
         $name=$user?trim((string)$user->display_name):'';
         if($name===''||is_email($name))$name='会员';
         $message=$row['message'];
-        if($short&&mb_strlen($message)>110)$message=mb_substr($message,0,110).'…';
+        if($short&&mb_strlen($message)>82)$message=mb_substr($message,0,82).'…';
         $id=(int)$row['id'];
-        $html.='<article'.($short?'':' id="sm-message-'.$id.'"').'><strong>'.esc_html($name).'</strong><time>'.esc_html(substr($row['created'],0,10)).'</time><p>'.nl2br(esc_html($message)).'</p>';
-        if($short)$html.='<a href="'.esc_url(page_url('messages')).'#sm-message-'.$id.'">查看留言</a>';
+        $html.='<article'.($short?'':' id="sm-message-'.$id.'"').'><div class="sm-message-byline"><strong>'.esc_html($name).'</strong><time>'.esc_html(substr($row['created'],0,10)).'</time></div><p>'.nl2br(esc_html($message)).'</p>';
+        if($short)$html.='<a href="'.esc_url(add_query_arg('sm_message',$id,page_url('messages'))).'">查看留言</a>';
         $html.='</article>';
     }
     return $html.'</div>';
@@ -114,6 +114,12 @@ function guestbook_home(): string {
 
 function guestbook_page(): string {
     if(!get_option('sports_meet_community_ready'))return '<p>留言板即将开放。</p>';
+    if(isset($_GET['sm_message'])){
+        $id=absint($_GET['sm_message']);
+        $row=q("SELECT * FROM guest_messages WHERE id=? AND status='published'",[$id])->fetch();
+        return '<section class="sm-site sm-community sm-single-message"><p><a href="'.esc_url(page_url('messages')).'">← 返回全部留言</a></p>'
+            .($row?guestbook_cards([$row]):'<p>这篇留言暂不可查看。</p>').'</section>';
+    }
     $page=min(100000,max(1,absint($_GET['message_page']??1)));
     $offset=($page-1)*24;
     $order=get_option('sports_meet_guestbook_pins_ready')?'pinned DESC,id DESC':'id DESC';
@@ -150,7 +156,7 @@ function moderation_filters(array $input): array {
 function moderation_filter_form(string $tab,array $filters): void {
     echo '<form class="sm-moderation-filters" method="get" action="'.esc_url(admin_url('admin.php')).'">'
         .'<input type="hidden" name="page" value="sports-meet"><input type="hidden" name="tab" value="'.esc_attr($tab).'">'
-        .'<label>作者 <select name="sm_author"><option value="0">全部作者</option>';
+        .'<label>作者 <select name="sm_author" data-sm-author-select><option value="0">全部作者</option>';
     $table=$tab==='photos'?'photos':'guest_messages';
     $owners=q("SELECT DISTINCT owner FROM $table ORDER BY owner")->fetchAll(7);
     if($owners)foreach(get_users(['include'=>$owners,'orderby'=>'display_name','fields'=>['ID','display_name']]) as $user){
@@ -203,7 +209,7 @@ function community_author_admin(string $scope): void {
     echo '<h4>按作者管理</h4><form class="sm-author-controls" method="post" action="'.esc_url(admin_url('admin-post.php')).'">'
         .'<input type="hidden" name="action" value="sports_meet_community_moderate">'.wp_nonce_field('sports_meet_community_moderate','sm_nonce',false,false)
         .'<input type="hidden" name="scope" value="'.esc_attr($scope).'">'
-        .'<label>作者<select name="author" required><option value="">请选择作者</option>';
+        .'<label>作者<select name="author" data-sm-author-select required><option value="">请选择作者</option>';
     foreach(get_users(['fields'=>['ID','display_name'],'orderby'=>'display_name']) as $user){
         echo '<option value="'.(int)$user->ID.'">'.esc_html($user->display_name.(community_banned((int)$user->ID,$scope)?'（已禁止发布）':'')).'</option>';
     }

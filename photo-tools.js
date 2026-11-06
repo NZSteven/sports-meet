@@ -154,6 +154,27 @@
 
     const admin = document.querySelector('[data-sm-photo-admin]');
     if (admin) {
+        admin.querySelectorAll('[data-sm-author-select]').forEach(select => {
+            const label = select.closest('label');
+            const group = document.createElement('div');
+            group.className = 'sm-author-search';
+            const search = document.createElement('input');
+            search.type = 'search';
+            search.placeholder = '输入作者姓名';
+            search.setAttribute('aria-label', '搜索作者姓名');
+            label.before(group);
+            group.append(search, label);
+            const options = Array.from(select.options);
+            const normalizedName = option => option.text.trim().toLocaleLowerCase();
+            search.addEventListener('input', () => {
+                const term = search.value.trim().toLocaleLowerCase();
+                const selected = select.value;
+                select.replaceChildren(...options.filter((option, index) =>
+                    index === 0 || option.value === selected || normalizedName(option).includes(term)
+                ));
+                select.value = selected;
+            });
+        });
         const params = new URLSearchParams(location.search);
         const key = 'sports-meet-moderation-scroll-' + params.get('tab');
         admin.addEventListener('submit', event => {
