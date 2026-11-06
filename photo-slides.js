@@ -36,15 +36,29 @@
         if (!track || track.children.length < 2) return;
         const controls = carousel.querySelector('.sm-strip-controls');
         const play = controls.querySelector('[data-sm-strip-play]');
+        const originals = Array.from(track.children);
+        const last = originals[originals.length - 1];
+        let copies = [];
+        let endCopy;
+        let width = 0;
+        let settleTimer;
         let timer;
 
+        function wrap() {
+            if (!endCopy) return;
+            const start = originals[0].offsetLeft;
+            const cycle = endCopy.offsetLeft - start;
+            if (cycle <= 0) return;
+            if (track.scrollLeft >= start + cycle - 1) track.scrollLeft -= cycle;
+            else if (track.scrollLeft < start - 1) track.scrollLeft += cycle;
+        }
+
         function move(direction) {
-            const limit = track.scrollWidth - track.clientWidth;
-            if (limit < 2) return;
-            const step = track.children[1].offsetLeft - track.children[0].offsetLeft;
-            let left = track.scrollLeft + direction * step;
-            if (direction > 0 && track.scrollLeft >= limit - 2) left = 0;
-            if (direction < 0 && track.scrollLeft <= 2) left = limit;
+            if (!endCopy) return;
+            wrap();
+            const start = originals[0].offsetLeft;
+            const step = originals[1].offsetLeft - start;
+            const left = start + (Math.round((track.scrollLeft - start) / step) + direction) * step;
             track.scrollTo({left, behavior: reducedMotion ? 'auto' : 'smooth'});
         }
 
@@ -57,11 +71,39 @@
         }
 
         function sizeChanged() {
-            controls.hidden = track.scrollWidth <= track.clientWidth + 1;
+            if (width === track.clientWidth) return;
+            width = track.clientWidth;
+            const fullWidth = last.offsetLeft + last.offsetWidth - originals[0].offsetLeft;
+            const canLoop = width > 0 && fullWidth >= width - 1;
+            controls.hidden = !canLoop;
+            if (canLoop && !endCopy) {
+                const cloneCards = () => originals.map((card, index) => {
+                    const copy = card.cloneNode(true);
+                    copy.dataset.smStripClone = index;
+                    copy.setAttribute('aria-hidden', 'true');
+                    copy.querySelector('a').tabIndex = -1;
+                    return copy;
+                });
+                const before = cloneCards();
+                const after = cloneCards();
+                endCopy = after[0];
+                copies = [...before, ...after];
+                track.prepend(...before);
+                track.append(...after);
+            } else if (!canLoop && endCopy) {
+                copies.forEach(copy => copy.remove());
+                copies = [];
+                endCopy = undefined;
+            }
+            track.scrollLeft = endCopy ? originals[0].offsetLeft : 0;
         }
         controls.querySelector('[data-sm-strip-prev]').addEventListener('click', () => {setPlaying(false); move(-1);});
         controls.querySelector('[data-sm-strip-next]').addEventListener('click', () => {setPlaying(false); move(1);});
         play.addEventListener('click', () => setPlaying(!timer));
+        track.addEventListener('scroll', () => {
+            clearTimeout(settleTimer);
+            settleTimer = setTimeout(wrap, 160);
+        }, {passive:true});
         window.addEventListener('resize', sizeChanged);
         sizeChanged();
         setPlaying(!reducedMotion);
@@ -126,9 +168,14 @@
     }
 
     galleries.forEach(gallery => {
-        const links = Array.from(gallery.querySelectorAll('figure > a'));
-        links.forEach((link, position) => link.addEventListener('click', event => {
+        const links = Array.from(gallery.querySelectorAll('figure:not([data-sm-strip-clone]) > a'));
+        gallery.addEventListener('click', event => {
             if (event.ctrlKey || event.metaKey || event.shiftKey || event.altKey) return;
+            const link = event.target.closest('figure > a');
+            if (!link || !gallery.contains(link)) return;
+            const clone = link.parentElement.dataset.smStripClone;
+            const position = clone === undefined ? links.indexOf(link) : Number(clone);
+            if (!links[position]) return;
             event.preventDefault();
             photos = links;
             index = position;
@@ -136,7 +183,7 @@
             show();
             dialog.showModal();
             setPlaying(!reducedMotion);
-        }));
+        });
     });
 
     dialog.querySelector('.sm-view-close').addEventListener('click', () => dialog.close());
