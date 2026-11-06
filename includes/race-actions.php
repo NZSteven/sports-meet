@@ -95,7 +95,11 @@ function race_handler():void {
     set_transient('sports_meet_race_notice_'.get_current_user_id(),[$error,$message],120);
     $tab=sanitize_key($p['race_tab']??'registration');$params=['race_tab'=>$tab];if($tab==='registration')$params=array_merge($params,race_roster_params($p));if(!empty($p['round_id']))$params['round_id']=(int)$p['round_id'];
     if($tab==='checkin')$params=array_merge($params,race_checkin_params($p));
-    $day=is_scalar($p['day_page']??null)?(string)$p['day_page']:'';if(!isset(race_day_definitions()[$day]))$day='judge';
+    $day=is_scalar($p['day_page']??null)?(string)$p['day_page']:'';
+    if($day==='new_registration'&&!empty($p['frontend'])&&($p['race_action']??'')==='registration'){
+        wp_safe_redirect(page_url('new_registration'));exit;
+    }
+    if(!isset(race_day_definitions()[$day]))$day='judge';
     if(($p['race_action']??'')==='prepare_final'&&!empty($p['event_id'])){$params['event_id']=(int)$p['event_id'];if(!empty($p['frontend']))$day='finals';}
     if(!empty($p['frontend']))$url=add_query_arg($params,page_url($day));else{$url=add_query_arg($params,admin_url('admin.php?page=sports-meet&tab=races'));}
     wp_safe_redirect($url);exit;

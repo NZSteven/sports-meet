@@ -7,6 +7,7 @@ function community_sections(): array {
         'intro'=>['奔Fun简介','sports-about'], 'race_hub'=>['赛场直通车','sports-race-hub'],
         'committee'=>['组委会','sports-committee'], 'sponsors'=>['赞助伙伴','sports-sponsors'],
         'media_hub'=>['图文现场','sports-media-hub'], 'messages'=>['留言板','sports-messages'],
+        'new_registration'=>['新增报名','sports-new-registration'],
     ];
 }
 
@@ -67,6 +68,7 @@ add_filter('wp_nav_menu_args',static function(array $args):array {
 function community_hub($attrs=[]): string {
     $key=shortcode_atts(['kind'=>'intro'],(array)$attrs)['kind'];
     if($key==='messages')return guestbook_page();
+    if($key==='new_registration')return race_new_registration_page();
     if($key==='media_hub')return '<section class="sm-site sm-media-hub">'.photo_carousel().guestbook_home(8).'</section>';
     $html='<section class="sm-site sm-community">';
     if($key==='intro')$html.='<p>'.esc_html(SITE_NAME).' · '.esc_html(SITE_SLOGAN).'</p>'
