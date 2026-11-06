@@ -159,7 +159,14 @@ body.sm-brand-home{background:#f9fbff;isolation:isolate}
 .sm-message-grid p {margin:7px 0 10px;}
 .sm-message-byline {display:flex; align-items:baseline; gap:10px;}
 .sm-message-byline time {flex:none;}
-.sm-guestbook-preview .sm-message-grid article > p {font-size:calc(1em - 2px);}
+.sm-message-excerpts article > p {font-size:calc(1em - 2px);}
+.sm-guestbook-list .sm-message-grid {grid-template-columns:repeat(4,minmax(0,1fr));}
+@media(max-width:900px){
+    .sm-guestbook-list .sm-message-grid {grid-template-columns:repeat(2,minmax(0,1fr));}
+}
+@media(max-width:480px){
+    .sm-guestbook-list .sm-message-grid {grid-template-columns:minmax(0,1fr);}
+}
 .sm-single-message .sm-message-grid {grid-template-columns:minmax(0,1fr); max-width:760px;}
 .sm-community textarea {display:block;width:100%;max-width:640px;box-sizing:border-box;margin:8px 0;}
 .sm-community form {margin-bottom:20px;}

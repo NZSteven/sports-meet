@@ -89,7 +89,7 @@ add_shortcode('sports_meet_hub',__NAMESPACE__.'\\community_hub');
 
 function guestbook_cards(array $rows,bool $short=false): string {
     if(!$rows)return '<p>欢迎留下第一条留言。</p>';
-    $html='<div class="sm-message-grid">';
+    $html='<div class="sm-message-grid'.($short?' sm-message-excerpts':'').'">';
     foreach($rows as $row){
         $user=get_userdata((int)$row['owner']);
         $name=$user?trim((string)$user->display_name):'';
@@ -124,13 +124,13 @@ function guestbook_page(): string {
     $offset=($page-1)*24;
     $order=get_option('sports_meet_guestbook_pins_ready')?'pinned DESC,id DESC':'id DESC';
     $rows=q("SELECT * FROM guest_messages WHERE status='published' ORDER BY $order LIMIT 25 OFFSET $offset")->fetchAll();
-    $html='<section class="sm-site sm-community">'.photo_notice_html();
+    $html='<section class="sm-site sm-community sm-guestbook-list">'.photo_notice_html();
     if(!is_user_logged_in())$html.='<p>登录后可以留言。</p>'.community_buttons([['登录或注册',page_url('disclaimer')]]);
     elseif(community_banned(get_current_user_id(),'messages'))$html.='<p>该账号的留言功能已暂停。</p>';
     else $html.='<form id="sm-message-form" method="post" action="'.esc_url(admin_url('admin-post.php')).'">'
         .'<input type="hidden" name="action" value="sports_meet_guest_message">'.wp_nonce_field('sports_meet_guest_message','sm_nonce',false,false)
         .'<label>说出你的感言<textarea name="message" rows="4" maxlength="1000" required></textarea></label><button class="sm-btn" type="submit">发布留言</button></form>';
-    $html.=guestbook_cards(array_slice($rows,0,24));
+    $html.=guestbook_cards(array_slice($rows,0,24),true);
     if($page>1)$html.='<a href="'.esc_url(add_query_arg('message_page',$page-1,page_url('messages'))).'">上一页</a> ';
     if(count($rows)>24)$html.='<a href="'.esc_url(add_query_arg('message_page',$page+1,page_url('messages'))).'">下一页</a>';
     return $html.'</section>';
