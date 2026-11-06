@@ -5,7 +5,7 @@ defined('ABSPATH') || exit;
 function install_photos(): void {
     q("CREATE TABLE IF NOT EXISTS photos (id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT, owner BIGINT UNSIGNED NOT NULL, title VARCHAR(180) NOT NULL, image LONGBLOB NOT NULL, width SMALLINT UNSIGNED NOT NULL, height SMALLINT UNSIGNED NOT NULL, bytes INT UNSIGNED NOT NULL, status VARCHAR(12) NOT NULL DEFAULT 'pending', created DATETIME NOT NULL, PRIMARY KEY(id), KEY gallery(status,id), KEY user_date(owner,created)) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
 }
-add_action('admin_init',function(){if(current_user_can('manage_options') && get_option('sports_meet_db_version')!=='2.5.2')activate();});
+add_action('admin_init',function(){if(current_user_can('manage_options') && get_option('sports_meet_db_version')!=='2.5.3')activate();});
 function page_url(string $key): string {
     $pages=get_option('sports_meet_pages',[]);
     $id=(int)($pages[$key]??0);
@@ -270,7 +270,11 @@ function home_section_original(): string {
         [count(all('athletes')),'运动员'],
         [(int)q("SELECT COUNT(*) FROM photos WHERE status='published'")->fetchColumn(),'照片'],
     ];
-    $html='<div class="sm-site"><section class="sm-hero sm-hero-showcase sm-hero-wide">'
+    $html='<div class="sm-site"><section class="sm-hero sm-hero-showcase">'
+        .'<div class="sm-hero-copy"><div class="sm-hero-mascot" aria-hidden="true"></div>'
+        .'<h1>为Fun而奔<br><em>奔而得分</em></h1><dl class="sm-hero-counts">';
+    foreach($counts as [$count,$label])$html.='<div><dt>'.esc_html($label).'</dt><dd>'.(int)$count.'</dd></div>';
+    $html.='</dl>'.race_public_board(true).'</div><div class="sm-hero-right">'
         .'<section class="sm-hero-slides" aria-label="版头照片轮播">';
     foreach($slides as $index=>[$url,$alt]){
         $html.='<div class="sm-hero-slide'.($index===0?' is-active':'').'" aria-hidden="'.($index===0?'false':'true').'">'
@@ -278,11 +282,7 @@ function home_section_original(): string {
     }
     $html.='<div class="sm-slide-controls" hidden><button type="button" data-sm-prev aria-label="上一张">‹</button>'
         .'<button type="button" data-sm-play>暂停轮播</button><button type="button" data-sm-next aria-label="下一张">›</button></div></section>';
-    $html.='<div class="sm-hero-copy sm-hero-overlay"><div class="sm-hero-mascot" aria-hidden="true"></div>'
-        .'<h1>为Fun而奔<br><em>奔而得分</em></h1><dl class="sm-hero-counts">';
-    foreach($counts as [$count,$label])$html.='<div><dt>'.esc_html($label).'</dt><dd>'.(int)$count.'</dd></div>';
-    $html.='</dl>'.race_public_board(true).'</div>'
-        .'<div class="sm-hero-song">'.song_section().'</div></section>';
+    $html.=song_section().'</div></section>';
     if($showGallery){
         $links=[['查看全部相册',page_url('gallery')]];
         if(photo_upload_enabled())$links[]=['分享你的照片',page_url('upload')];

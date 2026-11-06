@@ -69,6 +69,13 @@ function disclaimer_page(): string {
     if(!is_user_logged_in())return $html.'<p>有账号请登录。已报名的参赛者也可以在这里注册。</p>'
         .wp_login_form(['echo'=>false,'redirect'=>page_url('disclaimer'),'label_log_in'=>'登录']).athlete_signup_form().'</section>';
 
+    $athlete=q('SELECT a.id,a.name,a.team_id,t.name AS team_name FROM athlete_accounts aa
+        JOIN athletes a ON a.id=aa.athlete_id JOIN teams t ON t.id=a.team_id WHERE aa.user_id=?',[get_current_user_id()])->fetch();
+    $accepted=$athlete?disclaimer_acceptances((int)$athlete['id']):[];
+    if($athlete&&disclaimer_agreed($athlete,$accepted)){
+        return $html.'<p role="status" class="sm-message">'.disclaimer_dot($athlete,$accepted)
+            .' 已同意免责声明，无需再次提交。<br>'.esc_html($athlete['team_name'].' · '.$athlete['name']).'</p></section>';
+    }
     $html.=photo_notice_html().'<form class="sm-disclaimer-form" method="post" action="'.esc_url(admin_url('admin-post.php','relative')).'">'
         .'<input type="hidden" name="action" value="sports_meet_accept_disclaimer">'
         .'<input type="hidden" name="statement_hash" value="'.hash('sha256',$text).'">'
@@ -78,6 +85,11 @@ function disclaimer_page(): string {
         .'<button type="submit">提交同意</button></form></section>';
 }
 add_shortcode('sports_meet_disclaimer',__NAMESPACE__.'\\disclaimer_page');
+
+function record_disclaimer_acceptance(array $athlete,string $hash,int $user): void {
+    q('INSERT INTO disclaimer_acceptances (athlete_id,statement_hash,identity_hash,actor,accepted_at) VALUES (?,?,?,?,?)
+        ON DUPLICATE KEY UPDATE accepted_at=accepted_at',[(int)$athlete['id'],$hash,disclaimer_identity($athlete),$user,current_time('mysql')]);
+}
 
 function disclaimer_accept(): void {
     if(!is_user_logged_in()||!current_user_can('read'))wp_die('请先登录。','',['response'=>403]);
@@ -100,10 +112,8 @@ function disclaimer_accept(): void {
                 race_transaction(function() use($athlete,$hash){
                     $user=get_current_user_id();
                     bind_athlete_account((int)$athlete['id'],$user);
-                    q('INSERT INTO disclaimer_acceptances (athlete_id,statement_hash,identity_hash,actor,accepted_at) VALUES (?,?,?,?,?)
-                        ON DUPLICATE KEY UPDATE accepted_at=accepted_at',[(int)$athlete['id'],$hash,disclaimer_identity($athlete),$user,current_time('mysql')]);
+                    record_disclaimer_acceptance($athlete,$hash,$user);
                 });
-                photo_notice('已记录本人同意免责声明。');
             } catch(\Throwable $error) {photo_notice($error->getMessage());}
         }
     }
@@ -143,5 +153,5 @@ add_filter('wp_nav_menu_items',function(string $items,$args): string {
 },10,2);
 
 add_action('wp_enqueue_scripts',function(){
-    wp_enqueue_script('sports-meet-disclaimer',plugins_url('disclaimer.js',dirname(__DIR__).'/sports-meet.php'),[],'2.5.2',true);
+    wp_enqueue_script('sports-meet-disclaimer',plugins_url('disclaimer.js',dirname(__DIR__).'/sports-meet.php'),[],'2.5.3',true);
 });

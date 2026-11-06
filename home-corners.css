@@ -99,45 +99,7 @@ body.sm-brand-home{background:#f9fbff;isolation:isolate}
 @media (max-width: 600px) {
     .sm-photo-carousel .sm-public-gallery {grid-auto-columns: calc((100% - 14px) / 2);}
 }
-.sm-brand-home .sm-site .sm-hero-wide {
-    position: relative;
-    display: grid;
-    grid-template-columns: minmax(0, 340px) minmax(0, 1fr);
-    align-items: end;
-    gap: 18px;
-    isolation: isolate;
-    padding: 16px;
-}
-.sm-hero-wide .sm-hero-slides {
-    position: absolute;
-    inset: 0;
-    z-index: -1;
-    min-height: 0;
-    aspect-ratio: auto;
-    border-radius: 0;
-}
-.sm-hero-wide .sm-hero-slide img {object-fit: cover; object-position: center 43%;}
-.sm-hero-wide .sm-slide-controls {top: 12px; bottom: auto;}
-.sm-hero-wide .sm-hero-overlay {padding: 0;}
-.sm-hero-overlay .sm-hero-mascot {width: min(100%, 116px); mix-blend-mode: multiply;}
-.sm-site .sm-hero-wide .sm-hero-overlay h1 {
-    margin: 4px 0 8px;
-    font-size: clamp(30px, 3.6vw, 48px);
-    line-height: 1.05;
-    text-shadow: 0 0 5px #fff, 0 0 12px #fff;
-}
-.sm-hero-overlay .sm-hero-counts {padding-block: 7px;}
-.sm-hero-overlay .sm-ranking-list li {padding-block: 3px;}
-.sm-hero-overlay .sm-live-board {padding-block: 8px; background: rgba(255,255,255,.78);}
-.sm-hero-song {min-width: 0;}
-.sm-hero-song .sm-song {
-    grid-template-columns: minmax(0, 190px) minmax(0, 1fr);
-    gap: 12px;
-    margin: 0;
-    padding: 12px;
-    background: #fff;
-}
-.sm-hero-song .sm-song-body {min-height: 165px;}
+.sm-hero-copy .sm-live-board {background: rgba(255,255,255,.78);}
 .sm-gallery-actions,.sm-community-actions {display:flex;align-items:center;gap:8px;flex-wrap:wrap;}
 .sm-gallery-actions .sm-strip-controls {margin-top:0;}
 .sm-gallery-actions .sm-btn,.sm-community-actions .sm-btn {padding:7px 12px;}
@@ -164,11 +126,6 @@ body.sm-brand-home{background:#f9fbff;isolation:isolate}
 .sm-message-grid p {margin:7px 0 10px;}
 .sm-community textarea {display:block;width:100%;max-width:640px;box-sizing:border-box;margin:8px 0;}
 .sm-community form {margin-bottom:20px;}
-@media(max-width:800px){
-    .sm-brand-home .sm-site .sm-hero-wide{grid-template-columns:minmax(0,1fr);padding:56px 14px 14px;}
-    .sm-hero-wide .sm-hero-overlay{width:min(100%,340px);}
-}
 @media(max-width:700px){
-    .sm-hero-song .sm-song{grid-template-columns:minmax(0,1fr);}
     .sm-message-grid{grid-template-columns:minmax(0,1fr);}
 }

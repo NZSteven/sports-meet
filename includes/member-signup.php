@@ -43,7 +43,9 @@ function athlete_signup_form(): string {
         .'<label>邮箱<input type="email" name="email" autocomplete="email" required></label>'
         .'<label>密码<input type="password" name="password" minlength="10" maxlength="128" autocomplete="new-password" required></label>'
         .'<label><input type="checkbox" name="confirm_identity" value="1" required> 本人确认所选高校和姓名是我的报名资料</label>'
-        .'<button type="submit">注册并登录</button></form></details>';
+        .'<input type="hidden" name="statement_hash" value="'.hash('sha256',disclaimer_text()).'">'
+        .'<label><input type="checkbox" name="agree" value="1" required> 本人同意以上免责声明</label>'
+        .'<button type="submit">注册并提交同意</button></form></details>';
 }
 
 add_action('admin_post_nopriv_sports_meet_athlete_signup',function(){
@@ -54,13 +56,18 @@ add_action('admin_post_nopriv_sports_meet_athlete_signup',function(){
     }
     $email=sanitize_email($data['email']);
     $password=$data['password'];
+    $text=disclaimer_text();
+    $hash=hash('sha256',$text);
+    if($text===''||!get_option('sports_meet_disclaimer_ready')||($data['statement_hash']??'')!==$hash||($data['agree']??'')!=='1'){
+        wp_die('请重新打开免责声明页面，阅读并勾选同意后提交。','',['response'=>400,'back_link'=>true]);
+    }
     if(!ctype_digit($data['athlete_id'])||!ctype_digit($data['school_id'])||!is_email($email)
         ||strlen($password)<10||strlen($password)>128||$data['confirm_identity']!=='1'){
         wp_die('请确认本人身份，输入有效邮箱及至少 10 个字符的密码。','',['response'=>400,'back_link'=>true]);
     }
     try{
-        $user=race_transaction(function() use($data,$email,$password){
-            $athlete=q('SELECT id,name FROM athletes WHERE id=? AND team_id=?',[(int)$data['athlete_id'],(int)$data['school_id']])->fetch();
+        $user=race_transaction(function() use($data,$email,$password,$hash){
+            $athlete=q('SELECT id,name,team_id FROM athletes WHERE id=? AND team_id=?',[(int)$data['athlete_id'],(int)$data['school_id']])->fetch();
             if(!$athlete)throw new \RuntimeException('所选高校和姓名不匹配。');
             if(email_exists($email))throw new \RuntimeException('该邮箱已有账号，请登录。');
             if(q('SELECT user_id FROM athlete_accounts WHERE athlete_id=?',[(int)$athlete['id']])->fetchColumn()){
@@ -70,6 +77,7 @@ add_action('admin_post_nopriv_sports_meet_athlete_signup',function(){
                 'user_pass'=>$password,'display_name'=>$athlete['name'],'role'=>'subscriber']);
             if(is_wp_error($user))throw new \RuntimeException($user->get_error_message());
             bind_athlete_account((int)$athlete['id'],(int)$user);
+            record_disclaimer_acceptance($athlete,$hash,(int)$user);
             return (int)$user;
         });
     }catch(\Throwable $error){wp_die(esc_html($error->getMessage()),'',['response'=>400,'back_link'=>true]);}
