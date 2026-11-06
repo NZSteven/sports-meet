@@ -67,3 +67,24 @@ body.sm-brand-home{background:#f9fbff;isolation:isolate}
     .sm-hero-right .sm-song {grid-template-columns: minmax(0, 1fr);}
     .sm-hero-copy .sm-live-board {padding: 14px 10px;}
 }
+.sm-photo-carousel .sm-public-gallery {
+    position: relative;
+    grid-template-columns: none;
+    grid-auto-flow: column;
+    grid-auto-columns: calc((100% - 56px) / 5);
+    gap: 14px;
+    overflow-x: auto;
+    scroll-snap-type: x mandatory;
+    scrollbar-width: thin;
+    padding-bottom: 4px;
+}
+.sm-photo-carousel .sm-public-gallery > figure {scroll-snap-align: start; min-width: 0;}
+.sm-strip-controls {display: flex; justify-content: flex-end; gap: 8px; margin-top: 8px;}
+.sm-strip-controls[hidden] {display: none;}
+.sm-strip-controls button {padding: 6px 12px; border: 0; border-radius: 6px; background: #193e30; color: #fff; cursor: pointer;}
+@media (max-width: 850px) {
+    .sm-photo-carousel .sm-public-gallery {grid-auto-columns: calc((100% - 28px) / 3);}
+}
+@media (max-width: 600px) {
+    .sm-photo-carousel .sm-public-gallery {grid-auto-columns: calc((100% - 14px) / 2);}
+}

@@ -5,7 +5,7 @@ defined('ABSPATH') || exit;
 function install_photos(): void {
     q("CREATE TABLE IF NOT EXISTS photos (id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT, owner BIGINT UNSIGNED NOT NULL, title VARCHAR(180) NOT NULL, image LONGBLOB NOT NULL, width SMALLINT UNSIGNED NOT NULL, height SMALLINT UNSIGNED NOT NULL, bytes INT UNSIGNED NOT NULL, status VARCHAR(12) NOT NULL DEFAULT 'pending', created DATETIME NOT NULL, PRIMARY KEY(id), KEY gallery(status,id), KEY user_date(owner,created)) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
 }
-add_action('admin_init',function(){if(current_user_can('manage_options') && get_option('sports_meet_db_version')!=='2.4.24')activate();});
+add_action('admin_init',function(){if(current_user_can('manage_options') && get_option('sports_meet_db_version')!=='2.4.25')activate();});
 function page_url(string $key): string {$pages=get_option('sports_meet_pages',[]);$id=(int)($pages[$key]??0);return $id&&get_post_status($id)==='publish'?get_permalink($id):home_url('/');}
 function photo_url(int $id): string {return add_query_arg(['action'=>'sports_meet_photo','id'=>$id],admin_url('admin-post.php'));}
 function photo_upload_enabled(): bool {return (bool)get_option('sports_meet_photo_upload_enabled',1);}
@@ -209,7 +209,10 @@ function home_section_original(): string {
     if($showGallery){
         $html.='<section class="sm-gallery-preview"><div class="sm-section-head"><div><p class="sm-eyebrow">THE HIGHLIGHTS</p>'
             .'<h2>不止终点，还有沿途的精彩。</h2></div><a href="'.esc_url(page_url('gallery')).'">查看全部相册 →</a></div>'
-            .photo_cards($rows).'</section>';
+            .'<div class="sm-photo-carousel">'.photo_cards($rows)
+            .'<div class="sm-strip-controls" hidden><button type="button" data-sm-strip-prev aria-label="上一张照片">‹</button>'
+            .'<button type="button" data-sm-strip-play>暂停走马灯</button>'
+            .'<button type="button" data-sm-strip-next aria-label="下一张照片">›</button></div></div></section>';
     }
     return $html.'</div>';
 }
