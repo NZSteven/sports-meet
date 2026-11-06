@@ -72,7 +72,17 @@ function community_hub($attrs=[]): string {
     if($key==='intro')$html.='<p>'.esc_html(SITE_NAME).' · '.esc_html(SITE_SLOGAN).'</p>'
         .'<p>第五届奔Fun运动会于 2026 年 11 月 15 日举行。校友和家人一起参赛、观赛，分享运动场上的精彩瞬间。</p>'
         .community_buttons([['回到首页',home_url('/')],['进入赛场',page_url('race_hub')]]);
-    elseif($key==='race_hub')$html.=community_buttons([['报名名单',page_url('roster')],['成绩榜',page_url('results')],['积分榜',page_url('board')],['免责声明与注册',page_url('disclaimer')]]);
+    elseif($key==='race_hub'){
+        $html.='<nav class="race-day-grid" aria-label="赛场直通车">';
+        foreach([
+            'roster'=>['报名名单','按高校、组别或项目查看报名名单'],
+            'results'=>['成绩榜','查看决赛前三名及预赛晋级名单'],
+            'board'=>['积分榜','查看实时高校积分排名'],
+        ] as $page=>[$title,$description]){
+            $html.='<a href="'.esc_url(page_url($page)).'"><strong>'.esc_html($title).' ↗</strong><span>'.esc_html($description).'</span></a>';
+        }
+        $html.='</nav>';
+    }
     elseif($key==='committee')$html.=current_user_can('manage_options')
         ?community_buttons([['赛事管理',view_url('races')],['照片管理',view_url('photos')],['留言管理',view_url('messages')],['免责声明设置',view_url('disclaimer')]])
         :'<p>组委会负责赛事和网站管理。组委会成员请用管理员账号登录。</p>'.(!is_user_logged_in()?wp_login_form(['echo'=>false,'redirect'=>page_url('committee')]):'');
