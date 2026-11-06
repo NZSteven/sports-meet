@@ -55,12 +55,11 @@ function community_menu(): string {
     }
     return $menu;
 }
-add_filter('wp_nav_menu_items',static function($items,$args){
-    return ($args->theme_location??'')==='primary'&&get_option('sports_meet_community_ready')?community_menu():$items;
-},20,2);
 add_filter('wp_nav_menu_args',static function(array $args):array {
-    if(($args['theme_location']??'')==='primary'&&get_option('sports_meet_community_ready')){
-        $args['fallback_cb']=static function(){echo '<ul>'.community_menu().'</ul>';};
+    if(($args['theme_location']??'')==='primary'&&get_option('sports_meet_community_ready')&&empty($args['menu'])){
+        $args['fallback_cb']=has_nav_menu('primary')
+            ?false
+            :static function(){echo '<ul>'.community_menu().'</ul>';};
     }
     return $args;
 });
