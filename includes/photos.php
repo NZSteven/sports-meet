@@ -5,7 +5,7 @@ defined('ABSPATH') || exit;
 function install_photos(): void {
     q("CREATE TABLE IF NOT EXISTS photos (id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT, owner BIGINT UNSIGNED NOT NULL, title VARCHAR(180) NOT NULL, image LONGBLOB NOT NULL, width SMALLINT UNSIGNED NOT NULL, height SMALLINT UNSIGNED NOT NULL, bytes INT UNSIGNED NOT NULL, status VARCHAR(12) NOT NULL DEFAULT 'pending', created DATETIME NOT NULL, PRIMARY KEY(id), KEY gallery(status,id), KEY user_date(owner,created)) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
 }
-add_action('admin_init',function(){if(current_user_can('manage_options') && get_option('sports_meet_db_version')!=='2.4.25')activate();});
+add_action('admin_init',function(){if(current_user_can('manage_options') && get_option('sports_meet_db_version')!=='2.4.26')activate();});
 function page_url(string $key): string {$pages=get_option('sports_meet_pages',[]);$id=(int)($pages[$key]??0);return $id&&get_post_status($id)==='publish'?get_permalink($id):home_url('/');}
 function photo_url(int $id): string {return add_query_arg(['action'=>'sports_meet_photo','id'=>$id],admin_url('admin-post.php'));}
 function photo_upload_enabled(): bool {return (bool)get_option('sports_meet_photo_upload_enabled',1);}
@@ -75,20 +75,37 @@ function store_photo(string $path,string $title,int $owner): int {
     }catch(\Throwable $e){try{if($transaction)q('ROLLBACK');}finally{if($reference!==null&&!$committing)photo_remove_file($reference);}throw $e;}
 }
 function upload_photos(): void {
-    photo_require_login();check_admin_referer('sports_meet_upload','sm_nonce');
-    if(!photo_upload_enabled())wp_die('照片上传已暂停。','',['response'=>403]);
-    $success=0;$errors=[];$files=$_FILES['photos']??null;
-    if(!$files || !is_array($files['name']??null) || count($files['name'])>5){photo_notice('请每次选择1至5张照片。');wp_safe_redirect(page_url('upload'));exit;}
+    $async=($_GET['sm_async']??'')==='1';
+    if($async){
+        if(!is_user_logged_in()||!current_user_can('read'))wp_send_json_error(['message'=>'登录已失效，请重新登录。'],403);
+        if(!photo_upload_enabled())wp_send_json_error(['message'=>'照片上传已暂停。'],403);
+        if(!$_POST && !$_FILES && !empty($_SERVER['CONTENT_LENGTH']))wp_send_json_error(['message'=>'服务器未收到照片，文件可能超过主机的上传限制。'],413);
+        $nonce=$_POST['sm_nonce']??'';
+        if(!is_string($nonce)||!wp_verify_nonce(wp_unslash($nonce),'sports_meet_upload'))wp_send_json_error(['message'=>'上传页面已过期，请刷新后重试。'],403);
+    }else{
+        photo_require_login();check_admin_referer('sports_meet_upload','sm_nonce');
+        if(!photo_upload_enabled())wp_die('照片上传已暂停。','',['response'=>403]);
+    }
+    $success=0;$mediaPending=0;$errors=[];$files=$_FILES['photos']??null;
+    if(!$files || !is_array($files['name']??null) || !$files['name'] || count($files['name'])>($async?1:5)){
+        if($async)wp_send_json_error(['message'=>'服务器未收到所选照片。'],400);
+        photo_notice('请每次选择1至5张照片。');wp_safe_redirect(page_url('upload'));exit;
+    }
     foreach($files['name'] as $i=>$name) {
         try {
             if(($files['error'][$i]??-1)!==UPLOAD_ERR_OK)throw new \RuntimeException('上传未完成，可能超过主机文件大小限制。');
             if(($files['size'][$i]??0)>min(12582912,wp_max_upload_size()))throw new \RuntimeException('单张照片超过允许大小。');
             $path=$files['tmp_name'][$i]??'';if(!is_uploaded_file($path))throw new \RuntimeException('无效上传。');
             $title=sanitize_text_field(wp_unslash($_POST['photo_title']??''));if($title==='')$title=pathinfo(sanitize_file_name($name),PATHINFO_FILENAME);
-            store_photo($path,$title,get_current_user_id());$success++;
+            $id=store_photo($path,$title,get_current_user_id());$success++;
+            try{if(!photo_media_attachment($id))$mediaPending++;}catch(\Throwable $e){$mediaPending++;}
         }catch(\Throwable $e){$errors[]='第'.($i+1).'张：'.$e->getMessage();}
     }
-    photo_notice(($success?'成功上传'.$success.'张照片。':'').implode(' ',$errors));
+    if($async){
+        if(!$success)wp_send_json_error(['message'=>$errors[0]??'照片上传失败。'],422);
+        wp_send_json_success(['media_ready'=>$mediaPending===0]);
+    }
+    photo_notice(($success?'成功上传'.$success.'张照片。':'').($mediaPending?'其中 '.$mediaPending.' 张已保存，媒体库登记待完成。':'').implode(' ',$errors));
     wp_safe_redirect(page_url('upload'));exit;
 }
 add_action('admin_post_sports_meet_upload',__NAMESPACE__.'\\upload_photos');
@@ -125,7 +142,7 @@ function photo_upload_form(): string {
     $html='<section class="sm-site sm-upload"><p class="sm-eyebrow">SHARE THE ENERGY / 分享热爱</p><h2>把精彩，留在这里。</h2><p>照片会保持原比例，自动缩小到不超过1920×1080。只保存压缩后的照片，不保留大尺寸原图。</p>';
     if(!is_user_logged_in())return $html.'<div class="sm-login"><h3>登录后分享照片</h3>'.wp_login_form(['echo'=>false,'redirect'=>page_url('upload'),'label_username'=>'用户名或邮箱','label_password'=>'密码','label_remember'=>'记住我','label_log_in'=>'登录并上传']).'<p><a href="'.esc_url(wp_lostpassword_url(page_url('upload'))).'">忘记密码？</a></p>'.(get_option('users_can_register')?'<p><a href="'.esc_url(wp_registration_url()).'">创建账号</a></p>':'<p>没有账号？请联系活动管理员为你创建账号。</p>').'</div></section>';
     $html.=photo_notice_html().'<form class="sm-upload-form" method="post" enctype="multipart/form-data" action="'.esc_url(admin_url('admin-post.php')).'"><input type="hidden" name="action" value="sports_meet_upload">'.wp_nonce_field('sports_meet_upload','sm_nonce',false,false).'<label>照片说明（可选）<input name="photo_title" maxlength="180" placeholder="例如：最后一棒，向终点冲刺"></label><label class="sm-drop">选择照片<input type="file" name="photos[]" accept="image/jpeg,image/png,image/webp" multiple required><span>每批最多5张 · JPG / PNG / WebP · 每张不超过'.esc_html(size_format(min(12582912,wp_max_upload_size()))).'</span></label><p>照片上传后会立即公开。 请只上传你有权分享的活动照片。</p><button class="sm-btn" type="submit">上传照片 ↗</button></form>';
-    $preview='<p class="sm-preview-status" role="status"></p><div class="sm-photo-previews" aria-label="所选照片预览"></div>';
+    $preview='<p class="sm-preview-status" role="status"></p><div class="sm-photo-previews" aria-label="所选照片预览"></div><p class="sm-upload-progress" role="status"></p><ul class="sm-upload-results" aria-label="各张照片上传结果"></ul>';
     $html=str_replace('</span></label>','</span></label>'.$preview,$html);
     $uid=get_current_user_id();$rows=q('SELECT id,title,width,height,status,created FROM photos WHERE owner=? ORDER BY id DESC LIMIT 12',[$uid])->fetchAll();
     return $html.'<h3>我的最近照片</h3>'.photo_cards($rows,true).'</section>';

@@ -45,13 +45,13 @@ function photo_sync_media_safely(int $id): void {
         photo_sync_media($id);
     } catch (\Throwable $error) {
         error_log('Sports Meet photo media: '.$error->getMessage());
-        delete_option('sports_meet_photo_media_done');
+        delete_option('sports_meet_photo_media_done_v2');
         photo_schedule_media();
     }
 }
 
 function photo_schedule_media(): void {
-    if (!get_option('sports_meet_photo_media_done') && !wp_next_scheduled(PHOTO_MEDIA_EVENT)) {
+    if (!get_option('sports_meet_photo_media_done_v2') && !wp_next_scheduled(PHOTO_MEDIA_EVENT)) {
         wp_schedule_single_event(time()+60, PHOTO_MEDIA_EVENT);
     }
 }
@@ -64,7 +64,7 @@ function photo_sync_media_batch(): void {
             WHERE m.meta_key=? AND m.meta_value=CAST(g.id AS CHAR) AND p.post_type='attachment'
         ) ORDER BY g.id LIMIT 12", [PHOTO_MEDIA_META])->fetchAll(7);
         foreach ($ids as $id) photo_sync_media((int)$id);
-        if (count($ids)<12) update_option('sports_meet_photo_media_done', 1, false);
+        if (count($ids)<12) update_option('sports_meet_photo_media_done_v2', 1, false);
     } catch (\Throwable $error) {
         error_log('Sports Meet photo media sync: '.$error->getMessage());
     }
