@@ -5,15 +5,20 @@ defined('ABSPATH') || exit;
 function install_photos(): void {
     q("CREATE TABLE IF NOT EXISTS photos (id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT, owner BIGINT UNSIGNED NOT NULL, title VARCHAR(180) NOT NULL, image LONGBLOB NOT NULL, width SMALLINT UNSIGNED NOT NULL, height SMALLINT UNSIGNED NOT NULL, bytes INT UNSIGNED NOT NULL, status VARCHAR(12) NOT NULL DEFAULT 'pending', created DATETIME NOT NULL, PRIMARY KEY(id), KEY gallery(status,id), KEY user_date(owner,created)) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
 }
-add_action('admin_init',function(){if(current_user_can('manage_options') && get_option('sports_meet_db_version')!=='2.4.30')activate();});
+add_action('admin_init',function(){if(current_user_can('manage_options') && get_option('sports_meet_db_version')!=='2.4.31')activate();});
 function page_url(string $key): string {
     $pages=get_option('sports_meet_pages',[]);
     $id=(int)($pages[$key]??0);
     if($id && get_post_status($id)==='publish')return get_permalink($id);
-    if($key==='upload'){
-        foreach(['上传照片','sports-upload'] as $slug){
+    $fallbacks=[
+        'upload'=>['sports_meet_upload',['上传照片','sports-upload']],
+        'gallery'=>['sports_meet_gallery',['精彩相册','sports-gallery']],
+    ];
+    if(isset($fallbacks[$key])){
+        [$shortcode,$slugs]=$fallbacks[$key];
+        foreach($slugs as $slug){
             $page=get_page_by_path($slug);
-            if($page && $page->post_status==='publish' && has_shortcode($page->post_content,'sports_meet_upload'))return get_permalink($page);
+            if($page && $page->post_status==='publish' && has_shortcode($page->post_content,$shortcode))return get_permalink($page);
         }
     }
     return home_url('/');
