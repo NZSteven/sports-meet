@@ -50,6 +50,10 @@ function race_reopen(int $id):void {
 }
 function race_mutate(array $p):void {
     $action=$p['race_action']??'';$admin=current_user_can('manage_options');
+    if(race_registration_closed()&&(in_array($action,['registration','athlete','enroll','unenroll','import'],true)
+        ||($action==='delete'&&($p['type']??'')==='athlete'))){
+        throw new \RuntimeException('报名已截止，报名资料已锁定。');
+    }
     if(!$admin&&!in_array($action,['checkin','round','relay','prepare_final'],true))throw new \RuntimeException('此操作需要管理员权限。');
     switch($action){
     case 'checkin':race_checkin((int)$p['athlete_id'],(string)$p['bib'],(int)$p['version']);break;
@@ -81,7 +85,7 @@ function race_mutate(array $p):void {
     case 'delete':
         if(($p['confirm']??'')!=='DELETE')throw new \RuntimeException('请输入DELETE确认。');$id=(int)$p['id'];$type=$p['type']??'';
         if($type==='athlete'){race_one('athletes',$id);foreach(q('SELECT event_id FROM race_enrollments WHERE athlete_id=?',[$id])->fetchAll() as $r)race_unstarted((int)$r['event_id']);q('DELETE FROM race_members WHERE athlete_id=?',[$id]);q('DELETE FROM race_enrollments WHERE athlete_id=?',[$id]);q('DELETE FROM checkins WHERE athlete_id=?',[$id]);q('DELETE FROM athletes WHERE id=?',[$id]);}
-        elseif($type==='event'){race_unstarted($id);q('DELETE FROM race_members WHERE event_id=?',[$id]);q('DELETE FROM race_relays WHERE event_id=?',[$id]);q('DELETE FROM race_enrollments WHERE event_id=?',[$id]);q('DELETE FROM events WHERE id=?',[$id]);}
+        elseif($type==='event'){if(race_registration_closed()&&q('SELECT id FROM race_enrollments WHERE event_id=? LIMIT 1',[$id])->fetch())throw new \RuntimeException('报名已截止，不能删除已有报名的项目。');race_unstarted($id);q('DELETE FROM race_members WHERE event_id=?',[$id]);q('DELETE FROM race_relays WHERE event_id=?',[$id]);q('DELETE FROM race_enrollments WHERE event_id=?',[$id]);q('DELETE FROM events WHERE id=?',[$id]);}
         elseif($type==='relay'){$r=race_one('race_relays',$id);race_unstarted((int)$r['event_id']);q('DELETE FROM race_relays WHERE id=?',[$id]);}
         elseif($type==='team')q('DELETE FROM teams WHERE id=?',[$id]);else throw new \RuntimeException('删除类型无效。');break;
     default:throw new \RuntimeException('未知操作。');

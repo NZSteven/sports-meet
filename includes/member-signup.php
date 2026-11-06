@@ -49,6 +49,7 @@ function athlete_signup_form(): string {
 }
 
 add_action('admin_post_nopriv_sports_meet_athlete_signup',function(){
+    if(!race_registration_closed())wp_die('参赛者自助注册尚未开放。','',['response'=>403]);
     check_admin_referer('sports_meet_athlete_signup','sm_nonce');
     $data=wp_unslash($_POST);
     foreach(['athlete_id','school_id','email','password','confirm_identity'] as $field){

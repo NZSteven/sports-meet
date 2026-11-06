@@ -1,6 +1,25 @@
 <?php
 namespace SportsMeetWP;
 defined('ABSPATH') || exit;
+function race_registration_closed(?int $now=null): bool {
+    $deadline=new \DateTimeImmutable('2026-11-12 00:00:00',new \DateTimeZone('Pacific/Auckland'));
+    return ($now??time()) >= $deadline->getTimestamp();
+}
+
+function race_registration_deadline_label(): string {return '新西兰时间 2026 年 11 月 12 日 00:00';}
+
+add_action('template_redirect',function(){
+    if(!is_singular())return;
+    $page=get_queried_object();
+    if(!$page instanceof \WP_Post)return;
+    foreach(['sports_meet_roster','sports_meet_disclaimer','sports_meet_hub','sports_meet_results','sports_meet_board'] as $shortcode){
+        if(!has_shortcode($page->post_content,$shortcode))continue;
+        if(!defined('DONOTCACHEPAGE'))define('DONOTCACHEPAGE',true);
+        nocache_headers();
+        break;
+    }
+});
+
 function race_categories():array {return ['成年男子'=>['M','成年'],'成年女子'=>['F','成年'],'少年男子'=>['M','少年'],'少年女子'=>['F','少年']];}
 function race_category(array $a):string {$young=preg_match('/少年|青少年|小学|中学/u',$a['age_group']??'');return ($young?'少年':'成年').(($a['gender']??'M')==='F'?'女子':'男子');}
 function race_group_matches(string $required,string $actual,string $gender):bool {

@@ -66,11 +66,18 @@ function disclaimer_page(): string {
     if($text===''||!get_option('sports_meet_disclaimer_ready'))return $html.'<p>免责声明尚未发布。</p></section>';
     if(!get_option('sports_meet_community_ready'))return $html.'<p>会员注册与签署正在更新，请稍后再试。</p></section>';
     $html.='<div class="sm-disclaimer-text">'.wpautop(esc_html($text)).'</div>';
+    if(!is_user_logged_in()&&!race_registration_closed()){
+        return $html.'<p>有账号请登录。参赛者自助注册将于'.esc_html(race_registration_deadline_label()).'开放。</p>'
+            .wp_login_form(['echo'=>false,'redirect'=>page_url('disclaimer'),'label_log_in'=>'登录']).'</section>';
+    }
     if(!is_user_logged_in())return $html.'<p>有账号请登录。已报名的参赛者也可以在这里注册。</p>'
         .wp_login_form(['echo'=>false,'redirect'=>page_url('disclaimer'),'label_log_in'=>'登录']).athlete_signup_form().'</section>';
 
     $athlete=q('SELECT a.id,a.name,a.team_id,t.name AS team_name FROM athlete_accounts aa
         JOIN athletes a ON a.id=aa.athlete_id JOIN teams t ON t.id=a.team_id WHERE aa.user_id=?',[get_current_user_id()])->fetch();
+    if(!$athlete&&!race_registration_closed()&&!current_user_can('manage_options')){
+        return $html.'<p>参赛者身份关联将于'.esc_html(race_registration_deadline_label()).'开放。</p></section>';
+    }
     $accepted=$athlete?disclaimer_acceptances((int)$athlete['id']):[];
     if($athlete&&disclaimer_agreed($athlete,$accepted)){
         return $html.'<p role="status" class="sm-message">'.disclaimer_dot($athlete,$accepted)
@@ -111,6 +118,10 @@ function disclaimer_accept(): void {
             try {
                 race_transaction(function() use($athlete,$hash){
                     $user=get_current_user_id();
+                    if(!race_registration_closed()&&!current_user_can('manage_options')
+                        && !q('SELECT athlete_id FROM athlete_accounts WHERE user_id=? AND athlete_id=?',[$user,$athlete['id']])->fetch()){
+                        throw new \RuntimeException('参赛者身份关联尚未开放。');
+                    }
                     bind_athlete_account((int)$athlete['id'],$user);
                     record_disclaimer_acceptance($athlete,$hash,$user);
                 });
@@ -153,5 +164,5 @@ add_filter('wp_nav_menu_items',function(string $items,$args): string {
 },10,2);
 
 add_action('wp_enqueue_scripts',function(){
-    wp_enqueue_script('sports-meet-disclaimer',plugins_url('disclaimer.js',dirname(__DIR__).'/sports-meet.php'),[],'2.5.19',true);
+    wp_enqueue_script('sports-meet-disclaimer',plugins_url('disclaimer.js',dirname(__DIR__).'/sports-meet.php'),[],'2.5.20',true);
 });

@@ -48,7 +48,12 @@ function race_set_relay(int $event,int $relay,string $name,array $athleteIds):in
     $athleteIds=array_values(array_unique(array_map('intval',$athleteIds)));if(count($athleteIds)!==8)throw new \RuntimeException('须填写8名不同队员。');
     if($relay){$old=race_one('race_relays',$relay);if((int)$old['event_id']!==$event)throw new \RuntimeException('接力项目不符。');q('UPDATE race_relays SET name=? WHERE id=?',[$name,$relay]);q('DELETE FROM race_members WHERE relay_id=?',[$relay]);}
     else{q('INSERT INTO race_relays(event_id,name) VALUES(?,?)',[$event,$name]);global $wpdb;$relay=(int)$wpdb->insert_id;}
-    foreach($athleteIds as $id){race_enroll($event,$id);if(q('SELECT relay_id FROM race_members WHERE event_id=? AND athlete_id=?',[$event,$id])->fetch())throw new \RuntimeException('同一队员不能在本项目加入两个接力队。');q('INSERT INTO race_members(relay_id,event_id,athlete_id) VALUES(?,?,?)',[$relay,$event,$id]);}
+    foreach($athleteIds as $id){
+        if(!race_registration_closed())race_enroll($event,$id);
+        elseif(!q('SELECT id FROM race_enrollments WHERE event_id=? AND athlete_id=?',[$event,$id])->fetch())throw new \RuntimeException('报名已截止，只能使用已报名此项目的队员组队。');
+        if(q('SELECT relay_id FROM race_members WHERE event_id=? AND athlete_id=?',[$event,$id])->fetch())throw new \RuntimeException('同一队员不能在本项目加入两个接力队。');
+        q('INSERT INTO race_members(relay_id,event_id,athlete_id) VALUES(?,?,?)',[$relay,$event,$id]);
+    }
     race_relay_validate($relay);race_audit('relay',$relay,['members'=>$athleteIds]);return $relay;
 }
 function race_create_round(int $event,string $stage,int $heat):int {[$actor,$now]=race_actor();q('INSERT INTO race_rounds(event_id,stage,heat_no,actor,updated) VALUES(?,?,?,?,?)',[$event,$stage,$heat,$actor,$now]);global $wpdb;return (int)$wpdb->insert_id;}

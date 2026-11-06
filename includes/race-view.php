@@ -11,6 +11,9 @@ function race_options(string $name,string $label,array $items,string $selected='
 function race_roster_rows():array {return q('SELECT a.*,t.name AS team_name,c.bib AS race_bib,c.version AS check_version FROM athletes a JOIN teams t ON t.id=a.team_id LEFT JOIN checkins c ON c.athlete_id=a.id ORDER BY t.name,a.name,a.id')->fetchAll();}
 function race_event_names(int $athlete):string {return implode('、',q('SELECT e.name FROM race_enrollments n JOIN events e ON e.id=n.event_id WHERE n.athlete_id=? ORDER BY e.id',[$athlete])->fetchAll(7));}
 function race_public_roster():string {
+    if(!race_registration_closed()&&!current_user_can('manage_options')){
+        return '<p>报名名单将于'.esc_html(race_registration_deadline_label()).'公开。</p>';
+    }
     $params=race_roster_params(wp_unslash($_GET));unset($params['roster_q']);$result=race_filter_roster($params);
     $pageId=get_queried_object_id();$url=get_permalink($pageId)?:home_url('/');
     ob_start();echo '<section id="sports-public-roster" class="sports-meet race-public-roster"><h2>高校及报名名单</h2><form class="race-roster-filter" method="get" action="'.esc_url($url).'#sports-public-roster">';
@@ -74,6 +77,7 @@ add_action('rest_api_init',function(){
     ]);
 });
 function race_public_results(bool $includeQualifiers=true):string {
+    if($includeQualifiers&&!race_registration_closed()&&!current_user_can('manage_options'))return '<p>比赛成绩榜将于报名名单公开后开放。</p>';
     ob_start();echo '<section class="sports-meet"><h2>'.($includeQualifiers?'比赛成绩榜':'项目决赛前三名').'</h2>';$groups=[];
     foreach(q("SELECT e.*,r.event_id FROM race_entries e JOIN race_rounds r ON r.id=e.round_id WHERE r.stage='final' AND r.status='finalized' AND e.place IS NOT NULL ORDER BY r.event_id,e.place")->fetchAll() as $r)$groups[$r['event_id']][]=$r;
     if(!$groups)echo '<p>暂无已完成决赛的前三名成绩。</p>';
@@ -100,6 +104,7 @@ function race_registration_form(array $teams,array $events,array $edit=[],bool $
 }
 
 function race_new_registration_page():string {
+    if(race_registration_closed())return '<p>报名已截止，报名资料已锁定。</p>';
     if(!is_user_logged_in())return '<section class="sports-meet race-day-login"><p>请使用管理员账号登录后新增报名。</p>'
         .wp_login_form(['echo'=>false,'redirect'=>page_url('new_registration')]).'</section>';
     if(!current_user_can('manage_options'))return '<section class="sports-meet"><p>新增报名需要管理员权限。</p></section>';
@@ -113,9 +118,10 @@ function race_new_registration_page():string {
 
 function race_ui_registration():void {
     $teams=all('teams');$events=all('events');
-    $edit=!empty($_GET['edit_athlete'])?race_one('athletes',(int)$_GET['edit_athlete']):[];
+    $edit=!race_registration_closed()&&!empty($_GET['edit_athlete'])?race_one('athletes',(int)$_GET['edit_athlete']):[];
     $page=(int)(get_option('sports_meet_pages',[])['new_registration']??0);
-    if($edit||!$page||get_post_status($page)!=='publish')race_registration_form($teams,$events,$edit);
+    if(race_registration_closed())echo '<p>报名已截止，报名资料已锁定。</p>';
+    elseif($edit||!$page||get_post_status($page)!=='publish')race_registration_form($teams,$events,$edit);
     else echo '<p><a href="'.esc_url(page_url('new_registration')).'">打开新增报名页面 ↗</a></p>';
     race_render_roster($teams,$events);
     echo '<details><summary>CSV批量导入／导出</summary><p>使用新版6列模板，无需填写报名编号。同一高校、姓名和组别识别已有报名；若有同名多人，系统会要求先核对，不会自动合并。</p><p><a href="'.esc_url(race_export_url('template')).'">下载报名模板</a> · <a href="'.esc_url(race_export_url('roster')).'">导出报名资料</a></p><form method="post" enctype="multipart/form-data" action="'.esc_url(admin_url('admin-post.php')).'"><input type="hidden" name="action" value="sports_meet_race"><input type="hidden" name="race_action" value="import"><input type="hidden" name="race_tab" value="registration">'.wp_nonce_field('sports_meet_race','race_nonce',false,false).'<label>UTF-8 CSV，最多2MB<input type="file" name="csv" accept=".csv" required></label><button>导入报名</button></form></details>';
