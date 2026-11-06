@@ -18,6 +18,26 @@
                 title.replaceChildren(organization, event);
             }
         });
+        document.querySelectorAll('.sd-header-inner > nav').forEach((nav, index) => {
+            nav.id ||= 'sm-main-navigation-' + (index + 1);
+            const toggle = document.createElement('button');
+            toggle.type = 'button';
+            toggle.className = 'sm-menu-toggle';
+            toggle.setAttribute('aria-controls', nav.id);
+            toggle.innerHTML = '<span aria-hidden="true"></span>';
+            const setExpanded = expanded => {
+                toggle.setAttribute('aria-expanded', String(expanded));
+                toggle.setAttribute('aria-label', expanded ? '收起主菜单' : '展开主菜单');
+            };
+            setExpanded(false);
+            nav.before(toggle);
+            toggle.addEventListener('click', () => setExpanded(toggle.getAttribute('aria-expanded') !== 'true'));
+            nav.parentElement.addEventListener('keydown', event => {
+                if (event.key !== 'Escape' || toggle.getAttribute('aria-expanded') !== 'true' || !toggle.offsetWidth) return;
+                setExpanded(false);
+                toggle.focus();
+            });
+        });
     };
     if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', apply, {once:true});
     else apply();
