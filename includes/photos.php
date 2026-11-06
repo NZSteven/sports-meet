@@ -5,7 +5,7 @@ defined('ABSPATH') || exit;
 function install_photos(): void {
     q("CREATE TABLE IF NOT EXISTS photos (id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT, owner BIGINT UNSIGNED NOT NULL, title VARCHAR(180) NOT NULL, image LONGBLOB NOT NULL, width SMALLINT UNSIGNED NOT NULL, height SMALLINT UNSIGNED NOT NULL, bytes INT UNSIGNED NOT NULL, status VARCHAR(12) NOT NULL DEFAULT 'pending', created DATETIME NOT NULL, PRIMARY KEY(id), KEY gallery(status,id), KEY user_date(owner,created)) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
 }
-add_action('admin_init',function(){if(current_user_can('manage_options') && get_option('sports_meet_db_version')!=='2.5.5')activate();});
+add_action('admin_init',function(){if(current_user_can('manage_options') && get_option('sports_meet_db_version')!=='2.5.6')activate();});
 function page_url(string $key): string {
     $pages=get_option('sports_meet_pages',[]);
     $id=(int)($pages[$key]??0);
@@ -281,7 +281,7 @@ function home_section_original(): string {
             .'<img src="'.esc_url($url).'" alt="'.esc_attr($alt).'" decoding="async"></div>';
     }
     $html.='<div class="sm-slide-controls" hidden><button type="button" data-sm-prev aria-label="上一张">‹</button>'
-        .'<button type="button" data-sm-play>暂停轮播</button><button type="button" data-sm-next aria-label="下一张">›</button></div></section>';
+        .'<button type="button" data-sm-play>暂停</button><button type="button" data-sm-next aria-label="下一张">›</button></div></section>';
     $html.=song_section().'</div></section>';
     if($showGallery){
         $links=[['查看全部相册',page_url('gallery')]];

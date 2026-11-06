@@ -29,8 +29,6 @@ add_filter('the_content',function(string $content):string {
     if($title==='')return $content;
     $aliases=[
         '报名名单'=>['高校及报名名单'],
-        '排行榜'=>['实时积分排名榜'],
-        '队伍排行榜'=>['实时积分排名榜'],
     ];
     $duplicates=array_merge([$title],$aliases[$title]??[]);
     return preg_replace_callback('/<h([12])\b[^>]*>(.*?)<\/h\1\s*>/is',
@@ -38,9 +36,9 @@ add_filter('the_content',function(string $content):string {
 },30);
 add_action('wp_enqueue_scripts',function(){
     $main=dirname(__DIR__).'/sports-meet.php';
-    wp_enqueue_style('sports-meet-header',plugins_url('header-identity.css',$main),[],'2.5.5');
-    wp_enqueue_script('sports-meet-header',plugins_url('header-identity.js',$main),[],'2.5.5',true);
-    wp_enqueue_style('sports-meet-home-corners',plugins_url('home-corners.css',$main),['sports-meet-photos'],'2.5.5');
-    wp_enqueue_script('sports-meet-slides',plugins_url('photo-slides.js',$main),[],'2.5.5',true);
-    wp_enqueue_script('sports-meet-rankings',plugins_url('live-ranking.js',$main),[],'2.5.5',true);
+    wp_enqueue_style('sports-meet-header',plugins_url('header-identity.css',$main),[],'2.5.6');
+    wp_enqueue_script('sports-meet-header',plugins_url('header-identity.js',$main),[],'2.5.6',true);
+    wp_enqueue_style('sports-meet-home-corners',plugins_url('home-corners.css',$main),['sports-meet-photos'],'2.5.6');
+    wp_enqueue_script('sports-meet-slides',plugins_url('photo-slides.js',$main),[],'2.5.6',true);
+    wp_enqueue_script('sports-meet-rankings',plugins_url('live-ranking.js',$main),[],'2.5.6',true);
 });

@@ -21,7 +21,7 @@
             clearInterval(timer);
             timer = playing ? setInterval(() => { if (!document.hidden) advance(1); }, 6000) : null;
             carousel.classList.toggle('is-playing', playing);
-            play.textContent = playing ? '暂停轮播' : '播放轮播';
+            play.textContent = playing ? '暂停' : '播放';
         }
 
         controls.hidden = false;
@@ -117,8 +117,8 @@
     dialog.setAttribute('aria-label', '相册照片播放器');
     dialog.innerHTML = '<button class="sm-view-close" type="button" aria-label="关闭照片">×</button>'
         + '<figure><img alt=""><figcaption></figcaption></figure><div class="sm-view-controls">'
-        + '<button type="button" data-prev>上一张</button><button type="button" data-play>自动播放</button>'
-        + '<button type="button" data-next>下一张</button></div>';
+        + '<button type="button" data-prev aria-label="上一张照片">‹</button><button type="button" data-play>播放</button>'
+        + '<button type="button" data-next aria-label="下一张照片">›</button></div>';
     document.body.append(dialog);
 
     let image = dialog.querySelector('img');
@@ -164,7 +164,7 @@
     function setPlaying(playing) {
         clearInterval(timer);
         timer = playing && photos.length > 1 ? setInterval(() => { if (!document.hidden) show(1, true); }, 4500) : null;
-        play.textContent = timer ? '暂停播放' : '自动播放';
+        play.textContent = timer ? '暂停' : '播放';
     }
 
     galleries.forEach(gallery => {

@@ -58,7 +58,8 @@ function race_public_board(bool $topOnly=false): string {
             .'<strong class="sm-ranking-name">'.esc_html($team['name']).'</strong>'
             .'<span class="sm-ranking-score" role="img" aria-label="积分暂不公开">•••</span></li>';
     }
-    return $html.'</ol><p class="sm-ranking-empty">暂无参赛队伍。</p></section>';
+    $link=$topOnly?'<p class="sm-ranking-link"><a class="sm-btn" href="'.esc_url(page_url('board')).'">查看完整排名榜</a></p>':'';
+    return $html.'</ol><p class="sm-ranking-empty">暂无参赛队伍。</p>'.$link.'</section>';
 }
 
 add_action('rest_api_init',function(){
@@ -73,7 +74,7 @@ add_action('rest_api_init',function(){
     ]);
 });
 function race_public_results(bool $includeQualifiers=true):string {
-    ob_start();echo '<section class="sports-meet"><h2>项目决赛前三名</h2>';$groups=[];
+    ob_start();echo '<section class="sports-meet"><h2>'.($includeQualifiers?'比赛成绩榜':'项目决赛前三名').'</h2>';$groups=[];
     foreach(q("SELECT e.*,r.event_id FROM race_entries e JOIN race_rounds r ON r.id=e.round_id WHERE r.stage='final' AND r.status='finalized' AND e.place IS NOT NULL ORDER BY r.event_id,e.place")->fetchAll() as $r)$groups[$r['event_id']][]=$r;
     if(!$groups)echo '<p>暂无已完成决赛的前三名成绩。</p>';
     foreach($groups as $eventId=>$entries){$event=race_event((int)$eventId);$relay=$event['kind']==='relay';$distance=race_is_distance($event);echo '<article class="race-event-result" data-result-event="'.(int)$eventId.'"><h3>'.esc_html($event['name']).'</h3>';$headers=['名次','所属高校','运动员／接力队','比赛号码'];if($relay)$headers[]='接力队员';if($distance)$headers[]='距离成绩';$rows=[];
