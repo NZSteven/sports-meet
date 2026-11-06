@@ -103,8 +103,8 @@ function guestbook_cards(array $rows,bool $short=false): string {
 function guestbook_home(): string {
     if(!get_option('sports_meet_community_ready'))return '';
     $rows=q("SELECT * FROM guest_messages WHERE status='published' ORDER BY id DESC LIMIT 3")->fetchAll();
-    return '<section class="sm-gallery-preview sm-guestbook-preview"><div class="sm-section-head"><h2>不止照片，还有想说的话。</h2>'
-        .community_buttons([['查看全部留言',page_url('messages')],['写留言',page_url('messages').'#sm-message-form']]).'</div>'.guestbook_cards($rows,true).'</section>';
+    return '<section class="sm-gallery-preview sm-guestbook-preview"><div class="sm-section-head"><h2>除了精彩瞬间，更有心里的感言...</h2>'
+        .community_buttons([['查看全部留言',page_url('messages')],['说出你的感言',page_url('messages').'#sm-message-form']]).'</div>'.guestbook_cards($rows,true).'</section>';
 }
 
 function guestbook_page(): string {
@@ -117,7 +117,7 @@ function guestbook_page(): string {
     elseif(community_banned(get_current_user_id(),'messages'))$html.='<p>该账号的留言功能已暂停。</p>';
     else $html.='<form id="sm-message-form" method="post" action="'.esc_url(admin_url('admin-post.php')).'">'
         .'<input type="hidden" name="action" value="sports_meet_guest_message">'.wp_nonce_field('sports_meet_guest_message','sm_nonce',false,false)
-        .'<label>写留言<textarea name="message" rows="4" maxlength="1000" required></textarea></label><button class="sm-btn" type="submit">发布留言</button></form>';
+        .'<label>说出你的感言<textarea name="message" rows="4" maxlength="1000" required></textarea></label><button class="sm-btn" type="submit">发布留言</button></form>';
     $html.=guestbook_cards(array_slice($rows,0,24));
     if($page>1)$html.='<a href="'.esc_url(add_query_arg('message_page',$page-1,page_url('messages'))).'">上一页</a> ';
     if(count($rows)>24)$html.='<a href="'.esc_url(add_query_arg('message_page',$page+1,page_url('messages'))).'">下一页</a>';

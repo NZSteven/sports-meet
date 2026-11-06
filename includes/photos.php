@@ -5,7 +5,7 @@ defined('ABSPATH') || exit;
 function install_photos(): void {
     q("CREATE TABLE IF NOT EXISTS photos (id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT, owner BIGINT UNSIGNED NOT NULL, title VARCHAR(180) NOT NULL, image LONGBLOB NOT NULL, width SMALLINT UNSIGNED NOT NULL, height SMALLINT UNSIGNED NOT NULL, bytes INT UNSIGNED NOT NULL, status VARCHAR(12) NOT NULL DEFAULT 'pending', created DATETIME NOT NULL, PRIMARY KEY(id), KEY gallery(status,id), KEY user_date(owner,created)) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
 }
-add_action('admin_init',function(){if(current_user_can('manage_options') && get_option('sports_meet_db_version')!=='2.5.4')activate();});
+add_action('admin_init',function(){if(current_user_can('manage_options') && get_option('sports_meet_db_version')!=='2.5.5')activate();});
 function page_url(string $key): string {
     $pages=get_option('sports_meet_pages',[]);
     $id=(int)($pages[$key]??0);
@@ -287,7 +287,7 @@ function home_section_original(): string {
         $links=[['查看全部相册',page_url('gallery')]];
         if(photo_upload_enabled())$links[]=['分享你的照片',page_url('upload')];
         $html.='<section class="sm-gallery-preview sm-photo-carousel"><div class="sm-section-head"><div><p class="sm-eyebrow">THE HIGHLIGHTS</p>'
-            .'<h2>不止终点，还有沿途的精彩。</h2></div><div class="sm-gallery-actions">'
+            .'<h2>不止终点，还有沿途的精彩...</h2></div><div class="sm-gallery-actions">'
             .'<div class="sm-strip-controls" hidden><button type="button" data-sm-strip-prev aria-label="上一张照片">‹</button>'
             .'<button type="button" data-sm-strip-play>暂停</button>'
             .'<button type="button" data-sm-strip-next aria-label="下一张照片">›</button></div>'

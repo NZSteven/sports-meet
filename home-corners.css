@@ -19,11 +19,11 @@ body.sm-brand-home{background:#f9fbff;isolation:isolate}
 .sm-site .sm-hero-showcase h1 {
     margin: 8px 0 16px;
     text-align: center;
-    font-family: "STXingkai", "华文行楷", "Kaiti SC", KaiTi, cursive;
+    font-family: "Noto Sans CJK SC", "Source Han Sans SC", "Microsoft YaHei", "PingFang SC", sans-serif;
     font-size: clamp(36px, 4.8vw, 64px);
-    font-style: italic;
+    font-weight: 900;
+    transform: skewX(-12deg);
 }
-.sm-site .sm-hero-showcase h1 em {font-style: inherit;}
 .sm-hero-counts {display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; margin: 0; padding: 12px 8px; border-radius: 8px; text-align: center; background: #d54e22; color: #fff;}
 .sm-hero-counts > div {display: flex; flex-direction: column-reverse; justify-content: center;}
 .sm-hero-counts dt {font-size: 13px;}
