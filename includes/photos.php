@@ -5,7 +5,7 @@ defined('ABSPATH') || exit;
 function install_photos(): void {
     q("CREATE TABLE IF NOT EXISTS photos (id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT, owner BIGINT UNSIGNED NOT NULL, title VARCHAR(180) NOT NULL, image LONGBLOB NOT NULL, width SMALLINT UNSIGNED NOT NULL, height SMALLINT UNSIGNED NOT NULL, bytes INT UNSIGNED NOT NULL, status VARCHAR(12) NOT NULL DEFAULT 'pending', created DATETIME NOT NULL, PRIMARY KEY(id), KEY gallery(status,id), KEY user_date(owner,created)) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
 }
-add_action('admin_init',function(){if(current_user_can('manage_options') && get_option('sports_meet_db_version')!=='2.4.23')activate();});
+add_action('admin_init',function(){if(current_user_can('manage_options') && get_option('sports_meet_db_version')!=='2.4.24')activate();});
 function page_url(string $key): string {$pages=get_option('sports_meet_pages',[]);$id=(int)($pages[$key]??0);return $id&&get_post_status($id)==='publish'?get_permalink($id):home_url('/');}
 function photo_url(int $id): string {return add_query_arg(['action'=>'sports_meet_photo','id'=>$id],admin_url('admin-post.php'));}
 function photo_upload_enabled(): bool {return (bool)get_option('sports_meet_photo_upload_enabled',1);}
@@ -198,7 +198,7 @@ function home_section_original(): string {
         .'<div class="sm-hero-copy"><div class="sm-hero-mascot" aria-hidden="true"></div>'
         .'<h1>为Fun而奔<br><em>奔而得分</em></h1><dl class="sm-hero-counts">';
     foreach($counts as [$count,$label])$html.='<div><dt>'.esc_html($label).'</dt><dd>'.(int)$count.'</dd></div>';
-    $html.='</dl>'.race_public_board().'</div><div class="sm-hero-right"><section class="sm-hero-slides" aria-label="运动会照片轮播">';
+    $html.='</dl>'.race_public_board(true).'</div><div class="sm-hero-right"><section class="sm-hero-slides" aria-label="运动会照片轮播">';
     foreach($slides as $index=>[$url,$alt]){
         $html.='<div class="sm-hero-slide'.($index===0?' is-active':'').'" aria-hidden="'.($index===0?'false':'true').'">'
             .'<img src="'.esc_url($url).'" alt="'.esc_attr($alt).'" decoding="async"></div>';

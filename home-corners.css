@@ -57,11 +57,11 @@ body.sm-brand-home{background:#f9fbff;isolation:isolate}
 .sm-live-board h2, .sm-site .sm-live-board h2 {font-size: clamp(22px, 2.4vw, 30px); margin: 0 0 6px; line-height: 1.25;}
 .sm-ranking-note {margin: 0 0 10px; font-size: 12px; color: #52695f;}
 .sm-ranking-list {list-style: none; padding: 0; margin: 0;}
-.sm-ranking-list li {display: grid; grid-template-columns: auto auto minmax(0, 1fr) auto; gap: 9px; align-items: center; padding: 8px 6px; border-top: 1px solid #e2ebe3;}
-.sm-ranking-list li[data-rank="1"] {background: #fff8e5;}
-.sm-ranking-position {font-size: 13px; color: #52695f;}
+.sm-ranking-list li {display: grid; grid-template-columns: 1.5rem minmax(0, 1fr) auto; gap: 9px; align-items: center; padding: 8px 6px; border-top: 1px solid #e2ebe3;}
+.sm-ranking-trophy {grid-column: 1;}
+.sm-ranking-name {grid-column: 2;}
 .sm-ranking-name {font-size: 14px; overflow-wrap: anywhere;}
-.sm-ranking-score {color: #617668; filter: blur(2px); user-select: none;}
+.sm-ranking-score {grid-column: 3; color: #617668; filter: blur(2px); user-select: none;}
 .sm-ranking-list:not(:empty) + .sm-ranking-empty {display: none;}
 @media (max-width: 600px) {
     .sm-hero-right .sm-song {grid-template-columns: minmax(0, 1fr);}

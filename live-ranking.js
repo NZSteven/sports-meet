@@ -13,18 +13,18 @@
 
     function teamRow(team) {
         const row = document.createElement('li');
-        row.dataset.rank = team.rank;
+        row.dataset.teamId = team.id;
         const trophy = badge('sm-ranking-trophy', '🏆');
-        trophy.setAttribute('aria-hidden', 'true');
-        const rank = badge('sm-ranking-position', team.rank);
-        rank.setAttribute('aria-label', `第 ${team.rank} 名`);
+        trophy.hidden = !team.trophy;
+        trophy.setAttribute('role', 'img');
+        trophy.setAttribute('aria-label', '积分前六');
         const name = document.createElement('strong');
         name.className = 'sm-ranking-name';
         name.textContent = team.name;
         const score = badge('sm-ranking-score', '•••');
         score.setAttribute('role', 'img');
         score.setAttribute('aria-label', '积分暂不公开');
-        row.append(trophy, rank, name, score);
+        row.append(trophy, name, score);
         return row;
     }
 
@@ -38,7 +38,19 @@
             if (!Array.isArray(teams)) return;
             const state = JSON.stringify(teams);
             if (state === previous) return;
-            boards.forEach(board => board.querySelector('.sm-ranking-list').replaceChildren(...teams.slice(0, 6).map(teamRow)));
+            boards.forEach(board => {
+                const list = board.querySelector('.sm-ranking-list');
+                const visible = board.dataset.smRankMode === 'top' ? teams.filter(team => team.trophy) : teams;
+                const rows = Array.from(list.children);
+                if (rows.length === visible.length && rows.every((row, i) => row.dataset.teamId === String(visible[i].id))) {
+                    rows.forEach((row, i) => {
+                        row.querySelector('.sm-ranking-trophy').hidden = !visible[i].trophy;
+                        row.querySelector('.sm-ranking-name').textContent = visible[i].name;
+                    });
+                } else {
+                    list.replaceChildren(...visible.map(teamRow));
+                }
+            });
             previous = state;
         } catch (error) {
             // Keep the last rendered ranking if the request fails.

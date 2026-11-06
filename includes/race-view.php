@@ -28,25 +28,25 @@ function race_admin_board():string {
     ob_start();echo '<section class="sports-meet"><h2>高校总积分</h2><p>每人每项目参赛分只计一次；决赛另加名次分。接力名次分由8名队员均分，计回各自所属高校。仅统计已提交完成的轮次。</p>';$rows=[];foreach(race_scoreboard() as $t)$rows[]=[$t['rank'],$t['name'],race_fmt($t['part']),race_fmt($t['place']),race_fmt($t['total'])];table(['名次','所属高校','参赛分','名次分','总积分'],$rows);echo '</section>';return ob_get_clean();
 }
 
-function race_top_six(): array {
-    $cached=get_transient('sports_meet_public_top_six');
+function race_public_teams(): array {
+    $cached=get_transient('sports_meet_public_team_cups');
     if(is_array($cached))return $cached;
-    $teams=array_map(static fn(array $team)=>[
-        'rank'=>(int)$team['rank'],
-        'name'=>$team['name'],
-    ],array_slice(race_scoreboard(),0,6));
-    set_transient('sports_meet_public_top_six',$teams,10);
+    $teams=[];
+    foreach(race_scoreboard() as $index=>$team){
+        $teams[]=['id'=>(int)$team['id'],'name'=>$team['name'],'trophy'=>$index<6];
+    }
+    usort($teams,static fn(array $a,array $b)=>strcmp($a['name'],$b['name'])?:($a['id']<=>$b['id']));
+    set_transient('sports_meet_public_team_cups',$teams,10);
     return $teams;
 }
 
-function race_public_board(): string {
-    $html='<section class="sm-live-board" data-sm-rank-url="'.esc_url(rest_url('sports-meet/v1/ranking')).'">'
-        .'<h2>实时排名榜</h2><p class="sm-ranking-note">前 6 支队伍 · 按已完成比赛更新</p>'
+function race_public_board(bool $topOnly=false): string {
+    $html='<section class="sm-live-board" data-sm-rank-mode="'.($topOnly?'top':'all').'" data-sm-rank-url="'.esc_url(rest_url('sports-meet/v1/ranking')).'">'
+        .'<h2>实时排名榜</h2><p class="sm-ranking-note">排名不分先后 · 🏆 表示积分前 6</p>'
         .'<ol class="sm-ranking-list">';
-    foreach(race_top_six() as $team){
-        $rank=(int)$team['rank'];
-        $html.='<li data-rank="'.$rank.'"><span class="sm-ranking-trophy" aria-hidden="true">🏆</span>'
-            .'<span class="sm-ranking-position" aria-label="第 '.$rank.' 名">'.$rank.'</span>'
+    foreach(race_public_teams() as $team){
+        if($topOnly&&!$team['trophy'])continue;
+        $html.='<li data-team-id="'.$team['id'].'"><span class="sm-ranking-trophy"'.($team['trophy']?'':' hidden').' role="img" aria-label="积分前六">🏆</span>'
             .'<strong class="sm-ranking-name">'.esc_html($team['name']).'</strong>'
             .'<span class="sm-ranking-score" role="img" aria-label="积分暂不公开">•••</span></li>';
     }
@@ -58,7 +58,7 @@ add_action('rest_api_init',function(){
         'methods'=>'GET',
         'permission_callback'=>'__return_true',
         'callback'=>static function(){
-            $response=new \WP_REST_Response(race_top_six());
+            $response=new \WP_REST_Response(race_public_teams());
             $response->header('Cache-Control','no-store, max-age=0');
             return $response;
         },
