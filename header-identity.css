@@ -7,6 +7,9 @@
 @media (max-width: 800px) {
     .sd-header .sd-header-inner {display: flex; flex-wrap: wrap; gap: 12px; min-height: 64px; padding-block: 10px;}
     .sd-header .sd-brand {flex: 1; min-width: 0;}
+    .sd-header .sm-brand-organization {font-size: clamp(14px, 1.2vw, 18px);}
+    .sd-header .sm-brand-event {font-size: clamp(18px, 1.65vw, 25px);}
+    .sd-header .sd-brand .sd-mark.sd-mascot-mark {flex-basis: 76px; width: 76px; height: 51px;}
     .sd-header .sm-menu-toggle {
         display: inline-grid; place-items: center; flex: 0 0 44px; height: 44px;
         border: 1px solid #b8cec6; border-radius: 8px; background: #fff; color: #143c32;
@@ -16,8 +19,11 @@
         width: 20px; height: 2px; background: currentColor; box-shadow: 0 -6px currentColor, 0 6px currentColor;
     }
     .sd-header .sm-menu-toggle:focus-visible {outline: 2px solid #17654e; outline-offset: 2px;}
-    .sd-header .sm-menu-toggle[aria-expanded="false"] + nav {display: none;}
-    .sd-header .sm-menu-toggle + nav {flex: 0 0 100%; border-top: 1px solid #dbe6f2; padding-top: 4px;}
-    .sd-header .sm-menu-toggle + nav ul {display: grid; gap: 0; font-size: 14px;}
-    .sd-header .sm-menu-toggle + nav a {display: block; padding: 9px 4px;}
+    .sd-header .sm-menu-toggle[aria-expanded="false"] ~ nav {display: none;}
+    .sd-header .sm-menu-toggle ~ nav {flex: 0 0 100%; border-top: 1px solid #dbe6f2; padding-top: 4px;}
+    .sd-header .sm-menu-toggle ~ nav ul {display: grid; gap: 0; font-size: 14px;}
+    .sd-header .sm-menu-toggle ~ nav a {display: block; padding: 9px 4px;}
+}
+@media (max-width: 600px) {
+    .sd-header .sd-brand .sd-mark.sd-mascot-mark {flex-basis: 68px; width: 68px; height: 46px;}
 }

@@ -30,7 +30,7 @@
                 toggle.setAttribute('aria-label', expanded ? '收起主菜单' : '展开主菜单');
             };
             setExpanded(false);
-            nav.before(toggle);
+            nav.parentElement.prepend(toggle);
             toggle.addEventListener('click', () => setExpanded(toggle.getAttribute('aria-expanded') !== 'true'));
             nav.parentElement.addEventListener('keydown', event => {
                 if (event.key !== 'Escape' || toggle.getAttribute('aria-expanded') !== 'true' || !toggle.offsetWidth) return;
