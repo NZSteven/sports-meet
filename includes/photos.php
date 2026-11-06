@@ -5,7 +5,7 @@ defined('ABSPATH') || exit;
 function install_photos(): void {
     q("CREATE TABLE IF NOT EXISTS photos (id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT, owner BIGINT UNSIGNED NOT NULL, title VARCHAR(180) NOT NULL, image LONGBLOB NOT NULL, width SMALLINT UNSIGNED NOT NULL, height SMALLINT UNSIGNED NOT NULL, bytes INT UNSIGNED NOT NULL, status VARCHAR(12) NOT NULL DEFAULT 'pending', created DATETIME NOT NULL, PRIMARY KEY(id), KEY gallery(status,id), KEY user_date(owner,created)) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
 }
-add_action('admin_init',function(){if(current_user_can('manage_options') && get_option('sports_meet_db_version')!=='2.4.32')activate();});
+add_action('admin_init',function(){if(current_user_can('manage_options') && get_option('sports_meet_db_version')!=='2.4.33')activate();});
 function page_url(string $key): string {
     $pages=get_option('sports_meet_pages',[]);
     $id=(int)($pages[$key]??0);
@@ -138,6 +138,10 @@ add_action('admin_post_nopriv_sports_meet_photo',__NAMESPACE__.'\\serve_photo');
 function photo_cards(array $rows,bool $manage=false,bool $batch=false): string {
     if(!$rows)return '<div class="sm-empty"><span aria-hidden="true">◎</span><h3>精彩，等你来记录。</h3><p>上传运动场上的瞬间，让每一份热爱都有回忆。</p></div>';
     $html='<div class="sm-photo-grid'.($manage?'':' sm-public-gallery').'">';foreach($rows as $r){$id=(int)$r['id'];$html.='<figure><a href="'.esc_url(photo_url($id)).'" target="_blank" rel="noopener"><img loading="lazy" src="'.esc_url(photo_url($id)).'" alt="'.esc_attr($r['title']).'" width="'.(int)$r['width'].'" height="'.(int)$r['height'].'"></a><figcaption><strong>'.esc_html($r['title']?:'运动会瞬间').'</strong><span>'.esc_html(substr($r['created'],0,10)).' · '.(int)$r['width'].'×'.(int)$r['height'].'</span>';
+        $uploader=!empty($r['owner'])?get_userdata((int)$r['owner']):false;
+        $name=$uploader?trim((string)$uploader->display_name):'';
+        if($name===''||is_email($name))$name='会员上传';
+        $html.='<span class="sm-photo-source">来源：'.esc_html($name).'</span>';
         if($batch && $r['status']==='pending')$html.='<label class="sm-review-choice"><input type="checkbox" name="photo_ids[]" form="sm-batch-review" value="'.$id.'"> 选中审核</label>';
         if($manage){$html.='<span>'.($r['status']==='pending'?'待审核':'已公开').'</span><form method="post" action="'.esc_url(admin_url('admin-post.php')).'"><input type="hidden" name="action" value="sports_meet_moderate"><input type="hidden" name="id" value="'.$id.'">'.wp_nonce_field('sports_meet_photo_'.$id,'sm_nonce',false,false);if(current_user_can('manage_options') && $r['status']==='pending')$html.='<button name="decision" value="publish">公开</button>';$html.='<button name="decision" value="delete">删除照片</button></form>';}
         $html.='</figcaption></figure>';}
@@ -147,7 +151,7 @@ function photo_gallery($attrs=[]): string {
     if(!photo_gallery_enabled())return '';
     $attrs=shortcode_atts(['limit'=>12],(array)$attrs);$limit=min(24,max(1,(int)$attrs['limit']));$page=max(1,absint($_GET['sm_gallery_page']??1));
     $total=(int)q("SELECT COUNT(*) FROM photos WHERE status='published'")->fetchColumn();$offset=($page-1)*$limit;
-    $rows=q("SELECT id,title,width,height,status,created FROM photos WHERE status='published' ORDER BY id DESC LIMIT $limit OFFSET $offset")->fetchAll();
+    $rows=q("SELECT id,owner,title,width,height,status,created FROM photos WHERE status='published' ORDER BY id DESC LIMIT $limit OFFSET $offset")->fetchAll();
     $html='<section class="sm-site"><div class="sm-section-head"><div><p class="sm-eyebrow">OUR MOMENTS / 运动场上的我们</p><h2>精彩相册</h2></div>'.(photo_upload_enabled()?'<a class="sm-btn" href="'.esc_url(page_url('upload')).'">分享我的照片 ↗</a>':'').'</div>'.photo_cards($rows);
     if($total>$limit){$html.='<nav class="sm-pagination" aria-label="相册分页">';if($page>1)$html.='<a href="'.esc_url(add_query_arg('sm_gallery_page',$page-1)).'">← 上一页</a>';$html.='<span>第'.$page.'页 / 共'.(int)ceil($total/$limit).'页</span>';if($page*$limit<$total)$html.='<a href="'.esc_url(add_query_arg('sm_gallery_page',$page+1)).'">下一页 →</a>';$html.='</nav>';}
     return $html.'</section>';
@@ -160,7 +164,7 @@ function photo_upload_form(): string {
     $html.=photo_notice_html().'<form class="sm-upload-form" method="post" enctype="multipart/form-data" action="'.esc_url(admin_url('admin-post.php','relative')).'"><input type="hidden" name="action" value="sports_meet_upload">'.wp_nonce_field('sports_meet_upload','sm_nonce',false,false).'<label>照片说明（可选）<input name="photo_title" maxlength="180" placeholder="例如：最后一棒，向终点冲刺"></label><label class="sm-drop sm-photo-picker"><strong class="sm-picker-label">① 选择照片</strong><input type="file" name="photos[]" accept="image/jpeg,image/png,image/webp" multiple required><span>每批最多5张 · JPG / PNG / WebP · 每张不超过'.esc_html(size_format(min(12582912,wp_max_upload_size()))).'</span></label><p>照片上传后会立即公开。 请只上传你有权分享的活动照片。</p><button class="sm-btn" type="submit">② 上传已选照片</button></form>';
     $preview='<p class="sm-preview-status" role="status"></p><div class="sm-photo-previews" aria-label="所选照片预览"></div><p class="sm-upload-progress" role="status"></p><ul class="sm-upload-results" aria-label="各张照片上传结果"></ul>';
     $html=str_replace('</span></label>','</span></label>'.$preview,$html);
-    $uid=get_current_user_id();$rows=q('SELECT id,title,width,height,status,created FROM photos WHERE owner=? ORDER BY id DESC LIMIT 12',[$uid])->fetchAll();
+    $uid=get_current_user_id();$rows=q('SELECT id,owner,title,width,height,status,created FROM photos WHERE owner=? ORDER BY id DESC LIMIT 12',[$uid])->fetchAll();
     return $html.'<h3>我的最近照片</h3>'.photo_cards($rows,true).'</section>';
 }
 add_shortcode('sports_meet_upload',__NAMESPACE__.'\\photo_upload_form');
@@ -215,7 +219,7 @@ function batch_publish_photos(): void {
 add_action('admin_post_sports_meet_batch_publish',__NAMESPACE__.'\\batch_publish_photos');
 function home_section_original(): string {
     $showGallery=photo_gallery_enabled();
-    $rows=$showGallery?q("SELECT id,title,width,height,status,created FROM photos WHERE status='published' ORDER BY id DESC LIMIT 8")->fetchAll():[];
+    $rows=$showGallery?q("SELECT id,owner,title,width,height,status,created FROM photos WHERE status='published' ORDER BY id DESC LIMIT 8")->fetchAll():[];
     $media=plugins_url('media/',dirname(__DIR__).'/sports-meet.php');
     $slides=[];
     foreach($rows as $row)$slides[]=[photo_url((int)$row['id']),$row['title']?:'运动会精彩瞬间'];
@@ -280,7 +284,7 @@ function photo_admin(): void {
     echo '<div class="sm-site"><h2>网站页面与相册</h2><form method="post" action="'.esc_url(admin_url('admin-post.php')).'"><input type="hidden" name="action" value="sports_meet_setup">'.wp_nonce_field('sports_meet_setup','sm_nonce',false,false).'<p>建立首页、相册、上传照片、排行榜、项目成绩、报名名单及裁判工作台七个页面。已有的本插件页面不会被覆盖；从旧版升级后请再点击一次，补齐新增页面。</p><label><input type="checkbox" name="set_home" value="1" checked> 将运动会首页设为网站首页</label><button>创建／补齐网站页面</button></form><p>普通参与者角色选订阅者可上传照片；裁判账号角色选“运动会裁判”，可在前台裁判工作台检录及录入比赛。</p><form method="post" action="'.esc_url(admin_url('admin-post.php')).'"><input type="hidden" name="action" value="sports_meet_photo_options">'.wp_nonce_field('sports_meet_photo_options','sm_nonce',false,false).'<label><input type="checkbox" name="upload_enabled" value="1" '.checked(photo_upload_enabled(),true,false).'> 允许会员上传照片</label><label><input type="checkbox" name="gallery_enabled" value="1" '.checked(photo_gallery_enabled(),true,false).'> 显示前台相册</label><p>新上传的照片会直接公开，管理员可在下方删除。</p><button>保存相册设置</button></form>';
     if(!extension_loaded('gd') || !function_exists('exif_read_data'))echo '<p class="error">请在主机PHP设置中启用GD及exif扩展。</p>';
     $page=max(1,absint($_GET['sm_photo_page']??1));$offset=($page-1)*12;$total=(int)q('SELECT COUNT(*) FROM photos')->fetchColumn();
-    $rows=q("SELECT id,title,width,height,status,created FROM photos ORDER BY FIELD(status,'pending','published'),id DESC LIMIT 12 OFFSET $offset")->fetchAll();
+    $rows=q("SELECT id,owner,title,width,height,status,created FROM photos ORDER BY FIELD(status,'pending','published'),id DESC LIMIT 12 OFFSET $offset")->fetchAll();
     echo '<h3>审核及管理照片</h3>'.photo_notice_html();
     if(in_array('pending',array_column($rows,'status'),true)){
         echo '<form id="sm-batch-review" class="sm-batch-review" method="post" action="'.esc_url(admin_url('admin-post.php')).'"><input type="hidden" name="action" value="sports_meet_batch_publish">'.wp_nonce_field('sports_meet_batch_publish','sm_nonce',false,false).'<label hidden data-sm-select-label><input type="checkbox" data-sm-select-all> 全选本页待审核照片</label><button type="submit">批量通过并公开</button> <span role="status" data-sm-selected></span></form>';
