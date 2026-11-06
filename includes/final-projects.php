@@ -3,7 +3,7 @@ namespace SportsMeetWP;
 defined('ABSPATH') || exit;
 function race_prepare_final(int $event,bool $direct):int {
     race_event($event);$final=q("SELECT id FROM race_rounds WHERE event_id=? AND stage='final'",[$event])->fetchColumn();if($final)return (int)$final;
-    $heats=q("SELECT * FROM race_rounds WHERE event_id=? AND stage='heat'",[$event])->fetchAll();
+    $heats=q("SELECT * FROM race_rounds WHERE event_id=? AND stage IN ('heat','semi')",[$event])->fetchAll();
     if($heats){foreach($heats as $heat)if($heat['status']!=='finalized')throw new \RuntimeException('此项目预赛尚未全部完成，须等待晋级名单，不能把报名名单直接当作决赛名单。');if(!race_qualifiers($event))throw new \RuntimeException('预赛已结束，但没有晋级选手。');race_sync_final($event);}
     else{if(!$direct)throw new \RuntimeException('请确认此项目不设预赛，并使用报名名单直接决赛。');race_generate($event,'final',8);}
     $id=(int)q("SELECT id FROM race_rounds WHERE event_id=? AND stage='final'",[$event])->fetchColumn();race_audit('prepare_final',$event,['round_id'=>$id,'direct'=>!$heats]);return $id;
