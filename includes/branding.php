@@ -36,9 +36,9 @@ add_filter('the_content',function(string $content):string {
 },30);
 add_action('wp_enqueue_scripts',function(){
     $main=dirname(__DIR__).'/sports-meet.php';
-    wp_enqueue_style('sports-meet-header',plugins_url('header-identity.css',$main),[],'2.5.24');
-    wp_enqueue_script('sports-meet-header',plugins_url('header-identity.js',$main),[],'2.5.24',true);
-    wp_enqueue_style('sports-meet-home-corners',plugins_url('home-corners.css',$main),['sports-meet-photos'],'2.5.24');
-    wp_enqueue_script('sports-meet-slides',plugins_url('photo-slides.js',$main),[],'2.5.24',true);
-    wp_enqueue_script('sports-meet-rankings',plugins_url('live-ranking.js',$main),[],'2.5.24',true);
+    wp_enqueue_style('sports-meet-header',plugins_url('header-identity.css',$main),[],'2.5.25');
+    wp_enqueue_script('sports-meet-header',plugins_url('header-identity.js',$main),[],'2.5.25',true);
+    wp_enqueue_style('sports-meet-home-corners',plugins_url('home-corners.css',$main),['sports-meet-photos'],'2.5.25');
+    wp_enqueue_script('sports-meet-slides',plugins_url('photo-slides.js',$main),[],'2.5.25',true);
+    wp_enqueue_script('sports-meet-rankings',plugins_url('live-ranking.js',$main),[],'2.5.25',true);
 });
