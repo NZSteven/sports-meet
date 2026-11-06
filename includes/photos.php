@@ -5,7 +5,7 @@ defined('ABSPATH') || exit;
 function install_photos(): void {
     q("CREATE TABLE IF NOT EXISTS photos (id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT, owner BIGINT UNSIGNED NOT NULL, title VARCHAR(180) NOT NULL, image LONGBLOB NOT NULL, width SMALLINT UNSIGNED NOT NULL, height SMALLINT UNSIGNED NOT NULL, bytes INT UNSIGNED NOT NULL, status VARCHAR(12) NOT NULL DEFAULT 'pending', created DATETIME NOT NULL, PRIMARY KEY(id), KEY gallery(status,id), KEY user_date(owner,created)) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
 }
-add_action('admin_init',function(){if(current_user_can('manage_options') && get_option('sports_meet_db_version')!=='2.5.8')activate();});
+add_action('admin_init',function(){if(current_user_can('manage_options') && get_option('sports_meet_db_version')!=='2.5.9')activate();});
 function page_url(string $key): string {
     $pages=get_option('sports_meet_pages',[]);
     $id=(int)($pages[$key]??0);
@@ -162,7 +162,7 @@ function photo_cards(array $rows,bool $manage=false,bool $batch=false): string {
             if($batch)$html.='<span class="sm-admin-photo-status">'.$status.'</span>';
             if($admin){
                 $html.=$r['status']==='published'?'<button name="decision" value="hide">隐藏</button>':'<button name="decision" value="publish">公开</button>';
-                if($selected||$r['status']==='published')$html.='<button name="decision" value="'.($selected?'hero_off':'hero_on').'">'.($selected?'移出版头':'设为版头').'</button>';
+                if($selected||$r['status']==='published')$html.=moderation_pin_button($selected,'hero_on','hero_off');
             }
             $html.='<button name="decision" value="delete">'.($batch?'删除':'删除照片').'</button></form>';
         }
@@ -205,10 +205,12 @@ function photo_delete_record(int $id): void {
 }
 
 function photo_admin_return_url(): string {
-    $url=view_url('photos');
+    $filters=moderation_filters($_POST);
+    $url=add_query_arg($filters,view_url('photos'));
     $page=max(1,absint($_POST['sm_photo_page']??1));
     if($page===1)return $url;
-    $lastPage=max(1,(int)ceil((int)q('SELECT COUNT(*) FROM photos')->fetchColumn()/12));
+    [$where,$args]=photo_moderation_where($filters);
+    $lastPage=max(1,(int)ceil((int)q("SELECT COUNT(*) FROM photos$where",$args)->fetchColumn()/12));
     return add_query_arg('sm_photo_page',min($page,$lastPage),$url);
 }
 
@@ -326,6 +328,18 @@ function photo_options(): void {
     wp_safe_redirect(photo_admin_return_url());exit;
 }
 add_action('admin_post_sports_meet_photo_options',__NAMESPACE__.'\\photo_options');
+function photo_moderation_where(array $filters): array {
+    $clauses=[];$args=[];
+    if(isset($filters['sm_author'])){$clauses[]='owner=?';$args[]=$filters['sm_author'];}
+    if(isset($filters['sm_pin'])){
+        $ids=hero_photo_ids()?:[0];
+        $slots=implode(',',array_fill(0,count($ids),'?'));
+        $clauses[]='id '.($filters['sm_pin']==='pinned'?'IN':'NOT IN')." ($slots)";
+        $args=array_merge($args,$ids);
+    }
+    return [$clauses?' WHERE '.implode(' AND ',$clauses):'',$args];
+}
+
 function photo_admin(): void {
     echo '<div class="sm-site" data-sm-photo-admin><div class="sm-photo-admin-settings">';
     song_admin();
@@ -336,13 +350,19 @@ function photo_admin(): void {
     if($migrationError)echo '<p class="error">照片迁移将重试：'.esc_html($migrationError).'</p>';
     elseif(!get_option('sports_meet_photo_files_done'))echo '<p>旧照片正在分批迁移，迁移期间可以继续查看和上传。</p>';
     if(!extension_loaded('gd') || !function_exists('exif_read_data'))echo '<p class="error">请在主机PHP设置中启用GD及exif扩展。</p>';
-    $page=max(1,absint($_GET['sm_photo_page']??1));$offset=($page-1)*12;$total=(int)q('SELECT COUNT(*) FROM photos')->fetchColumn();
-    $rows=q("SELECT id,owner,title,width,height,status,created FROM photos ORDER BY FIELD(status,'pending','published'),id DESC LIMIT 12 OFFSET $offset")->fetchAll();
+    $filters=moderation_filters($_GET);
+    [$where,$args]=photo_moderation_where($filters);
+    $base=add_query_arg($filters,view_url('photos'));
+    $total=(int)q("SELECT COUNT(*) FROM photos$where",$args)->fetchColumn();
+    $page=min(max(1,(int)ceil($total/12)),max(1,absint($_GET['sm_photo_page']??1)));
+    $offset=($page-1)*12;
+    $rows=q("SELECT id,owner,title,width,height,status,created FROM photos$where ORDER BY FIELD(status,'pending','published'),id DESC LIMIT 12 OFFSET $offset",$args)->fetchAll();
     echo '<h3>管理照片</h3><p>可隐藏或删除照片，也可从已公开照片中选择最多 12 张版头照片。</p>'.photo_notice_html();
+    moderation_filter_form('photos',$filters);
     if(in_array('pending',array_column($rows,'status'),true)){
         echo '<form id="sm-batch-review" class="sm-batch-review" method="post" action="'.esc_url(admin_url('admin-post.php')).'"><input type="hidden" name="action" value="sports_meet_batch_publish">'.wp_nonce_field('sports_meet_batch_publish','sm_nonce',false,false).'<label hidden data-sm-select-label><input type="checkbox" data-sm-select-all> 全选本页待审核照片</label><button type="submit">批量通过并公开</button> <span role="status" data-sm-selected></span></form>';
     }
-    echo photo_cards($rows,true,true);
-    echo '<nav class="sm-pagination">';if($page>1)echo '<a href="'.esc_url(add_query_arg('sm_photo_page',$page-1,view_url('photos'))).'">← 上一页</a>';echo '<span>共'.$total.'张</span>';if($page*12<$total)echo '<a href="'.esc_url(add_query_arg('sm_photo_page',$page+1,view_url('photos'))).'">下一页 →</a>';echo '</nav>';
+    echo $rows?photo_cards($rows,true,true):'<p>没有符合筛选条件的照片。</p>';
+    echo '<nav class="sm-pagination">';if($page>1)echo '<a href="'.esc_url(add_query_arg('sm_photo_page',$page-1,$base)).'">← 上一页</a>';echo '<span>共'.$total.'张</span>';if($page*12<$total)echo '<a href="'.esc_url(add_query_arg('sm_photo_page',$page+1,$base)).'">下一页 →</a>';echo '</nav>';
     community_author_admin('photos');echo '</div>';
 }

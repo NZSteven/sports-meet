@@ -154,14 +154,18 @@
 
     const admin = document.querySelector('[data-sm-photo-admin]');
     if (admin) {
-        const key = 'sports-meet-photo-admin-scroll';
-        const page = new URLSearchParams(location.search).get('sm_photo_page') || '1';
+        const params = new URLSearchParams(location.search);
+        const key = 'sports-meet-moderation-scroll-' + params.get('tab');
         admin.addEventListener('submit', event => {
-            const field = document.createElement('input');
-            field.type = 'hidden';
-            field.name = 'sm_photo_page';
-            field.value = page;
-            event.target.append(field);
+            if (event.target.method !== 'post') return;
+            for (const name of ['sm_photo_page', 'admin_message_page', 'sm_author', 'sm_pin']) {
+                if (!params.has(name)) continue;
+                const field = document.createElement('input');
+                field.type = 'hidden';
+                field.name = name;
+                field.value = params.get(name);
+                event.target.append(field);
+            }
             const settings = Array.from(admin.querySelectorAll('.sm-photo-admin-settings details[open]'), item => item.id);
             try { sessionStorage.setItem(key, JSON.stringify({y: window.scrollY, settings})); } catch {}
         });

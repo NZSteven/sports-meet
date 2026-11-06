@@ -81,3 +81,14 @@
 @media (max-width: 960px) {
     .sm-photo-grid.sm-admin-photo-grid {grid-template-columns: repeat(2, minmax(0, 1fr));}
 }
+
+.sm-site .sm-moderation-filters, .sm-message-admin .sm-moderation-filters {
+    display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; padding: 8px 10px;
+}
+.sm-moderation-filters label {display: inline-flex; align-items: center; gap: 5px;}
+.sm-site .sm-admin-photo-grid button.sm-moderation-pin, .sm-message-admin button.sm-moderation-pin {
+    background: #fff; color: #1d3444; border: 1px solid #98aab6; border-radius: 4px;
+}
+.sm-site .sm-admin-photo-grid button.sm-moderation-pin.is-pinned, .sm-message-admin button.sm-moderation-pin.is-pinned {
+    background: #b62b30; color: #fff; border-color: #b62b30;
+}

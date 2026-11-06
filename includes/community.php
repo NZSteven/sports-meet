@@ -14,8 +14,12 @@ function install_community(): void {
     q('CREATE TABLE IF NOT EXISTS guest_messages (
         id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY, owner BIGINT UNSIGNED NOT NULL,
         message TEXT NOT NULL, status VARCHAR(12) NOT NULL DEFAULT \'published\', created DATETIME NOT NULL,
-        KEY visible (status,id), KEY author (owner,id)
+        pinned TINYINT NOT NULL DEFAULT 0, KEY visible (status,id), KEY author (owner,id)
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4');
+    if(!q("SHOW COLUMNS FROM guest_messages LIKE 'pinned'")->fetch()){
+        q('ALTER TABLE guest_messages ADD COLUMN pinned TINYINT NOT NULL DEFAULT 0');
+    }
+    update_option('sports_meet_guestbook_pins_ready',1,false);
     $pages=get_option('sports_meet_pages',[]);
     foreach(community_sections() as $key=>[$title,$slug]){
         if(!empty($pages[$key])&&get_post_status($pages[$key])==='publish')continue;
@@ -102,7 +106,8 @@ function guestbook_cards(array $rows,bool $short=false): string {
 
 function guestbook_home(): string {
     if(!get_option('sports_meet_community_ready'))return '';
-    $rows=q("SELECT * FROM guest_messages WHERE status='published' ORDER BY id DESC LIMIT 3")->fetchAll();
+    $order=get_option('sports_meet_guestbook_pins_ready')?'pinned DESC,id DESC':'id DESC';
+    $rows=q("SELECT * FROM guest_messages WHERE status='published' ORDER BY $order LIMIT 3")->fetchAll();
     return '<section class="sm-gallery-preview sm-guestbook-preview"><div class="sm-section-head"><h2>除了精彩瞬间，更有心里的感言...</h2>'
         .community_buttons([['查看全部留言',page_url('messages')],['说出你的感言',page_url('messages').'#sm-message-form']]).'</div>'.guestbook_cards($rows,true).'</section>';
 }
@@ -111,7 +116,8 @@ function guestbook_page(): string {
     if(!get_option('sports_meet_community_ready'))return '<p>留言板即将开放。</p>';
     $page=min(100000,max(1,absint($_GET['message_page']??1)));
     $offset=($page-1)*24;
-    $rows=q("SELECT * FROM guest_messages WHERE status='published' ORDER BY id DESC LIMIT 25 OFFSET $offset")->fetchAll();
+    $order=get_option('sports_meet_guestbook_pins_ready')?'pinned DESC,id DESC':'id DESC';
+    $rows=q("SELECT * FROM guest_messages WHERE status='published' ORDER BY $order LIMIT 25 OFFSET $offset")->fetchAll();
     $html='<section class="sm-site sm-community">'.photo_notice_html();
     if(!is_user_logged_in())$html.='<p>登录后可以留言。</p>'.community_buttons([['登录或注册',page_url('disclaimer')]]);
     elseif(community_banned(get_current_user_id(),'messages'))$html.='<p>该账号的留言功能已暂停。</p>';
@@ -135,11 +141,47 @@ add_action('admin_post_sports_meet_guest_message',function(){
     photo_notice('留言已发布。');wp_safe_redirect(page_url('messages'));exit;
 });
 
+function moderation_filters(array $input): array {
+    $owner=absint($input['sm_author']??0);
+    $pin=$input['sm_pin']??'';
+    return array_filter(['sm_author'=>$owner,'sm_pin'=>in_array($pin,['pinned','unpinned'],true)?$pin:'']);
+}
+
+function moderation_filter_form(string $tab,array $filters): void {
+    echo '<form class="sm-moderation-filters" method="get" action="'.esc_url(admin_url('admin.php')).'">'
+        .'<input type="hidden" name="page" value="sports-meet"><input type="hidden" name="tab" value="'.esc_attr($tab).'">'
+        .'<label>作者 <select name="sm_author"><option value="0">全部作者</option>';
+    $table=$tab==='photos'?'photos':'guest_messages';
+    $owners=q("SELECT DISTINCT owner FROM $table ORDER BY owner")->fetchAll(7);
+    if($owners)foreach(get_users(['include'=>$owners,'orderby'=>'display_name','fields'=>['ID','display_name']]) as $user){
+        echo '<option value="'.(int)$user->ID.'" '.selected($filters['sm_author']??0,$user->ID,false).'>'.esc_html($user->display_name).'</option>';
+    }
+    echo '</select></label><label>置顶状态 <select name="sm_pin"><option value="">全部</option>';
+    foreach(['pinned'=>'已置顶','unpinned'=>'未置顶'] as $value=>$label){
+        echo '<option value="'.$value.'" '.selected($filters['sm_pin']??'',$value,false).'>'.$label.'</option>';
+    }
+    echo '</select></label><button type="submit">筛选</button> <a href="'.esc_url(view_url($tab)).'">重置</a></form>';
+}
+
+function moderation_pin_button(bool $pinned,string $pin,string $unpin): string {
+    return '<button class="sm-moderation-pin'.($pinned?' is-pinned':'').'" type="submit" name="decision" value="'
+        .esc_attr($pinned?$unpin:$pin).'" aria-pressed="'.($pinned?'true':'false').'">'.($pinned?'已置顶':'置顶').'</button>';
+}
+
 function guestbook_admin(): void {
+    echo '<div class="sm-message-admin" data-sm-photo-admin>';
     echo '<h2>留言管理</h2>'.photo_notice_html();
-    $page=min(100000,max(1,absint($_GET['admin_message_page']??1)));
+    $filters=moderation_filters($_GET);
+    moderation_filter_form('messages',$filters);
+    $base=add_query_arg($filters,view_url('messages'));
+    $clauses=[];$args=[];
+    if(isset($filters['sm_author'])){$clauses[]='owner=?';$args[]=$filters['sm_author'];}
+    if(isset($filters['sm_pin'])){$clauses[]='pinned=?';$args[]=(int)($filters['sm_pin']==='pinned');}
+    $where=$clauses?' WHERE '.implode(' AND ',$clauses):'';
+    $total=(int)q("SELECT COUNT(*) FROM guest_messages$where",$args)->fetchColumn();
+    $page=min(max(1,(int)ceil($total/30)),max(1,absint($_GET['admin_message_page']??1)));
     $offset=($page-1)*30;
-    $rows=q("SELECT * FROM guest_messages ORDER BY id DESC LIMIT 31 OFFSET $offset")->fetchAll();
+    $rows=q("SELECT * FROM guest_messages$where ORDER BY pinned DESC,id DESC LIMIT 31 OFFSET $offset",$args)->fetchAll();
     if(!$rows)echo '<p>暂无留言。</p>';
     foreach(array_slice($rows,0,30) as $row){
         $id=(int)$row['id'];
@@ -147,12 +189,13 @@ function guestbook_admin(): void {
         echo guestbook_cards([$row]).'<p>'.($hidden?'已隐藏':'已公开').'</p><form method="post" action="'.esc_url(admin_url('admin-post.php')).'">'
             .'<input type="hidden" name="action" value="sports_meet_community_moderate"><input type="hidden" name="message_id" value="'.$id.'">'
             .wp_nonce_field('sports_meet_community_moderate','sm_nonce',false,false)
+            .moderation_pin_button((bool)$row['pinned'],'pin_message','unpin_message')
             .'<button name="decision" value="'.($hidden?'restore_message':'hide_message').'">'.($hidden?'恢复留言':'隐藏留言').'</button>'
             .'<label><input type="checkbox" name="confirm_delete" value="1"> 确认删除</label><button name="decision" value="delete_message">删除留言</button></form>';
     }
-    if($page>1)echo '<a href="'.esc_url(add_query_arg('admin_message_page',$page-1,view_url('messages'))).'">上一页留言</a> ';
-    if(count($rows)>30)echo '<a href="'.esc_url(add_query_arg('admin_message_page',$page+1,view_url('messages'))).'">下一页留言</a>';
-    community_author_admin('messages');
+    if($page>1)echo '<a href="'.esc_url(add_query_arg('admin_message_page',$page-1,$base)).'">上一页留言</a> ';
+    if(count($rows)>30)echo '<a href="'.esc_url(add_query_arg('admin_message_page',$page+1,$base)).'">下一页留言</a>';
+    community_author_admin('messages');echo '</div>';
 }
 
 function community_author_admin(string $scope): void {
@@ -195,10 +238,12 @@ add_action('admin_post_sports_meet_community_moderate',function(){
     $author=absint($_POST['author']??0);
     $scope=$_POST['scope']??'';
     $returnTab='messages';
-    if($message&&in_array($decision,['hide_message','restore_message','delete_message'],true)){
+    if($message&&in_array($decision,['hide_message','restore_message','delete_message','pin_message','unpin_message'],true)){
         if($decision==='delete_message'){
             if(!$delete)wp_die('请先勾选确认删除。','',['response'=>400,'back_link'=>true]);
             q('DELETE FROM guest_messages WHERE id=?',[$message]);
+        }elseif(in_array($decision,['pin_message','unpin_message'],true)){
+            q('UPDATE guest_messages SET pinned=? WHERE id=?',[(int)($decision==='pin_message'),$message]);
         }else q('UPDATE guest_messages SET status=? WHERE id=?',[$decision==='hide_message'?'hidden':'published',$message]);
         photo_notice('留言已更新。');
     }elseif($author&&get_userdata($author)&&in_array($scope,['photos','messages'],true)&&in_array($decision,['ban_author','unban_author','delete_author_content'],true)){
@@ -221,5 +266,8 @@ add_action('admin_post_sports_meet_community_moderate',function(){
         }
         photo_notice('作者内容设置已更新。');
     }else wp_die('无效操作。','',['response'=>400]);
-    wp_safe_redirect($returnTab==='photos'?photo_admin_return_url():view_url($returnTab));exit;
+    $return=add_query_arg(moderation_filters($_POST),view_url('messages'));
+    $page=min(100000,absint($_POST['admin_message_page']??0));
+    if($page>1)$return=add_query_arg('admin_message_page',$page,$return);
+    wp_safe_redirect($returnTab==='photos'?photo_admin_return_url():$return);exit;
 });
