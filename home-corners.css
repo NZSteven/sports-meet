@@ -15,8 +15,15 @@ body.sm-brand-home{background:#f9fbff;isolation:isolate}
     padding: 18px 22px;
 }
 .sm-hero-showcase .sm-hero-copy {display: flex; flex-direction: column; justify-content: center; padding: 16px;}
-.sm-hero-mascot {width: min(100%, 230px); aspect-ratio: 68 / 43; background: url("media/sports-day-brand.jpg") 55.3% 20.2% / 254.1% auto no-repeat;}
-.sm-site .sm-hero-showcase h1 {margin: 8px 0 16px; font-size: clamp(36px, 4.8vw, 64px);}
+.sm-hero-mascot {width: min(100%, 230px); aspect-ratio: 68 / 43; margin-inline:auto; background: url("media/sports-day-brand.jpg") 55.3% 20.2% / 254.1% auto no-repeat;}
+.sm-site .sm-hero-showcase h1 {
+    margin: 8px 0 16px;
+    text-align: center;
+    font-family: "STXingkai", "华文行楷", "Kaiti SC", KaiTi, cursive;
+    font-size: clamp(36px, 4.8vw, 64px);
+    font-style: italic;
+}
+.sm-site .sm-hero-showcase h1 em {font-style: inherit;}
 .sm-hero-counts {display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; margin: 0; padding: 12px 8px; border-radius: 8px; text-align: center; background: #d54e22; color: #fff;}
 .sm-hero-counts > div {display: flex; flex-direction: column-reverse; justify-content: center;}
 .sm-hero-counts dt {font-size: 13px;}
@@ -54,7 +61,7 @@ body.sm-brand-home{background:#f9fbff;isolation:isolate}
 .sm-live-board {max-width: 900px; margin: 24px auto; padding: 20px; border: 1px solid #d7e4f2; border-radius: 14px; background: #ffffffef; color: #193e30;}
 .sm-hero-copy .sm-live-board {max-width: none; margin: 0; padding: 16px 12px; border-radius: 0 0 10px 10px;}
 .sm-hero-copy .sm-hero-counts {border-radius: 8px 8px 0 0;}
-.sm-live-board h2, .sm-site .sm-live-board h2 {font-size: clamp(22px, 2.4vw, 30px); margin: 0 0 6px; line-height: 1.25;}
+.sm-live-board h2, .sm-site .sm-live-board h2 {font-size: clamp(22px, 2.4vw, 30px); margin: 0 0 6px; line-height: 1.25; text-align: center;}
 .sm-ranking-note {margin: 0 0 10px; font-size: 12px; color: #52695f;}
 .sm-ranking-list {list-style: none; padding: 0; margin: 0;}
 .sm-live-board[data-sm-rank-mode="all"] .sm-ranking-list {

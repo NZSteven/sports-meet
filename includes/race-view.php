@@ -50,7 +50,7 @@ function race_public_teams(): array {
 
 function race_public_board(bool $topOnly=false): string {
     $html='<section class="sm-live-board" data-sm-rank-mode="'.($topOnly?'top':'all').'" data-sm-rank-url="'.esc_url(rest_url('sports-meet/v1/ranking')).'">'
-        .'<h2>实时排名榜</h2><p class="sm-ranking-note">排名不分先后 · 🏆 表示积分前 6</p>'
+        .'<h2>实时积分排名榜</h2><p class="sm-ranking-note">排名不分先后 · 🏆 表示积分前 6</p>'
         .'<ol class="sm-ranking-list">';
     foreach(race_public_teams() as $team){
         if($topOnly&&!$team['trophy'])continue;

@@ -103,7 +103,7 @@ function guestbook_cards(array $rows,bool $short=false): string {
 function guestbook_home(): string {
     if(!get_option('sports_meet_community_ready'))return '';
     $rows=q("SELECT * FROM guest_messages WHERE status='published' ORDER BY id DESC LIMIT 3")->fetchAll();
-    return '<section class="sm-gallery-preview sm-guestbook-preview"><div class="sm-section-head"><h2>运动会留言</h2>'
+    return '<section class="sm-gallery-preview sm-guestbook-preview"><div class="sm-section-head"><h2>不止照片，还有想说的话。</h2>'
         .community_buttons([['查看全部留言',page_url('messages')],['写留言',page_url('messages').'#sm-message-form']]).'</div>'.guestbook_cards($rows,true).'</section>';
 }
 
