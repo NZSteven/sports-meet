@@ -48,7 +48,7 @@ function race_reopen(int $id):void {
         if($final){race_audit('reset_final',(int)$final['id'],q('SELECT * FROM race_entries WHERE round_id=?',[$final['id']])->fetchAll());q('DELETE FROM race_rounds WHERE id=?',[$final['id']]);}
         if($r['stage']==='heat')q("DELETE FROM race_rounds WHERE event_id=? AND stage='semi'",[$r['event_id']]);
     }
-    race_audit('reopen',$id,q('SELECT * FROM race_entries WHERE round_id=?',[$id])->fetchAll());q("UPDATE race_rounds SET status='open',version=version+1 WHERE id=?",[$id]);if($r['stage']==='heat'&&(int)($r['eight_lanes']??0)!==2)race_sync_final((int)$r['event_id']);
+    race_audit('reopen',$id,q('SELECT * FROM race_entries WHERE round_id=?',[$id])->fetchAll());q("UPDATE race_rounds SET status='open',version=version+1 WHERE id=?",[$id]);if($r['stage']==='heat'&&(int)($r['eight_lanes']??0)<2)race_sync_final((int)$r['event_id']);
 }
 function race_mutate(array $p):void {
     $action=$p['race_action']??'';$admin=current_user_can('manage_options');

@@ -90,7 +90,7 @@ function race_public_results(bool $includeQualifiers=true):string {
         table($headers,$rows);echo '</article>';
     }
     if(!$includeQualifiers){echo '</section>';return ob_get_clean();}
-    echo '<h2>预赛晋级名单</h2><p>100米与接力按各组的晋级安排选出决赛名单。其他个人项目每组取前3名。</p>';$rows=[];foreach(all('events') as $e)foreach(race_qualifiers((int)$e['id']) as $r){$p=race_participant($r);$rows[]=[$e['name'],$p['team'],$p['name'],$p['bib']];}table(['项目','所属高校','晋级参赛者','比赛号码'],$rows);echo '</section>';return ob_get_clean();
+    echo '<h2>预赛晋级名单</h2><p>100米与接力按各组的晋级安排选出决赛名单。其他个人项目每组取前3名。</p>';$rows=[];foreach(all('events') as $e)foreach(race_qualifiers((int)$e['id']) as $r){$p=race_participant($r);$rows[]=[$e['name'],$p['team'],$p['name'],$p['bib']];}table(['项目','所属高校','晋级参赛者','比赛号码'],$rows);race_relay_rules();echo '</section>';return ob_get_clean();
 }
 function race_registration_form(array $teams,array $events,array $edit=[],bool $standalone=false,int $school=0):void {
     $chosen=$edit?array_map('intval',q('SELECT event_id FROM race_enrollments WHERE athlete_id=?',[$edit['id']])->fetchAll(7)):[];
@@ -177,12 +177,12 @@ function race_round_label(array $round): string {
 function race_ui_rounds(?string $stage=null):void {
     if($stage==='final'){$selectedRound=race_final_projects();if(!$selectedRound)return;$_GET['round_id']=$selectedRound;}
     $admin=current_user_can('manage_options');
-    if($admin&&!$stage){echo '<details><summary>生成预赛／直接决赛名单</summary><p>生成后锁定此项目报名。100米和接力最多8人／队直接决赛，超过8人／队随机均分预赛，每组最多8人／队，按组内冲线名次晋级，需要时自动安排半决赛，决赛最多8人／队。其他个人项目仍可按下方设置分组。</p>';race_form('generate','rounds');race_options('event_id','项目',all('events'));race_options('stage','比赛安排',[['id'=>'heat','name'=>'先预赛，自动晋级决赛'],['id'=>'final','name'=>'直接决赛']],'heat');field('capacity','其他个人项目每组人数','number','8','min="1" max="100"');echo '<label><input type="checkbox" name="individual_split" value="1"> 其他个人项目分组（每组前三晋级）</label>';finish('生成名单');echo '</details>';}
+    if($admin&&!$stage){echo '<details><summary>生成预赛／直接决赛名单</summary><p>生成后锁定此项目报名。100米每组最多8人，接力每组最多5队。系统随机均分并按组内冲线名次晋级，需要时自动安排半决赛。其他个人项目仍可按下方设置分组。</p>';race_form('generate','rounds');race_options('event_id','项目',all('events'));race_options('stage','比赛安排',[['id'=>'heat','name'=>'先预赛，自动晋级决赛'],['id'=>'final','name'=>'直接决赛']],'heat');field('capacity','其他个人项目每组人数','number','8','min="1" max="100"');echo '<label><input type="checkbox" name="individual_split" value="1"> 其他个人项目分组（每组前三晋级）</label>';finish('生成名单');echo '</details>';}
     if($stage!=='final'){echo '<h2>选择项目及预赛／决赛</h2><div class="race-round-links">';foreach(q('SELECT r.*,e.name AS event_name FROM race_rounds r JOIN events e ON e.id=r.event_id ORDER BY e.id,r.stage DESC,r.heat_no')->fetchAll() as $r){if($stage==='heat'&&$r['stage']==='final')continue;echo '<a href="'.esc_url(race_url('rounds',['round_id'=>$r['id']])).'">'.esc_html($r['event_name'].' · '.race_round_label($r).' · '.($r['status']==='finalized'?'已完成':'待提交')).'</a>';}echo '</div>';}
     if(empty($_GET['round_id']))return;$round=race_one('race_rounds',(int)$_GET['round_id']);$event=race_event((int)$round['event_id']);if($stage&&($stage==='final')!==($round['stage']==='final')){echo '<p class="error">此轮不属于当前页面，请从对应预赛／决赛入口选择。</p>';return;}$ready=true;try{race_round_ready($round);}catch(\Throwable $e){$ready=false;echo '<p class="error">'.esc_html($e->getMessage()).'</p>';}
     $format=(int)($round['eight_lanes']??0);
     $timedHeat=$round['stage']==='heat'&&$format===1;
-    $placingRound=$round['stage']!=='final'&&$format===2;
+    $placingRound=$round['stage']!=='final'&&$format>=2;
     $maxPlace=$placingRound?race_placing_quota($round):3;
     if($placingRound)echo '<p class="notice">本组前 '.$maxPlace.' 名晋级。请按冲线顺序填名次。已参赛但未完赛的选手可勾选「未完赛」。</p>';
     echo '<h2>'.esc_html($event['name'].' · '.race_round_label($round)).'</h2><p>版本 '.(int)$round['version'].'。勾选实际参赛者。'.($timedHeat?'预赛按用时自动排组内名次。':($placingRound?'按冲线顺序录入晋级名次。':'距离项目由成绩自动排名，其他项目填写前3名。')).'暂存不公示、不计分；提交完成后才计分和晋级。</p>';
@@ -213,8 +213,22 @@ function race_ui_rounds(?string $stage=null):void {
     if($editable)echo '<button name="decision" value="save">暂存</button><button name="decision" value="finalize">提交本轮完成并计分</button><details><summary>本轮全部无人出赛</summary><label>确保全部取消确认勾选及名次，再输入DNS<input name="empty_confirm" placeholder="DNS"></label><button name="decision" value="empty">按无人出赛提交（0分）</button></details></form>';
     if($admin){echo '<details><summary>管理员调整分组／撤回更正</summary><p>调整预赛分组仅在尚无预赛提交完成时允许，移动条目会清除该条目的暂存确认和名次。撤回预赛会重新生成决赛名单，并清除尚未完成决赛的暂存记录；已完成决赛须先撤回决赛。更正后须再次提交完成才公示。</p>';race_form('move','rounds');field('entry_id','要移动的条目ID','number','','min="1"');field('heat_no','目标预赛组号','number','','min="1" max="100"');finish('移动到目标组');race_form('reopen','rounds');field('round_id','撤回轮次ID','number',(string)$round['id'],'min="1"');field('confirm','输入REOPEN');finish('撤回本轮');echo '</details>';}
 }
+function race_relay_rules():void {
+    echo '<h2>接力比赛规则</h2><p>接力不计时。各组随机均分，每场最多5队，按冲线名次晋级。队数无法整分时，允许个别组少于4队。未完赛的队伍不晋级。</p>';
+    table(['报名队数','预赛分组','晋级规则','决赛名额'],[
+        ['1–5队','直接决赛','无需预赛','实际参赛队数'],
+        ['6–10队','2组（10队为5＋5）','每组前2名','4队'],
+        ['11–15队','3组（11队为4＋4＋3，12队为4＋4＋4）','每组第1名','3队'],
+        ['16–20队','4组','每组第1名','4队'],
+        ['21–25队','5组','每组第1名','5队'],
+        ['26–125队','6–25组','各预赛组第1名进入半决赛。半决赛2组时各取前2名，3–5组时各取第1名。','3–5队'],
+    ]);
+    echo '<p>有效晋级队伍不足时，决赛名额按实际人数减少。预赛晋级队伍已不超过5队时，可直接进入决赛。超过125队须拆分项目。</p>';
+}
+
 function race_ui_rules():void {
-    $rules=get_option('sports_meet_race_rules');$s=q('SELECT * FROM settings WHERE id=1')->fetch();echo '<h2>比赛积分规则</h2><p>参赛分每人每项目只计一次，进入决赛不重复加分。个人预赛每组前3名、接力预赛每组前2名晋级。接力名次总分除以8，每位队员得分计回所属高校。更改分值会重算已提交成绩。</p>';race_form('rules','rules');field('title','比赛名称','text',$s['title']);field('individual_part','个人每人参赛分','number',$rules['individual_part'],'min="0" step="0.01"');foreach([1,2,3] as $i)field('individual_'.$i,'个人决赛第'.$i.'名','number',$rules['individual_places'][$i-1],'min="0" step="0.01"');field('relay_part','接力每人参赛分','number',$rules['relay_part'],'min="0" step="0.01"');foreach([1,2,3] as $i)field('relay_'.$i,'接力决赛第'.$i.'名总分','number',$rules['relay_places'][$i-1],'min="0" step="0.01"');field('relay_males','8人混合接力中男性人数','number',(string)$s['relay_males'],'min="1" max="7"');finish();
+    race_relay_rules();
+    $rules=get_option('sports_meet_race_rules');$s=q('SELECT * FROM settings WHERE id=1')->fetch();echo '<h2>比赛积分规则</h2><p>参赛分每人每项目只计一次，进入决赛不重复加分。接力名次总分除以8，每位队员得分计回所属高校。更改分值会重算已提交成绩。</p>';race_form('rules','rules');field('title','比赛名称','text',$s['title']);field('individual_part','个人每人参赛分','number',$rules['individual_part'],'min="0" step="0.01"');foreach([1,2,3] as $i)field('individual_'.$i,'个人决赛第'.$i.'名','number',$rules['individual_places'][$i-1],'min="0" step="0.01"');field('relay_part','接力每人参赛分','number',$rules['relay_part'],'min="0" step="0.01"');foreach([1,2,3] as $i)field('relay_'.$i,'接力决赛第'.$i.'名总分','number',$rules['relay_places'][$i-1],'min="0" step="0.01"');field('relay_males','8人混合接力中男性人数','number',(string)$s['relay_males'],'min="1" max="7"');finish();
 }
 function race_workspace(bool $frontend=false):string {
     if(!race_can_judge()){if(!is_user_logged_in())return '<div class="sports-meet"><h2>裁判工作台</h2>'.wp_login_form(['echo'=>false,'redirect'=>page_url('judge')]).'</div>';return '<p>此页面仅供管理员或运动会裁判使用，请联系管理员分配裁判角色。</p>';}

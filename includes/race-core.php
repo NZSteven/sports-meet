@@ -65,8 +65,8 @@ function race_eight_lane_event(array $event): bool {
     return $event['kind']==='relay'||(bool)preg_match('/(?<![0-9])100\s*(?:米|公尺|m)(?![a-z])/iu',$event['name']);
 }
 
-function race_lane_groups(array $keys): array {
-    $count=(int)ceil(count($keys)/8);
+function race_lane_groups(array $keys,int $capacity=8): array {
+    $count=(int)ceil(count($keys)/$capacity);
     $groups=array_fill(0,$count,[]);
     foreach($keys as $i=>$key)$groups[$i%$count][]=$key;
     return $groups;
@@ -74,7 +74,8 @@ function race_lane_groups(array $keys): array {
 
 function race_lane_quota(int $groups): int {return $groups>0?intdiv(8,$groups):0;}
 
-function race_placing_plan(int $groups): array {
+function race_placing_plan(int $groups,int $format=2): array {
+    if($format===3)return [$groups===2?2:1,$groups>5?(int)ceil($groups/5):0];
     if(in_array($groups,[1,2,4,8],true))return [intdiv(8,$groups),0];
     $semis=$groups<=8?2:8;
     return [intdiv($semis*8,$groups),$semis];
@@ -82,7 +83,9 @@ function race_placing_plan(int $groups): array {
 
 function race_placing_quota(array $round): int {
     $groups=(int)q('SELECT COUNT(*) FROM race_rounds WHERE event_id=? AND stage=?',[$round['event_id'],$round['stage']])->fetchColumn();
-    return $round['stage']==='semi'?intdiv(8,$groups):race_placing_plan($groups)[0];
+    $format=(int)$round['eight_lanes'];
+    if($round['stage']==='semi')return $format===3?($groups===2?2:1):intdiv(8,$groups);
+    return race_placing_plan($groups,$format)[0];
 }
 
 function race_placing_stage(int $event,string $stage,int $quota): array {
@@ -102,16 +105,20 @@ function race_generate(int $event,string $stage,int $capacity,bool $individualSp
     }
     if(!$keys)throw new \RuntimeException('此项目没有参赛者。');
     if(race_eight_lane_event($e)){
-        if(count($keys)>512)throw new \RuntimeException('不计时赛制最多编排512人／队，请先拆分项目。');
-        if($stage==='final'&&count($keys)>8)throw new \RuntimeException('超过8人／队，请先生成预赛。');
-        $stage=count($keys)<=8?'final':'heat';
+        $relay=$e['kind']==='relay';
+        $lanes=$relay?5:8;
+        $format=$relay?3:2;
+        $limit=$relay?125:512;
+        if(count($keys)>$limit)throw new \RuntimeException('本赛制最多编排'.$limit.'人／队，请先拆分项目。');
+        if($stage==='final'&&count($keys)>$lanes)throw new \RuntimeException('超过'.$lanes.'人／队，请先生成预赛。');
+        $stage=count($keys)<=$lanes?'final':'heat';
         shuffle($keys);
-        foreach(race_lane_groups($keys) as $i=>$group){
+        foreach(race_lane_groups($keys,$lanes) as $i=>$group){
             $round=race_create_round($event,$stage,$i+1);
-            q('UPDATE race_rounds SET eight_lanes=2 WHERE id=?',[$round]);
+            q('UPDATE race_rounds SET eight_lanes=? WHERE id=?',[$format,$round]);
             foreach($group as $key)race_add_entry($round,$key);
         }
-        race_audit('generate',$event,['stage'=>$stage,'capacity'=>8]);
+        race_audit('generate',$event,['stage'=>$stage,'capacity'=>$lanes]);
         return;
     }
     if($e['kind']==='individual' && !$individualSplit)$capacity=count($keys);
@@ -124,12 +131,12 @@ function race_generate(int $event,string $stage,int $capacity,bool $individualSp
 function race_qualifiers(int $event):array {
     $heats=q("SELECT * FROM race_rounds WHERE event_id=? AND stage='heat' ORDER BY heat_no",[$event])->fetchAll();
     $format=(int)($heats[0]['eight_lanes']??0);
-    if($format===2){
-        [$quota,$semis]=race_placing_plan(count($heats));
+    if($format>=2){
+        [$quota,$semis]=race_placing_plan(count($heats),$format);
         $qualified=race_placing_stage($event,'heat',$quota);
-        if(!$semis||count($qualified)<=8)return $qualified;
-        $semiCount=(int)q("SELECT COUNT(*) FROM race_rounds WHERE event_id=? AND stage='semi'",[$event])->fetchColumn();
-        return $semiCount?race_placing_stage($event,'semi',intdiv(8,$semiCount)):[];
+        if(!$semis||count($qualified)<=($format===3?5:8))return $qualified;
+        $semi=q("SELECT * FROM race_rounds WHERE event_id=? AND stage='semi' LIMIT 1",[$event])->fetch();
+        return $semi?race_placing_stage($event,'semi',race_placing_quota($semi)):[];
     }
     if($format===1){
         foreach($heats as $heat)if($heat['status']!=='finalized')return [];
@@ -165,17 +172,19 @@ function race_sync_final(int $event):void {
 }
 function race_advance_round(array $round): void {
     $event=(int)$round['event_id'];
-    if($round['stage']==='heat'&&(int)($round['eight_lanes']??0)===2){
+    $format=(int)($round['eight_lanes']??0);
+    if($round['stage']==='heat'&&$format>=2){
         $groups=(int)q("SELECT COUNT(*) FROM race_rounds WHERE event_id=? AND stage='heat'",[$event])->fetchColumn();
-        [$quota,$semis]=race_placing_plan($groups);
+        [$quota,$semis]=race_placing_plan($groups,$format);
         $qualified=race_placing_stage($event,'heat',$quota);
-        if($semis&&count($qualified)>8){
+        if($semis&&count($qualified)>($format===3?5:8)){
             if(q("SELECT id FROM race_rounds WHERE event_id=? AND stage='semi' LIMIT 1",[$event])->fetch())return;
-            while(count($qualified)<=($semis/2)*8)$semis=intdiv($semis,2);
+            if($format===3)$semis=(int)ceil(count($qualified)/5);
+            else while(count($qualified)<=($semis/2)*8)$semis=intdiv($semis,2);
             $rounds=[];
             for($i=1;$i<=$semis;$i++){
                 $id=race_create_round($event,'semi',$i);
-                q('UPDATE race_rounds SET eight_lanes=2 WHERE id=?',[$id]);
+                q('UPDATE race_rounds SET eight_lanes=? WHERE id=?',[$format,$id]);
                 $rounds[]=$id;
             }
             $tiers=[];
@@ -229,7 +238,7 @@ function race_save_round(int $id,int $version,array $submitted,bool $finalize,bo
     $rows=q('SELECT * FROM race_entries WHERE round_id=? ORDER BY id',[$id])->fetchAll();$expected=array_map('intval',array_column($rows,'id'));$keys=array_map('intval',array_keys($submitted));sort($expected,SORT_NUMERIC);sort($keys,SORT_NUMERIC);if($expected!==$keys)throw new \RuntimeException('参赛名单已变化，请刷新后重新录入。');
     $format=(int)($round['eight_lanes']??0);
     $timedHeat=$round['stage']==='heat'&&$format===1;
-    $placingRound=$round['stage']!=='final'&&$format===2;
+    $placingRound=$round['stage']!=='final'&&$format>=2;
     $maxPlace=$placingRound?race_placing_quota($round):3;
     $distanceEvent=race_is_distance(race_event((int)$round['event_id']));if($distanceEvent)$submitted=race_rank_distances($rows,$submitted,$finalize);
     if($timedHeat)$submitted=race_timed_heat_results($rows,$submitted,$finalize);
@@ -254,7 +263,7 @@ function race_move(int $entry,int $heat):void {
     if($heat<1||$heat>100)throw new \RuntimeException('组号须为1至100。');$row=q('SELECT e.*,r.event_id,r.stage FROM race_entries e JOIN race_rounds r ON r.id=e.round_id WHERE e.id=?',[$entry])->fetch();if(!$row||$row['stage']!=='heat')throw new \RuntimeException('只能调整预赛分组。');
     if(q("SELECT id FROM race_rounds WHERE event_id=? AND (status='finalized' OR stage='final') LIMIT 1",[$row['event_id']])->fetch())throw new \RuntimeException('预赛已开始提交，不能调整分组。');
     $source=race_one('race_rounds',(int)$row['round_id']);
-    if(!empty($source['eight_lanes']))throw new \RuntimeException('8道项目已随机均分，不能单独移动参赛者。');
+    if(!empty($source['eight_lanes']))throw new \RuntimeException('此项目已随机均分，不能单独移动参赛者。');
     $target=q("SELECT id FROM race_rounds WHERE event_id=? AND stage='heat' AND heat_no=?",[$row['event_id'],$heat])->fetchColumn();if(!$target)$target=race_create_round((int)$row['event_id'],'heat',$heat);
     if((int)$target===(int)$row['round_id'])return;
     q('UPDATE race_entries SET round_id=?,confirmed=0,place=NULL WHERE id=?',[$target,$entry]);q('UPDATE race_rounds SET version=version+1 WHERE id=? OR id=?',[$target,$row['round_id']]);
