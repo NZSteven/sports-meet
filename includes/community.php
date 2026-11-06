@@ -87,13 +87,29 @@ function community_hub($attrs=[]): string {
 }
 add_shortcode('sports_meet_hub',__NAMESPACE__.'\\community_hub');
 
+function community_author_schools(array $owners): array {
+    if(!$owners||!get_option('sports_meet_disclaimer_ready'))return [];
+    $ids=array_values(array_unique(array_map('intval',$owners)));
+    $slots=implode(',',array_fill(0,count($ids),'?'));
+    return array_column(q("SELECT aa.user_id,t.name FROM athlete_accounts aa
+        JOIN athletes a ON a.id=aa.athlete_id JOIN teams t ON t.id=a.team_id
+        WHERE aa.user_id IN ($slots)",$ids)->fetchAll(),'name','user_id');
+}
+
+function community_author_name($user,array $schools,string $fallback='会员'): string {
+    $name=$user?trim((string)$user->display_name):'';
+    if($name===''||is_email($name))$name=$fallback;
+    $school=$user?($schools[$user->ID]??''):'';
+    return $school!==''?$name.'（'.$school.'）':$name;
+}
+
 function guestbook_cards(array $rows,bool $short=false): string {
     if(!$rows)return '<p>欢迎留下第一条留言。</p>';
+    $schools=community_author_schools(array_column($rows,'owner'));
     $html='<div class="sm-message-grid'.($short?' sm-message-excerpts':'').'">';
     foreach($rows as $row){
         $user=get_userdata((int)$row['owner']);
-        $name=$user?trim((string)$user->display_name):'';
-        if($name===''||is_email($name))$name='会员';
+        $name=community_author_name($user,$schools);
         $message=$row['message'];
         if($short&&mb_strlen($message)>82)$message=mb_substr($message,0,82).'…';
         $id=(int)$row['id'];
@@ -159,8 +175,9 @@ function moderation_filter_form(string $tab,array $filters): void {
         .'<label>作者 <select name="sm_author" data-sm-author-select><option value="0">全部作者</option>';
     $table=$tab==='photos'?'photos':'guest_messages';
     $owners=q("SELECT DISTINCT owner FROM $table ORDER BY owner")->fetchAll(7);
+    $schools=community_author_schools($owners);
     if($owners)foreach(get_users(['include'=>$owners,'orderby'=>'display_name','fields'=>['ID','display_name']]) as $user){
-        echo '<option value="'.(int)$user->ID.'" '.selected($filters['sm_author']??0,$user->ID,false).'>'.esc_html($user->display_name).'</option>';
+        echo '<option value="'.(int)$user->ID.'" '.selected($filters['sm_author']??0,$user->ID,false).'>'.esc_html(community_author_name($user,$schools)).'</option>';
     }
     echo '</select></label><label>置顶状态 <select name="sm_pin"><option value="">全部</option>';
     foreach(['pinned'=>'已置顶','unpinned'=>'未置顶'] as $value=>$label){
@@ -210,8 +227,10 @@ function community_author_admin(string $scope): void {
         .'<input type="hidden" name="action" value="sports_meet_community_moderate">'.wp_nonce_field('sports_meet_community_moderate','sm_nonce',false,false)
         .'<input type="hidden" name="scope" value="'.esc_attr($scope).'">'
         .'<label>作者<select name="author" data-sm-author-select required><option value="">请选择作者</option>';
-    foreach(get_users(['fields'=>['ID','display_name'],'orderby'=>'display_name']) as $user){
-        echo '<option value="'.(int)$user->ID.'">'.esc_html($user->display_name.(community_banned((int)$user->ID,$scope)?'（已禁止发布）':'')).'</option>';
+    $users=get_users(['fields'=>['ID','display_name'],'orderby'=>'display_name']);
+    $schools=community_author_schools(array_column($users,'ID'));
+    foreach($users as $user){
+        echo '<option value="'.(int)$user->ID.'">'.esc_html(community_author_name($user,$schools).(community_banned((int)$user->ID,$scope)?'（已禁止发布）':'')).'</option>';
     }
     echo '</select></label><div class="sm-moderation-actions"><button name="decision" value="ban_author">'.($scope==='photos'?'禁止上传照片':'禁止发布留言').'</button>'
         .'<button name="decision" value="unban_author">恢复发布权限</button></div>'
