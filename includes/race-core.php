@@ -22,7 +22,11 @@ function race_enroll(int $event,int $athlete):void {
     q('INSERT IGNORE INTO race_enrollments(event_id,athlete_id) VALUES(?,?)',[$event,$athlete]);
 }
 function race_checkin(int $athlete,string $bib,int $version):void {
-    race_one('athletes',$athlete);$bib=trim($bib);
+    $person=race_one('athletes',$athlete);
+    if(!disclaimer_agreed($person,disclaimer_acceptances($athlete))){
+        throw new \RuntimeException('该运动员尚未同意当前免责声明，不能发号或改号。');
+    }
+    $bib=trim($bib);
     if(!preg_match('/^\d{1,8}$/',$bib)||(int)$bib===0)throw new \RuntimeException('比赛号码须为1至99999999的数字。');$bib=(string)(int)$bib;
     $old=q('SELECT * FROM checkins WHERE athlete_id=?',[$athlete])->fetch();
     if(($old?(int)$old['version']:0)!==$version)throw new \RuntimeException('其他裁判已更新该运动员，请刷新后核对。');

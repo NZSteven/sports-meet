@@ -34,17 +34,24 @@ function disclaimer_identity(array $athlete): string {
     return hash('sha256',(int)$athlete['team_id'].':'.$athlete['name']);
 }
 
-function disclaimer_acceptances(): array {
+function disclaimer_acceptances(?int $athleteId=null): array {
     $text=disclaimer_text();
     if($text===''||!get_option('sports_meet_disclaimer_ready'))return [];
-    $rows=q('SELECT athlete_id,identity_hash FROM disclaimer_acceptances WHERE statement_hash=?',[hash('sha256',$text)])->fetchAll();
+    $sql='SELECT athlete_id,identity_hash FROM disclaimer_acceptances WHERE statement_hash=?';
+    $args=[hash('sha256',$text)];
+    if($athleteId!==null){$sql.=' AND athlete_id=?';$args[]=$athleteId;}
+    $rows=q($sql,$args)->fetchAll();
     $accepted=[];
     foreach($rows as $row)$accepted[(int)$row['athlete_id']][$row['identity_hash']]=true;
     return $accepted;
 }
 
+function disclaimer_agreed(array $athlete,array $accepted): bool {
+    return isset($accepted[(int)$athlete['id']][disclaimer_identity($athlete)]);
+}
+
 function disclaimer_dot(array $athlete,array $accepted): string {
-    $yes=isset($accepted[(int)$athlete['id']][disclaimer_identity($athlete)]);
+    $yes=disclaimer_agreed($athlete,$accepted);
     $label=$yes?'已同意免责声明':'未同意免责声明';
     return '<span class="sm-consent-dot'.($yes?' is-agreed':'').'" role="img" aria-label="'.$label.'" title="'.$label.'"></span>';
 }
@@ -131,5 +138,5 @@ add_filter('wp_nav_menu_items',function(string $items,$args): string {
 },10,2);
 
 add_action('wp_enqueue_scripts',function(){
-    wp_enqueue_script('sports-meet-disclaimer',plugins_url('disclaimer.js',dirname(__DIR__).'/sports-meet.php'),[],'2.4.35',true);
+    wp_enqueue_script('sports-meet-disclaimer',plugins_url('disclaimer.js',dirname(__DIR__).'/sports-meet.php'),[],'2.4.36',true);
 });
