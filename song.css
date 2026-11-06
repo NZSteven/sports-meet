@@ -38,3 +38,12 @@
     .sm-song-cover {max-width: 340px; width: 100%; margin: auto;}
     .sm-song-panel {position: static; height: clamp(14rem, 42vh, 24rem);}
 }
+.sm-song {grid-template-columns:minmax(0, 235px) minmax(0, 1fr);margin:24px auto;padding:16px 20px;gap:18px;}
+.sm-song-lyrics {line-height:1.5;}
+.sm-lyric-line {padding-block:1px;}
+.sm-song-cover audio {margin-top:8px;}
+@media(max-width:700px){
+    .sm-song{grid-template-columns:minmax(0,1fr);}
+    .sm-song-cover{max-width:230px;}
+    .sm-song-panel{height:13rem;}
+}

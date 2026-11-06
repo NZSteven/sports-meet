@@ -3,6 +3,10 @@ namespace SportsMeetWP;
 defined('ABSPATH') || exit;
 
 function install_disclaimer(): void {
+    q('CREATE TABLE IF NOT EXISTS athlete_accounts (
+        athlete_id INT NOT NULL PRIMARY KEY, user_id BIGINT UNSIGNED NOT NULL UNIQUE,
+        FOREIGN KEY (athlete_id) REFERENCES athletes(id) ON DELETE CASCADE
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4');
     q('CREATE TABLE IF NOT EXISTS disclaimer_acceptances (
         athlete_id INT NOT NULL, statement_hash CHAR(64) NOT NULL, identity_hash CHAR(64) NOT NULL,
         actor BIGINT UNSIGNED NOT NULL, accepted_at DATETIME NOT NULL,
@@ -60,22 +64,17 @@ function disclaimer_page(): string {
     $text=disclaimer_text();
     $html='<section class="sports-meet sm-disclaimer">';
     if($text===''||!get_option('sports_meet_disclaimer_ready'))return $html.'<p>免责声明尚未发布。</p></section>';
+    if(!get_option('sports_meet_community_ready'))return $html.'<p>会员注册与签署正在更新，请稍后再试。</p></section>';
     $html.='<div class="sm-disclaimer-text">'.wpautop(esc_html($text)).'</div>';
-    if(!is_user_logged_in())return $html.'<p>请登录后选择所属高校和本人姓名，再提交同意。</p>'
-        .wp_login_form(['echo'=>false,'redirect'=>page_url('disclaimer'),'label_log_in'=>'登录']).'</section>';
+    if(!is_user_logged_in())return $html.'<p>有账号请登录。已报名的参赛者也可以在这里注册。</p>'
+        .wp_login_form(['echo'=>false,'redirect'=>page_url('disclaimer'),'label_log_in'=>'登录']).athlete_signup_form().'</section>';
 
     $html.=photo_notice_html().'<form class="sm-disclaimer-form" method="post" action="'.esc_url(admin_url('admin-post.php','relative')).'">'
         .'<input type="hidden" name="action" value="sports_meet_accept_disclaimer">'
         .'<input type="hidden" name="statement_hash" value="'.hash('sha256',$text).'">'
         .wp_nonce_field('sports_meet_accept_disclaimer','sm_nonce',false,false)
-        .'<label>所属高校<select name="school_id" required><option value="">请选择高校</option>';
-    foreach(all('teams') as $team)$html.='<option value="'.(int)$team['id'].'">'.esc_html($team['name']).'</option>';
-    $html.='</select></label><label>运动员姓名<select name="athlete_id" required><option value="">请选择本人姓名</option>';
-    foreach(race_roster_rows() as $athlete){
-        $label=$athlete['name'].'（'.$athlete['team_name'].' · '.race_category($athlete).'）';
-        $html.='<option value="'.(int)$athlete['id'].'" data-school="'.(int)$athlete['team_id'].'">'.esc_html($label).'</option>';
-    }
-    return $html.'</select></label><label><input type="checkbox" name="agree" value="1" required> 本人是所选运动员，并同意以上的免责声明</label>'
+        .athlete_account_fields(get_current_user_id());
+    return $html.'<label><input type="checkbox" name="agree" value="1" required> 本人是所选运动员，并同意以上的免责声明</label>'
         .'<button type="submit">提交同意</button></form></section>';
 }
 add_shortcode('sports_meet_disclaimer',__NAMESPACE__.'\\disclaimer_page');
@@ -97,9 +96,15 @@ function disclaimer_accept(): void {
         if(!$athlete){
             photo_notice('请选择相符的高校和运动员姓名。');
         }else{
-            q('INSERT INTO disclaimer_acceptances (athlete_id,statement_hash,identity_hash,actor,accepted_at) VALUES (?,?,?,?,?)
-                ON DUPLICATE KEY UPDATE accepted_at=accepted_at',[(int)$id,$hash,disclaimer_identity($athlete),get_current_user_id(),current_time('mysql')]);
-            photo_notice('已记录本人同意免责声明。');
+            try {
+                race_transaction(function() use($athlete,$hash){
+                    $user=get_current_user_id();
+                    bind_athlete_account((int)$athlete['id'],$user);
+                    q('INSERT INTO disclaimer_acceptances (athlete_id,statement_hash,identity_hash,actor,accepted_at) VALUES (?,?,?,?,?)
+                        ON DUPLICATE KEY UPDATE accepted_at=accepted_at',[(int)$athlete['id'],$hash,disclaimer_identity($athlete),$user,current_time('mysql')]);
+                });
+                photo_notice('已记录本人同意免责声明。');
+            } catch(\Throwable $error) {photo_notice($error->getMessage());}
         }
     }
     wp_safe_redirect(page_url('disclaimer'));exit;
@@ -138,5 +143,5 @@ add_filter('wp_nav_menu_items',function(string $items,$args): string {
 },10,2);
 
 add_action('wp_enqueue_scripts',function(){
-    wp_enqueue_script('sports-meet-disclaimer',plugins_url('disclaimer.js',dirname(__DIR__).'/sports-meet.php'),[],'2.4.37',true);
+    wp_enqueue_script('sports-meet-disclaimer',plugins_url('disclaimer.js',dirname(__DIR__).'/sports-meet.php'),[],'2.5.0',true);
 });
