@@ -14,26 +14,27 @@
 }
 .sm-song-cover img {display: block; width: 100%; height: auto; border-radius: 10px;}
 .sm-song-cover audio {display: block; width: 100%; margin: 14px 0 0;}
+.sm-song-body {position: relative; align-self: stretch; min-width: 0;}
+.sm-song-panel {position: absolute; inset: 0; display: flex; flex-direction: column; padding: 10px 12px; border: 1px solid #d6dfcd; border-radius: 8px; background: #fff;}
 .sm-song-toolbar {display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px 16px; margin-bottom: 10px;}
 .sm-song .sm-song-toolbar h2 {margin: 0; font-size: 20px; color: #174735;}
 .sm-song-follow {font-size: 14px; white-space: nowrap;}
 .sm-song-lyrics {
-    height: clamp(14rem, 42vh, 24rem);
+    flex: 1;
+    min-height: 0;
     box-sizing: border-box;
     overflow-y: auto;
-    padding: 10px 12px;
-    border: 1px solid #d6dfcd;
-    border-radius: 8px;
-    background: #fff;
     scrollbar-gutter: stable;
     font-size: 16px;
     line-height: 2;
     overflow-wrap: anywhere;
 }
+.sm-song-credit {margin: 0 0 8px; padding: 2px 8px; font-weight: 700;}
 .sm-song-lyrics:focus-visible {outline: 2px solid #267956; outline-offset: 3px;}
 .sm-lyric-line {padding: 2px 8px; border-radius: 4px;}
 .sm-lyric-line[aria-current=true] {background: #e4f2dc; color: #174735; font-weight: 700;}
 @media (max-width: 700px) {
     .sm-song {grid-template-columns: minmax(0, 1fr); padding: 20px; gap: 18px; margin: 24px 0;}
     .sm-song-cover {max-width: 340px; width: 100%; margin: auto;}
+    .sm-song-panel {position: static; height: clamp(14rem, 42vh, 24rem);}
 }
