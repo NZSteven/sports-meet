@@ -8,6 +8,117 @@ function race_registration_closed(?int $now=null): bool {
 
 function race_registration_deadline_label(): string {return '新西兰时间 2026 年 11 月 12 日 00:00';}
 
+function race_school_session_key(): string {
+    $token=wp_get_session_token();
+    return $token!==''?'sm_school_access_'.hash('sha256',$token):'';
+}
+
+function race_school_access(): int {
+    if(race_registration_closed()||!current_user_can('sports_meet_school_registration'))return 0;
+    $key=race_school_session_key();
+    if($key==='')return 0;
+    $grant=get_transient($key);
+    if(!is_array($grant)||empty($grant['school'])||empty($grant['version']))return 0;
+    $id=(int)$grant['school'];
+    $hash=(string)get_option('sports_meet_school_password_'.$id,'');
+    return $hash!==''&&hash_equals(hash('sha256',$hash),$grant['version'])?$id:0;
+}
+
+function race_school_admin(array $teams): void {
+    echo '<details><summary>高校报名密码</summary><p>在 WordPress 用户管理中创建一个「高校报名共用账号」。在此为每所高校生成独立密码，生成后请私下转交学校负责人。重新生成会使该校旧密码及已解锁会话失效。</p>'
+        .'<form method="post" action="'.esc_url(admin_url('admin-post.php')).'"><input type="hidden" name="action" value="sports_meet_issue_school_password">'
+        .wp_nonce_field('sports_meet_issue_school_password','sm_nonce',false,false);
+    race_options('school_id','所属高校',$teams);
+    echo '<button>生成／重置所选高校密码</button></form></details>';
+}
+
+add_action('admin_post_sports_meet_issue_school_password',function(){
+    if(!current_user_can('manage_options'))wp_die('需要管理员权限。','',['response'=>403]);
+    check_admin_referer('sports_meet_issue_school_password','sm_nonce');
+    if(race_registration_closed())wp_die('报名已截止。','',['response'=>403]);
+    $id=absint($_POST['school_id']??0);
+    $school=q('SELECT name FROM teams WHERE id=?',[$id])->fetchColumn();
+    if(!$school)wp_die('请选择有效高校。','',['response'=>400,'back_link'=>true]);
+    $password=wp_generate_password(24,false);
+    $hash=wp_hash_password($password);
+    if(!update_option('sports_meet_school_password_'.$id,$hash,false))wp_die('密码保存失败，请重试。','',['response'=>500]);
+    nocache_headers();
+    header('Referrer-Policy: no-referrer');
+    wp_die('<p>'.esc_html($school).'的报名密码，仅在此显示一次。</p><p><code>'.esc_html($password).'</code></p>'
+        .'<p>报名地址 <a href="'.esc_url(page_url('new_registration')).'">'.esc_html(page_url('new_registration')).'</a></p>'
+        .'<p><a href="'.esc_url(race_url('registration')).'">返回报名管理</a></p>','高校报名密码',['response'=>200]);
+});
+
+add_action('admin_post_sports_meet_unlock_school',function(){
+    if(!current_user_can('sports_meet_school_registration')||race_registration_closed())wp_die('高校报名暂不可用。','',['response'=>403]);
+    check_admin_referer('sports_meet_unlock_school','sm_nonce');
+    $key=race_school_session_key();
+    if($key==='')wp_die('请重新登录。','',['response'=>403]);
+    delete_transient($key);
+    $failed=$key.'_failed';
+    if(($_POST['school_decision']??'')!=='lock'){
+        $id=absint($_POST['school_id']??0);
+        $password=wp_unslash($_POST['school_password']??'');
+        $hash=(string)get_option('sports_meet_school_password_'.$id,'');
+        $attempts=(int)get_transient($failed);
+        if($attempts>=8)wp_die('尝试次数过多，请 15 分钟后重试。','',['response'=>429,'back_link'=>true]);
+        if(!$id||$hash===''||!is_string($password)||strlen($password)>128||!wp_check_password($password,$hash)){
+            set_transient($failed,$attempts+1,15*MINUTE_IN_SECONDS);
+            wp_safe_redirect(add_query_arg('school_error','1',page_url('new_registration')));exit;
+        }
+        delete_transient($failed);
+        set_transient($key,['school'=>$id,'version'=>hash('sha256',$hash)],8*HOUR_IN_SECONDS);
+    }
+    wp_safe_redirect(page_url('new_registration'));exit;
+});
+
+function race_school_registration_input(array $input): array {
+    $school=race_school_access();
+    if(!$school||($input['race_action']??'')!=='registration'||($input['day_page']??'')!=='new_registration'
+        ||($input['frontend']??'')!=='1'){
+        throw new \RuntimeException('请先在报名页面验证本校密码。');
+    }
+    $id=absint($input['id']??0);
+    if($id&&!q('SELECT id FROM athletes WHERE id=? AND team_id=?',[$id,$school])->fetch()){
+        throw new \RuntimeException('只能修改本校报名。');
+    }
+    $input['team_id']=$school;
+    $input['id']=$id;
+    return $input;
+}
+
+function race_school_registration_view(): void {
+    $school=race_school_access();
+    $form='<form method="post" action="'.esc_url(admin_url('admin-post.php')).'">'
+        .'<input type="hidden" name="action" value="sports_meet_unlock_school">'
+        .wp_nonce_field('sports_meet_unlock_school','sm_nonce',false,false);
+    if(!$school){
+        if(isset($_GET['school_error']))echo '<p role="alert">高校或报名密码不正确。</p>';
+        echo $form;
+        race_options('school_id','所属高校',all('teams'));
+        echo '<label>高校报名密码<input type="password" name="school_password" maxlength="128" required></label><button>进入本校报名</button></form>';
+        return;
+    }
+    $team=q('SELECT name FROM teams WHERE id=?',[$school])->fetchColumn();
+    if(!$team){echo '<p>高校已不存在，请联系组委会。</p>';return;}
+    echo '<p>当前所属高校 <strong>'.esc_html($team).'</strong></p>'.$form
+        .'<button name="school_decision" value="lock">锁定本校报名</button></form>';
+    $id=absint($_GET['edit_athlete']??0);
+    $edit=$id?q('SELECT * FROM athletes WHERE id=? AND team_id=?',[$id,$school])->fetch():[];
+    if($id&&!$edit)echo '<p role="alert">未找到本校的这条报名。</p>';
+    else race_registration_form([],all('events'),$edit,true,$school);
+    echo '<h2>本校报名名单</h2>';
+    $rows=q('SELECT id,name,gender,age_group FROM athletes WHERE team_id=? ORDER BY name,id',[$school])->fetchAll();
+    if(!$rows){echo '<p>本校暂无报名。</p>';return;}
+    echo '<div class="scroll"><table><thead><tr><th>姓名</th><th>组别</th><th>项目</th><th>操作</th></tr></thead><tbody>';
+    foreach($rows as $row){
+        $url=add_query_arg('edit_athlete',(int)$row['id'],page_url('new_registration'));
+        echo '<tr><td>'.esc_html($row['name']).'</td><td>'.esc_html(race_category($row)).'</td><td>'
+            .esc_html(race_event_names((int)$row['id'])).'</td><td><a href="'.esc_url($url).'">编辑</a></td></tr>';
+    }
+    echo '</tbody></table></div>';
+}
+
 add_action('template_redirect',function(){
     if(!is_singular())return;
     $page=get_queried_object();

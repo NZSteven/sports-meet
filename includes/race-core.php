@@ -6,6 +6,7 @@ function install_races():void {
     foreach(explode(';',file_get_contents(__DIR__.'/race-schema.sql')) as $sql)if(trim($sql)!=='')q($sql);
     add_option('sports_meet_race_rules',['individual_part'=>'1','individual_places'=>['5','3','2'],'relay_part'=>'1','relay_places'=>['32','24','16']], '',false);
     add_role('sports_meet_referee','运动会裁判',['read'=>true,'sports_meet_judge'=>true]);$role=get_role('administrator');if($role)$role->add_cap('sports_meet_judge');
+    add_role('sports_meet_school_registrar','高校报名共用账号',['read'=>true,'sports_meet_school_registration'=>true]);
 }
 function race_can_judge():bool {return current_user_can('manage_options')||current_user_can('sports_meet_judge');}
 function race_one(string $table,int $id):array {if(!in_array($table,['athletes','teams','events','race_relays','race_rounds'],true))throw new \RuntimeException('资料类型无效');$r=q("SELECT * FROM $table WHERE id=?",[$id])->fetch();if(!$r)throw new \RuntimeException('资料不存在，请刷新页面。');return $r;}

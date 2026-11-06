@@ -54,7 +54,8 @@ function race_mutate(array $p):void {
         ||($action==='delete'&&($p['type']??'')==='athlete'))){
         throw new \RuntimeException('报名已截止，报名资料已锁定。');
     }
-    if(!$admin&&!in_array($action,['checkin','round','relay','prepare_final'],true))throw new \RuntimeException('此操作需要管理员权限。');
+    if(!$admin&&current_user_can('sports_meet_school_registration'))$p=race_school_registration_input($p);
+    elseif(!$admin&&!in_array($action,['checkin','round','relay','prepare_final'],true))throw new \RuntimeException('此操作需要管理员权限。');
     switch($action){
     case 'checkin':race_checkin((int)$p['athlete_id'],(string)$p['bib'],(int)$p['version']);break;
     case 'prepare_final':race_prepare_final((int)$p['event_id'],!empty($p['confirm_direct']));break;
@@ -93,15 +94,17 @@ function race_mutate(array $p):void {
     if(!in_array($action,['checkin','round','import'],true))race_audit($action,(int)($p['id']??$p['event_id']??$p['round_id']??0));
 }
 function race_handler():void {
-    if(!race_can_judge())wp_die('只有管理员或运动会裁判可以操作。','',['response'=>403]);check_admin_referer('sports_meet_race','race_nonce');
+    if(!race_can_judge()&&!current_user_can('sports_meet_school_registration'))wp_die('没有操作权限。','',['response'=>403]);check_admin_referer('sports_meet_race','race_nonce');
     $p=wp_unslash($_POST);$message='已保存。';$error=false;
     try{race_transaction(fn()=>race_mutate($p));}catch(\Throwable $e){$error=true;error_log('Sports Meet race: '.$e->getMessage());$message=$e instanceof DatabaseException?'保存失败：号码重复、资料仍被引用，或数据已变化。请刷新后核对。':$e->getMessage();}
-    set_transient('sports_meet_race_notice_'.get_current_user_id(),[$error,$message],120);
+    set_transient(race_notice_key(),[$error,$message],120);
     $tab=sanitize_key($p['race_tab']??'registration');$params=['race_tab'=>$tab];if($tab==='registration')$params=array_merge($params,race_roster_params($p));if(!empty($p['round_id']))$params['round_id']=(int)$p['round_id'];
     if($tab==='checkin')$params=array_merge($params,race_checkin_params($p));
     $day=is_scalar($p['day_page']??null)?(string)$p['day_page']:'';
     if($day==='new_registration'&&!empty($p['frontend'])&&($p['race_action']??'')==='registration'){
-        wp_safe_redirect(page_url('new_registration'));exit;
+        $url=page_url('new_registration');
+        if($error&&!empty($p['id']))$url=add_query_arg('edit_athlete',absint($p['id']),$url);
+        wp_safe_redirect($url);exit;
     }
     if(!isset(race_day_definitions()[$day]))$day='judge';
     if(($p['race_action']??'')==='prepare_final'&&!empty($p['event_id'])){$params['event_id']=(int)$p['event_id'];if(!empty($p['frontend']))$day='finals';}
