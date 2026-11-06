@@ -6,6 +6,22 @@ function race_registration_closed(?int $now=null): bool {
     return ($now??time()) >= $deadline->getTimestamp();
 }
 
+function race_registration_test_mode(): bool {
+    $end=new \DateTimeImmutable('2026-11-09 00:00:00',new \DateTimeZone('Pacific/Auckland'));
+    return time()<$end->getTimestamp()&&(bool)get_option('sports_meet_registration_test_mode',true);
+}
+
+function race_roster_is_public(): bool {
+    return race_registration_test_mode()||race_registration_closed();
+}
+
+add_action('admin_post_sports_meet_registration_test_mode',function(){
+    if(!current_user_can('manage_options'))wp_die('需要管理员权限。','',['response'=>403]);
+    check_admin_referer('sports_meet_registration_test_mode');
+    update_option('sports_meet_registration_test_mode',!empty($_POST['enabled']),false);
+    wp_safe_redirect(race_url('registration'));exit;
+});
+
 function race_registration_deadline_label(): string {return '新西兰时间 2026 年 11 月 12 日 00:00';}
 
 function race_school_session_key(): string {

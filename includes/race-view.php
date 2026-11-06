@@ -15,7 +15,7 @@ function race_options(string $name,string $label,array $items,string $selected='
 function race_roster_rows():array {return q('SELECT a.*,t.name AS team_name,c.bib AS race_bib,c.version AS check_version FROM athletes a JOIN teams t ON t.id=a.team_id LEFT JOIN checkins c ON c.athlete_id=a.id ORDER BY t.name,a.name,a.id')->fetchAll();}
 function race_event_names(int $athlete):string {return implode('、',q('SELECT e.name FROM race_enrollments n JOIN events e ON e.id=n.event_id WHERE n.athlete_id=? ORDER BY e.id',[$athlete])->fetchAll(7));}
 function race_public_roster():string {
-    if(!race_registration_closed()&&!current_user_can('manage_options')){
+    if(!race_roster_is_public()&&!current_user_can('manage_options')){
         return '<p>报名名单将于'.esc_html(race_registration_deadline_label()).'公开。</p>';
     }
     $params=race_roster_params(wp_unslash($_GET));unset($params['roster_q']);$result=race_filter_roster($params);
@@ -81,7 +81,7 @@ add_action('rest_api_init',function(){
     ]);
 });
 function race_public_results(bool $includeQualifiers=true):string {
-    if($includeQualifiers&&!race_registration_closed()&&!current_user_can('manage_options'))return '<p>比赛成绩榜将于报名名单公开后开放。</p>';
+    if($includeQualifiers&&!race_roster_is_public()&&!current_user_can('manage_options'))return '<p>比赛成绩榜将于报名名单公开后开放。</p>';
     ob_start();echo '<section class="sports-meet"><h2>'.($includeQualifiers?'比赛成绩榜':'项目决赛前三名').'</h2>';$groups=[];
     foreach(q("SELECT e.*,r.event_id FROM race_entries e JOIN race_rounds r ON r.id=e.round_id WHERE r.stage='final' AND r.status='finalized' AND e.place IS NOT NULL ORDER BY r.event_id,e.place")->fetchAll() as $r)$groups[$r['event_id']][]=$r;
     if(!$groups)echo '<p>暂无已完成决赛的前三名成绩。</p>';
@@ -90,7 +90,7 @@ function race_public_results(bool $includeQualifiers=true):string {
         table($headers,$rows);echo '</article>';
     }
     if(!$includeQualifiers){echo '</section>';return ob_get_clean();}
-    echo '<h2>预赛晋级名单</h2><p>个人默认单组前3名晋级，如安排分组则每组前3名；接力每组前2名。未提交完成的预赛不会出现在这里。</p>';$rows=[];foreach(all('events') as $e)foreach(race_qualifiers((int)$e['id']) as $r){$p=race_participant($r);$rows[]=[$e['name'],$p['team'],$p['name'],$p['bib']];}table(['项目','所属高校','晋级参赛者','比赛号码'],$rows);echo '</section>';return ob_get_clean();
+    echo '<h2>预赛晋级名单</h2><p>新编排的100米与接力按组内名次和用时选出最多8个决赛名额。其他个人项目每组取前3名。未提交完成的预赛不会出现在这里。</p>';$rows=[];foreach(all('events') as $e)foreach(race_qualifiers((int)$e['id']) as $r){$p=race_participant($r);$rows[]=[$e['name'],$p['team'],$p['name'],$p['bib']];}table(['项目','所属高校','晋级参赛者','比赛号码'],$rows);echo '</section>';return ob_get_clean();
 }
 function race_registration_form(array $teams,array $events,array $edit=[],bool $standalone=false,int $school=0):void {
     $chosen=$edit?array_map('intval',q('SELECT event_id FROM race_enrollments WHERE athlete_id=?',[$edit['id']])->fetchAll(7)):[];
@@ -131,6 +131,9 @@ function race_ui_registration():void {
     elseif($edit||!$page||get_post_status($page)!=='publish')race_registration_form($teams,$events,$edit);
     else echo '<p><a href="'.esc_url(page_url('new_registration')).'">打开新增报名页面 ↗</a></p>';
     race_render_roster($teams,$events);
+    if(current_user_can('manage_options'))echo '<form method="post" action="'.esc_url(admin_url('admin-post.php')).'">'
+        .'<input type="hidden" name="action" value="sports_meet_registration_test_mode">'.wp_nonce_field('sports_meet_registration_test_mode','_wpnonce',false,false)
+        .'<label><input type="checkbox" name="enabled" value="1" '.checked(race_registration_test_mode(),true,false).'> 报名测试模式（名单立即公开，11 月 9 日 00:00 自动关闭）</label><button>保存测试设置</button></form>';
     if(!race_registration_closed()&&current_user_can('manage_options'))race_school_admin($teams);
     echo '<details><summary>CSV批量导入／导出</summary><p>使用新版6列模板，无需填写报名编号。同一高校、姓名和组别识别已有报名；若有同名多人，系统会要求先核对，不会自动合并。</p><p><a href="'.esc_url(race_export_url('template')).'">下载报名模板</a> · <a href="'.esc_url(race_export_url('roster')).'">导出报名资料</a></p><form method="post" enctype="multipart/form-data" action="'.esc_url(admin_url('admin-post.php')).'"><input type="hidden" name="action" value="sports_meet_race"><input type="hidden" name="race_action" value="import"><input type="hidden" name="race_tab" value="registration">'.wp_nonce_field('sports_meet_race','race_nonce',false,false).'<label>UTF-8 CSV，最多2MB<input type="file" name="csv" accept=".csv" required></label><button>导入报名</button></form></details>';
     echo '<details><summary>所属高校管理</summary>';race_form('team','registration');field('id','高校ID：新增填0','number','0','min="0"');field('name','高校名称');finish();table(['高校ID','高校名称'],array_map(fn($t)=>[$t['id'],$t['name']],$teams));echo '</details>';
@@ -141,7 +144,19 @@ function race_ui_events():void {
     echo '<h2>比赛项目</h2><p>不同性别、年龄组分别建立项目。比赛名次直接由裁判填写，不按计时自动排名。</p>';race_form('event','events');field('id','项目ID：新增填0','number','0','min="0"');field('name','项目名称');race_options('kind','项目类型',[['id'=>'individual','name'=>'个人项目'],['id'=>'relay','name'=>'8×50米混合接力']]);race_options('gender','个人项目性别',[['id'=>'X','name'=>'不限'],['id'=>'M','name'=>'男'],['id'=>'F','name'=>'女']],'X');echo '<label>年龄组（可空）<input name="age_group"></label>';finish();$rows=[];foreach(all('events') as $e)$rows[]=[$e['id'],$e['name'],$e['kind']==='relay'?'接力':'个人',$e['gender'],$e['age_group'],q('SELECT COUNT(*) FROM race_enrollments WHERE event_id=?',[$e['id']])->fetchColumn()];table(['ID','名称','类型','性别','组别','报名人数'],$rows);race_delete_ui();
 }
 function race_ui_relay():void {
-    echo '<h2>8×50米混合接力组队</h2><p>检录后输入8个比赛号码，可跨所属高校组成混合队。接力每组预赛前2名晋级；名次分由8人均分并计回所属高校。同项目一人只能属于一支接力队。</p>';race_form('relay','relay');field('id','接力队ID：新增填0，编辑填现有ID','number','0','min="0"');race_options('event_id','接力项目',array_values(array_filter(all('events'),fn($e)=>$e['kind']==='relay')));field('name','接力队名称');field('bibs','8个比赛号码，英文逗号分隔');finish('保存8人名单');
+    echo '<h2>8×50米混合接力组队</h2><p>同校队选择高校后勾选8名队员，无需比赛号码。跨校混合队留空高校，填写8个已检录的号码。名次分由8人均分并计回所属高校。</p>';
+    race_form('relay','relay');
+    field('id','接力队ID：新增填0，编辑填现有ID','number','0','min="0"');
+    race_options('event_id','接力项目',array_values(array_filter(all('events'),fn($e)=>$e['kind']==='relay')));
+    field('name','接力队名称');
+    race_options('relay_school','同校队所属高校（跨校队留空）',all('teams'),'',false);
+    echo '<fieldset data-relay-athletes><legend>同校队员（勾选8人）</legend><div class="race-event-grid">';
+    foreach(race_roster_rows() as $athlete){
+        echo '<label data-relay-school="'.(int)$athlete['team_id'].'"><input type="checkbox" name="relay_athletes[]" value="'.(int)$athlete['id'].'"> '
+            .esc_html($athlete['name'].' · '.$athlete['team_name'].' · '.race_category($athlete)).'</label>';
+    }
+    echo '</div></fieldset><label>跨校队8个比赛号码（英文逗号分隔）<input name="bibs" type="text"></label>';
+    finish('保存8人名单');
     $rows=[];foreach(q('SELECT r.*,e.name AS event_name FROM race_relays r JOIN events e ON e.id=r.event_id ORDER BY r.id')->fetchAll() as $r){$m=race_members((int)$r['id']);$rows[]=[$r['id'],$r['event_name'],$r['name'],count($m).'/8',implode('、',array_map(fn($a)=>$a['name'].'('.($a['race_bib']??'未检录').' / '.$a['team_name'].')',$m))];}table(['ID','项目','接力队','人数','队员及所属高校'],$rows);race_delete_ui();
 }
 function race_ui_checkin_legacy():void {
@@ -157,17 +172,31 @@ function race_ui_checkin_legacy():void {
 function race_ui_rounds(?string $stage=null):void {
     if($stage==='final'){$selectedRound=race_final_projects();if(!$selectedRound)return;$_GET['round_id']=$selectedRound;}
     $admin=current_user_can('manage_options');
-    if($admin&&!$stage){echo '<details><summary>生成预赛／直接决赛名单</summary><p>生成后锁定此项目报名。个人默认所有人同一预赛取前三；接力按组取前二。若个人也需要分组，勾选下方选项后按每组前三晋级。分组按报名顺序，可在首次预赛提交前调整。也可选择直接决赛。</p>';race_form('generate','rounds');race_options('event_id','项目',all('events'));race_options('stage','比赛安排',[['id'=>'heat','name'=>'先预赛，自动晋级决赛'],['id'=>'final','name'=>'直接决赛']],'heat');field('capacity','每组接力队数／个人分组人数','number','8','min="1" max="100"');echo '<label><input type="checkbox" name="individual_split" value="1"> 个人预赛也分组（每组前三晋级）</label>';finish('生成名单');echo '</details>';}
+    if($admin&&!$stage){echo '<details><summary>生成预赛／直接决赛名单</summary><p>生成后锁定此项目报名。100米和接力最多8人／队直接决赛，超过8人／队随机均分预赛，每组最多8人／队，按组内名次和用时晋级，决赛最多8人／队。其他个人项目仍可按下方设置分组。</p>';race_form('generate','rounds');race_options('event_id','项目',all('events'));race_options('stage','比赛安排',[['id'=>'heat','name'=>'先预赛，自动晋级决赛'],['id'=>'final','name'=>'直接决赛']],'heat');field('capacity','其他个人项目每组人数','number','8','min="1" max="100"');echo '<label><input type="checkbox" name="individual_split" value="1"> 其他个人项目分组（每组前三晋级）</label>';finish('生成名单');echo '</details>';}
     if($stage!=='final'){echo '<h2>选择项目及预赛／决赛</h2><div class="race-round-links">';foreach(q('SELECT r.*,e.name AS event_name FROM race_rounds r JOIN events e ON e.id=r.event_id ORDER BY e.id,r.stage DESC,r.heat_no')->fetchAll() as $r){if($stage&&$r['stage']!==$stage)continue;echo '<a href="'.esc_url(race_url('rounds',['round_id'=>$r['id']])).'">'.esc_html($r['event_name'].' · '.($r['stage']==='heat'?'预赛第'.$r['heat_no'].'组':'决赛').' · '.($r['status']==='finalized'?'已完成':'待提交')).'</a>';}echo '</div>';}
     if(empty($_GET['round_id']))return;$round=race_one('race_rounds',(int)$_GET['round_id']);$event=race_event((int)$round['event_id']);if($stage&&$round['stage']!==$stage){echo '<p class="error">此轮不属于当前页面，请从对应预赛／决赛入口选择。</p>';return;}$ready=true;try{race_round_ready($round);}catch(\Throwable $e){$ready=false;echo '<p class="error">'.esc_html($e->getMessage()).'</p>';}
-    echo '<h2>'.esc_html($event['name'].' · '.($round['stage']==='heat'?'预赛第'.$round['heat_no'].'组':'决赛')).'</h2><p>版本 '.(int)$round['version'].'。勾选实际参赛者。距离项目由成绩自动排名，其他项目填写前3名。暂存不公示、不计分；提交完成后才计分和晋级。</p>';
+    $timedHeat=$round['stage']==='heat'&&!empty($round['eight_lanes']);
+    echo '<h2>'.esc_html($event['name'].' · '.($round['stage']==='heat'?'预赛第'.$round['heat_no'].'组':'决赛')).'</h2><p>版本 '.(int)$round['version'].'。勾选实际参赛者。'.($timedHeat?'预赛按用时自动排组内名次。':'距离项目由成绩自动排名，其他项目填写前3名。').'暂存不公示、不计分；提交完成后才计分和晋级。</p>';
+    if($timedHeat){
+        $groups=(int)q("SELECT COUNT(*) FROM race_rounds WHERE event_id=? AND stage='heat'",[$round['event_id']])->fetchColumn();
+        $quota=race_lane_quota($groups);
+        echo '<p class="notice">共 '.$groups.' 组预赛，每组前 '.$quota.' 名直接晋级，剩余 '.(8-$groups*$quota).' 席按预赛用时补足。有效成绩不足时决赛少于8席。用时填秒，无有效成绩填0。</p>';
+    }
     if($round['status']==='finalized'){ $summaryRows=q('SELECT confirmed FROM race_entries WHERE round_id=?',[$round['id']])->fetchAll();echo '<p class="notice race-completed-summary">本轮已完成 · 名单'.count($summaryRows).'人／队 · 确认参赛'.array_sum(array_column($summaryRows,'confirmed')).'人／队 · 提交时间'.esc_html($round['updated']).'。以下显示已保存结果，前三名已置顶。</p>'; }
     $distanceEvent=race_is_distance($event);if($distanceEvent)echo '<p class="notice">本项目填距离（米），由大到小自动排出前三。无有效距离填0；影响前三的同距选手须填写同距顺序1、2、3…。</p>';$editable=$ready&&$round['status']==='open';if($editable){race_form('round','rounds');echo '<input type="hidden" name="round_id" value="'.(int)$round['id'].'"><input type="hidden" name="version" value="'.(int)$round['version'].'">';}
-    echo '<div class="scroll"><table '.($distanceEvent?'data-distance-table':'').'><thead><tr><th>条目ID</th><th>所属高校</th><th>姓名／接力队</th><th>比赛号码</th><th>确认参赛</th>'.($distanceEvent?'<th>距离（米）</th><th>同距顺序</th><th>自动名次</th>':'<th>名次</th>').'</tr></thead><tbody>';
+    echo '<div class="scroll"><table '.($distanceEvent?'data-distance-table':'').'><thead><tr><th>条目ID</th><th>所属高校</th><th>姓名／接力队</th><th>比赛号码</th><th>确认参赛</th>'.($distanceEvent?'<th>距离（米）</th><th>同距顺序</th><th>自动名次</th>':($timedHeat?'<th>用时（秒）</th><th>同时间顺序</th><th>自动名次</th>':'<th>名次</th>')).'</tr></thead><tbody>';
     $displayRows=q('SELECT * FROM race_entries WHERE round_id=? ORDER BY id',[$round['id']])->fetchAll();if($round['status']==='finalized')$displayRows=race_completed_order($displayRows);
     foreach($displayRows as $r){$p=race_participant($r);echo '<tr><td>'.(int)$r['id'].'</td><td>'.esc_html($p['team']).'</td><td>'.esc_html($p['name']).($r['relay_id']?'<small>'.esc_html($p['members']).'</small>':'').'</td><td>'.esc_html($p['bib']).'</td><td>';
         if($editable)echo '<input type="checkbox" name="entries['.(int)$r['id'].'][confirmed]" value="1" aria-label="'.esc_attr('确认'.$p['name'].'参赛').'" '.checked((int)$r['confirmed'],1,false).'>';else echo $r['confirmed']?'✓':'—';if($distanceEvent){echo '</td>';race_distance_cells($r,$p,$editable);echo '</tr>';continue;}echo '</td><td>';
-        if($editable)echo '<input type="number" min="1" max="3" name="entries['.(int)$r['id'].'][place]" value="'.esc_attr($r['place']??'').'" aria-label="'.esc_attr($p['name'].'的名次').'">';else echo esc_html($r['place']??'—');echo '</td></tr>';
+        if($timedHeat){
+            $elapsed=$r['elapsed']??(!empty($r['no_mark'])?'0':'');
+            $input='entries['.(int)$r['id'].']';
+            echo $editable?'<input type="number" min="0" step="0.001" name="'.$input.'[elapsed]" value="'.esc_attr($elapsed).'" aria-label="'.esc_attr($p['name'].'的用时').'">':esc_html($elapsed);
+            echo '</td><td>';
+            echo $editable?'<input type="number" min="1" max="999" name="'.$input.'[tie_order]" value="'.esc_attr($r['tie_order']??'').'" aria-label="'.esc_attr($p['name'].'的同时间顺序').'">':esc_html($r['tie_order']??'—');
+            echo '</td><td>'.esc_html($r['place']??'—');
+        }elseif($editable)echo '<input type="number" min="1" max="3" name="entries['.(int)$r['id'].'][place]" value="'.esc_attr($r['place']??'').'" aria-label="'.esc_attr($p['name'].'的名次').'">';
+        else echo esc_html($r['place']??'—');echo '</td></tr>';
     }echo '</tbody></table></div>';
     if($editable)echo '<button name="decision" value="save">暂存</button><button name="decision" value="finalize">提交本轮完成并计分</button><details><summary>本轮全部无人出赛</summary><label>确保全部取消确认勾选及名次，再输入DNS<input name="empty_confirm" placeholder="DNS"></label><button name="decision" value="empty">按无人出赛提交（0分）</button></details></form>';
     if($admin){echo '<details><summary>管理员调整分组／撤回更正</summary><p>调整预赛分组仅在尚无预赛提交完成时允许，移动条目会清除该条目的暂存确认和名次。撤回预赛会重新生成决赛名单，并清除尚未完成决赛的暂存记录；已完成决赛须先撤回决赛。更正后须再次提交完成才公示。</p>';race_form('move','rounds');field('entry_id','要移动的条目ID','number','','min="1"');field('heat_no','目标预赛组号','number','','min="1" max="100"');finish('移动到目标组');race_form('reopen','rounds');field('round_id','撤回轮次ID','number',(string)$round['id'],'min="1"');field('confirm','输入REOPEN');finish('撤回本轮');echo '</details>';}

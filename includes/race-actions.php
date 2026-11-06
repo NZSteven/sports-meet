@@ -71,7 +71,23 @@ function race_mutate(array $p):void {
         if($id){race_unstarted($id);$old=race_event($id);if($old['kind']!==$kind && q('SELECT id FROM race_enrollments WHERE event_id=?',[$id])->fetch())throw new \RuntimeException('已有报名，不能改变项目类型。');q('UPDATE events SET name=?,kind=?,gender=?,age_group=? WHERE id=?',[$name,$kind,$gender,$group,$id]);foreach(q('SELECT athlete_id FROM race_enrollments WHERE event_id=?',[$id])->fetchAll() as $a)race_enroll($id,(int)$a['athlete_id']);}
         else q("INSERT INTO events(name,kind,gender,age_group,direction,unit) VALUES(?,?,?,?,'asc','秒')",[$name,$kind,$gender,$group]);break;
     case 'relay':
-        $tokens=array_map('trim',explode(',',(string)($p['bibs']??'')));$ids=[];foreach($tokens as $b){if(!preg_match('/^\d{1,8}$/',$b))throw new \RuntimeException('请用英文逗号分隔8个比赛号码。');$a=q('SELECT athlete_id FROM checkins WHERE bib=?',[(string)(int)$b])->fetchColumn();if(!$a)throw new \RuntimeException('比赛号码'.$b.'尚未检录。');$ids[]=(int)$a;}race_set_relay((int)$p['event_id'],(int)($p['id']??0),(string)$p['name'],$ids);break;
+        $school=absint($p['relay_school']??0);
+        $ids=[];
+        if($school){
+            foreach((array)($p['relay_athletes']??[]) as $value){
+                $id=absint($value);
+                if(!$id||!q('SELECT id FROM athletes WHERE id=? AND team_id=?',[$id,$school])->fetch())throw new \RuntimeException('同校组队只能选择该校队员。');
+                $ids[]=$id;
+            }
+        }else{
+            foreach(array_map('trim',explode(',',(string)($p['bibs']??''))) as $b){
+                if(!preg_match('/^\d{1,8}$/',$b))throw new \RuntimeException('请用英文逗号分隔8个比赛号码。');
+                $a=q('SELECT athlete_id FROM checkins WHERE bib=?',[(string)(int)$b])->fetchColumn();
+                if(!$a)throw new \RuntimeException('比赛号码'.$b.'尚未检录。');
+                $ids[]=(int)$a;
+            }
+        }
+        race_set_relay((int)$p['event_id'],(int)($p['id']??0),(string)$p['name'],$ids);break;
     case 'generate':race_generate((int)$p['event_id'],(string)$p['stage'],(int)$p['capacity'],!empty($p['individual_split']));break;
     case 'move':race_move((int)$p['entry_id'],(int)$p['heat_no']);break;
     case 'reopen':if(($p['confirm']??'')!=='REOPEN')throw new \RuntimeException('请输入REOPEN确认撤回。');race_reopen((int)$p['round_id']);break;

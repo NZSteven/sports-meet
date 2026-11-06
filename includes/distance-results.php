@@ -3,7 +3,15 @@ namespace SportsMeetWP;
 defined('ABSPATH') || exit;
 function race_is_distance(array $event):bool {return ($event['kind']??'individual')==='individual'&&(bool)preg_match('/铅球|鉛球|跳远|跳遠/u',$event['name']??'');}
 function install_distances():void {
-    foreach(['distance'=>'DECIMAL(12,4) NULL','no_mark'=>'TINYINT NOT NULL DEFAULT 0','tie_order'=>'INT NULL'] as $column=>$definition)if(!q('SHOW COLUMNS FROM race_entries LIKE ?',[$column])->fetch()){try{q('ALTER TABLE race_entries ADD COLUMN '.$column.' '.$definition);}catch(DatabaseException $e){if(!q('SHOW COLUMNS FROM race_entries LIKE ?',[$column])->fetch())throw $e;}}
+    foreach([
+        'race_entries'=>['distance'=>'DECIMAL(12,4) NULL','no_mark'=>'TINYINT NOT NULL DEFAULT 0','tie_order'=>'INT NULL','elapsed'=>'DECIMAL(9,3) NULL'],
+        'race_rounds'=>['eight_lanes'=>'TINYINT NOT NULL DEFAULT 0'],
+    ] as $table=>$columns){
+        foreach($columns as $column=>$definition)if(!q("SHOW COLUMNS FROM $table LIKE ?",[$column])->fetch()){
+            try{q("ALTER TABLE $table ADD COLUMN $column $definition");}
+            catch(DatabaseException $e){if(!q("SHOW COLUMNS FROM $table LIKE ?",[$column])->fetch())throw $e;}
+        }
+    }
 }
 function race_distance_units(string $value):int {
     if(!preg_match('/^\d{1,5}(?:\.\d{1,4})?$/',$value))throw new \RuntimeException('距离须为大于0的米数，最多4位小数。');$parts=explode('.',$value);$units=(int)$parts[0]*10000+(int)str_pad($parts[1]??'',4,'0');if($units<1)throw new \RuntimeException('距离必须大于0；无有效成绩请勾选对应选项。');return $units;

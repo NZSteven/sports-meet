@@ -61,6 +61,19 @@ function race_create_round(int $event,string $stage,int $heat):int {[$actor,$now
 function race_add_entry(int $round,string $key):void {
     $kind=$key[0];$id=(int)substr($key,1);q('INSERT IGNORE INTO race_entries(round_id,participant,athlete_id,relay_id) VALUES(?,?,?,?)',[$round,$key,$kind==='A'?$id:null,$kind==='R'?$id:null]);
 }
+function race_eight_lane_event(array $event): bool {
+    return $event['kind']==='relay'||(bool)preg_match('/(?<![0-9])100\s*(?:米|公尺|m)(?![a-z])/iu',$event['name']);
+}
+
+function race_lane_groups(array $keys): array {
+    $count=(int)ceil(count($keys)/8);
+    $groups=array_fill(0,$count,[]);
+    foreach($keys as $i=>$key)$groups[$i%$count][]=$key;
+    return $groups;
+}
+
+function race_lane_quota(int $groups): int {return $groups>0?intdiv(8,$groups):0;}
+
 function race_generate(int $event,string $stage,int $capacity,bool $individualSplit=false):void {
     race_unstarted($event);$e=race_event($event);if(!in_array($stage,['heat','final'],true)||$capacity<1||$capacity>100)throw new \RuntimeException('分组人数须为1至100。');
     $keys=[];
@@ -70,6 +83,18 @@ function race_generate(int $event,string $stage,int $capacity,bool $individualSp
         $unassigned=(int)q('SELECT COUNT(*) FROM race_enrollments n LEFT JOIN race_members m ON m.event_id=n.event_id AND m.athlete_id=n.athlete_id WHERE n.event_id=? AND m.athlete_id IS NULL',[$event])->fetchColumn();if($unassigned)throw new \RuntimeException('还有接力报名者未编入接力队，请先组队或取消其接力报名。');
     }
     if(!$keys)throw new \RuntimeException('此项目没有参赛者。');
+    if(race_eight_lane_event($e)){
+        if($stage==='final'&&count($keys)>8)throw new \RuntimeException('超过8人／队，请先生成预赛。');
+        $stage=count($keys)<=8?'final':'heat';
+        shuffle($keys);
+        foreach(race_lane_groups($keys) as $i=>$group){
+            $round=race_create_round($event,$stage,$i+1);
+            q('UPDATE race_rounds SET eight_lanes=1 WHERE id=?',[$round]);
+            foreach($group as $key)race_add_entry($round,$key);
+        }
+        race_audit('generate',$event,['stage'=>$stage,'capacity'=>8]);
+        return;
+    }
     if($e['kind']==='individual' && !$individualSplit)$capacity=count($keys);
     $estimate=$stage==='final'?count($keys):(int)ceil(count($keys)/$capacity)*min($capacity,$e['kind']==='relay'?2:3);
     if($e['kind']==='individual'&&!$individualSplit&&count($keys)>200)throw new \RuntimeException('个人单组最多200人，请启用分组或拆分项目。');
@@ -78,6 +103,28 @@ function race_generate(int $event,string $stage,int $capacity,bool $individualSp
     race_audit('generate',$event,['stage'=>$stage,'capacity'=>$capacity]);
 }
 function race_qualifiers(int $event):array {
+    $heats=q("SELECT * FROM race_rounds WHERE event_id=? AND stage='heat' ORDER BY heat_no",[$event])->fetchAll();
+    if(!empty($heats[0]['eight_lanes'])){
+        foreach($heats as $heat)if($heat['status']!=='finalized')return [];
+        $quota=race_lane_quota(count($heats));
+        $rows=q("SELECT en.* FROM race_entries en JOIN race_rounds r ON r.id=en.round_id
+            WHERE r.event_id=? AND r.stage='heat' AND en.confirmed=1 AND en.elapsed IS NOT NULL
+            ORDER BY en.elapsed,COALESCE(en.tie_order,2147483647),r.heat_no,en.place",[$event])->fetchAll();
+        $direct=[];$remaining=[];
+        foreach($rows as $row){
+            if((int)$row['place']<=$quota)$direct[]=$row;
+            else $remaining[]=$row;
+        }
+        $slots=8-count($direct);
+        if($slots>0&&isset($remaining[$slots])&&$remaining[$slots-1]['elapsed']===$remaining[$slots]['elapsed']){
+            $time=$remaining[$slots]['elapsed'];
+            $orders=array_column(array_filter($remaining,static fn($r)=>$r['elapsed']===$time),'tie_order');
+            if(in_array(null,$orders,true)||count(array_unique($orders))!==count($orders)){
+                throw new \RuntimeException('最后一个晋级名额出现同时间，请裁判给同时间选手填写不同的同时间顺序，再提交。');
+            }
+        }
+        return array_merge($direct,array_slice($remaining,0,$slots));
+    }
     $e=race_event($event);$limit=$e['kind']==='relay'?2:3;
     return q("SELECT en.* FROM race_entries en JOIN race_rounds r ON r.id=en.round_id WHERE r.event_id=? AND r.stage='heat' AND r.status='finalized' AND en.confirmed=1 AND en.place<=? ORDER BY r.heat_no,en.place",[$event,$limit])->fetchAll();
 }
@@ -92,23 +139,54 @@ function race_sync_final(int $event):void {
 function race_round_ready(array $r):void {
     if($r['stage']==='final' && q("SELECT id FROM race_rounds WHERE event_id=? AND stage='heat' AND status<>'finalized' LIMIT 1",[$r['event_id']])->fetch())throw new \RuntimeException('须等本项目所有预赛提交完成后才能录入决赛。');
 }
+function race_timed_heat_results(array $rows,array $submitted,bool $finalize): array {
+    $ranked=[];$times=[];
+    foreach($rows as $row){
+        $id=$row['id'];
+        $entry=$submitted[$id];
+        $raw=trim((string)($entry['elapsed']??''));
+        $tie=trim((string)($entry['tie_order']??''));
+        $confirmed=!empty($entry['confirmed']);
+        if($raw!==''&&!preg_match('/^\d{1,6}(?:\.\d{1,3})?$/',$raw))throw new \RuntimeException('用时须填秒数，最多3位小数；无有效成绩填0。');
+        if($tie!==''&&(!ctype_digit($tie)||(int)$tie<1||(int)$tie>999))throw new \RuntimeException('同时间顺序须为1至999的整数。');
+        if($finalize&&$confirmed&&$raw==='')throw new \RuntimeException('请填写每位已确认参赛者的用时；无有效成绩填0。');
+        $elapsed=$confirmed&&$raw!==''&&(float)$raw>0?$raw:null;
+        $submitted[$id]=['confirmed'=>$confirmed,'place'=>'','elapsed'=>$elapsed,'no_mark'=>$confirmed&&$raw!==''&&$elapsed===null,'tie_order'=>$elapsed!==null&&$tie!==''?(int)$tie:null];
+        if($elapsed!==null){
+            $units=(int)round((float)$elapsed*1000);
+            $ranked[]=['id'=>$id,'time'=>$units,'tie'=>$submitted[$id]['tie_order']];
+            $times[$units][]=$submitted[$id]['tie_order'];
+        }
+    }
+    if($finalize)foreach($times as $ties){
+        if(count($ties)>1&&(in_array(null,$ties,true)||count(array_unique($ties))!==count($ties))){
+            throw new \RuntimeException('同组有相同用时，请按实际冲线顺序填写不同的同时间顺序。');
+        }
+    }
+    usort($ranked,static fn($a,$b)=>($a['time']<=>$b['time'])?:(($a['tie']??1000)<=>($b['tie']??1000))?:($a['id']<=>$b['id']));
+    foreach($ranked as $i=>$item)$submitted[$item['id']]['place']=(string)($i+1);
+    return $submitted;
+}
+
 function race_save_round(int $id,int $version,array $submitted,bool $finalize,bool $empty=false):void {
     $round=race_one('race_rounds',$id);race_round_ready($round);
     if($round['status']==='finalized')throw new \RuntimeException('此轮已提交完成，不能再修改。');
     if((int)$round['version']!==$version)throw new \RuntimeException('其他裁判已保存或晋级名单已变化，请刷新后重新核对，未覆盖他人资料。');
     $rows=q('SELECT * FROM race_entries WHERE round_id=? ORDER BY id',[$id])->fetchAll();$expected=array_map('intval',array_column($rows,'id'));$keys=array_map('intval',array_keys($submitted));sort($expected,SORT_NUMERIC);sort($keys,SORT_NUMERIC);if($expected!==$keys)throw new \RuntimeException('参赛名单已变化，请刷新后重新录入。');
+    $timedHeat=$round['stage']==='heat'&&!empty($round['eight_lanes']);
     $distanceEvent=race_is_distance(race_event((int)$round['event_id']));if($distanceEvent)$submitted=race_rank_distances($rows,$submitted,$finalize);
+    if($timedHeat)$submitted=race_timed_heat_results($rows,$submitted,$finalize);
     $places=[];$confirmed=0;$clean=[];
     foreach($rows as $r){$d=$submitted[$r['id']];if(!is_array($d))throw new \RuntimeException('提交格式错误。');$yes=!empty($d['confirmed']);$place=trim((string)($d['place']??''));
-        if($place!=='' && (!in_array($place,['1','2','3'],true)||!$yes))throw new \RuntimeException('名次只能填1、2、3，且须先确认参赛。');
+        if($place!=='' && ((!$timedHeat&&!in_array($place,['1','2','3'],true))||!$yes))throw new \RuntimeException('名次只能填1、2、3，且须先确认参赛。');
         if($place!=='' && isset($places[$place]))throw new \RuntimeException('同一轮不能出现重复名次。');if($place!=='')$places[$place]=true;
         if($yes){$confirmed++;if($r['athlete_id']){if(!q('SELECT bib FROM checkins WHERE athlete_id=?',[$r['athlete_id']])->fetch())throw new \RuntimeException('有参赛者尚未检录发号。');}else race_relay_validate((int)$r['relay_id'],true);}
-        $clean[]=['id'=>$r['id'],'confirmed'=>$yes?1:0,'place'=>$place===''?null:(int)$place,'distance'=>$distanceEvent?$d['distance']:null,'no_mark'=>$distanceEvent?$d['no_mark']:0,'tie_order'=>$distanceEvent?$d['tie_order']:null];
+        $clean[]=['id'=>$r['id'],'confirmed'=>$yes?1:0,'place'=>$place===''?null:(int)$place,'distance'=>$distanceEvent?$d['distance']:null,'no_mark'=>($distanceEvent||$timedHeat)?(int)$d['no_mark']:0,'tie_order'=>($distanceEvent||$timedHeat)?$d['tie_order']:null,'elapsed'=>$timedHeat?$d['elapsed']:null];
     }
     if($empty&&$confirmed)throw new \RuntimeException('仍有已确认参赛者，不能提交为无人出赛。');
     $ranked=$distanceEvent?count(array_filter($clean,fn($r)=>$r['confirmed']&&$r['distance']!==null&&!$r['no_mark'])):$confirmed;
-    if($finalize){if(!$confirmed&&!$empty)throw new \RuntimeException('无人出赛请使用专门的无人出赛确认，避免误提交。');for($i=1;$i<=min(3,$ranked);$i++)if(!isset($places[$i]))throw new \RuntimeException('提交完成前须填写前'.min(3,$ranked).'名（1、2、3依次填写）。');}
-    q('UPDATE race_entries SET place=NULL WHERE round_id=?',[$id]);foreach($clean as $r)q('UPDATE race_entries SET confirmed=?,place=?,distance=?,no_mark=?,tie_order=? WHERE id=?',[$r['confirmed'],$r['place'],$r['distance'],$r['no_mark'],$r['tie_order'],$r['id']]);
+    if($finalize){if(!$confirmed&&!$empty)throw new \RuntimeException('无人出赛请使用专门的无人出赛确认，避免误提交。');if(!$timedHeat)for($i=1;$i<=min(3,$ranked);$i++)if(!isset($places[$i]))throw new \RuntimeException('提交完成前须填写前'.min(3,$ranked).'名（1、2、3依次填写）。');}
+    q('UPDATE race_entries SET place=NULL WHERE round_id=?',[$id]);foreach($clean as $r)q('UPDATE race_entries SET confirmed=?,place=?,distance=?,no_mark=?,tie_order=?,elapsed=? WHERE id=?',[$r['confirmed'],$r['place'],$r['distance'],$r['no_mark'],$r['tie_order'],$r['elapsed'],$r['id']]);
     [$actor,$now]=race_actor();q('UPDATE race_rounds SET status=?,version=version+1,actor=?,updated=? WHERE id=?',[$finalize?'finalized':'open',$actor,$now,$id]);
     if($finalize && $round['stage']==='heat')race_sync_final((int)$round['event_id']);
     race_audit($finalize?'finalize_round':'save_round',$id,['entries'=>$clean]);
@@ -116,6 +194,8 @@ function race_save_round(int $id,int $version,array $submitted,bool $finalize,bo
 function race_move(int $entry,int $heat):void {
     if($heat<1||$heat>100)throw new \RuntimeException('组号须为1至100。');$row=q('SELECT e.*,r.event_id,r.stage FROM race_entries e JOIN race_rounds r ON r.id=e.round_id WHERE e.id=?',[$entry])->fetch();if(!$row||$row['stage']!=='heat')throw new \RuntimeException('只能调整预赛分组。');
     if(q("SELECT id FROM race_rounds WHERE event_id=? AND (status='finalized' OR stage='final') LIMIT 1",[$row['event_id']])->fetch())throw new \RuntimeException('预赛已开始提交，不能调整分组。');
+    $source=race_one('race_rounds',(int)$row['round_id']);
+    if(!empty($source['eight_lanes']))throw new \RuntimeException('8道项目已随机均分，不能单独移动参赛者。');
     $target=q("SELECT id FROM race_rounds WHERE event_id=? AND stage='heat' AND heat_no=?",[$row['event_id'],$heat])->fetchColumn();if(!$target)$target=race_create_round((int)$row['event_id'],'heat',$heat);
     if((int)$target===(int)$row['round_id'])return;
     q('UPDATE race_entries SET round_id=?,confirmed=0,place=NULL WHERE id=?',[$target,$entry]);q('UPDATE race_rounds SET version=version+1 WHERE id=? OR id=?',[$target,$row['round_id']]);

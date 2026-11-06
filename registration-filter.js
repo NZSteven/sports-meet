@@ -1,6 +1,23 @@
 (() => {
   'use strict';
   function start() {
+    document.querySelectorAll('select[name="relay_school"]').forEach(school => {
+      const form = school.form;
+      const players = form.querySelector('[data-relay-athletes]');
+      const bibs = form.querySelector('[name="bibs"]');
+      function updateRelay() {
+        players.hidden = !school.value;
+        bibs.closest('label').hidden = !!school.value;
+        bibs.disabled = !!school.value;
+        bibs.required = !school.value;
+        players.querySelectorAll('[data-relay-school]').forEach(label => {
+          label.hidden = label.dataset.relaySchool !== school.value;
+          label.querySelector('input').disabled = label.hidden;
+        });
+      }
+      school.addEventListener('change', updateRelay);
+      updateRelay();
+    });
     document.querySelectorAll('.race-event-picker').forEach(picker => {
       const form = picker.closest('form');
       const group = form && form.querySelector('[name="category"]');
