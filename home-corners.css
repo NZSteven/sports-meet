@@ -57,6 +57,17 @@ body.sm-brand-home{background:#f9fbff;isolation:isolate}
 .sm-live-board h2, .sm-site .sm-live-board h2 {font-size: clamp(22px, 2.4vw, 30px); margin: 0 0 6px; line-height: 1.25;}
 .sm-ranking-note {margin: 0 0 10px; font-size: 12px; color: #52695f;}
 .sm-ranking-list {list-style: none; padding: 0; margin: 0;}
+.sm-live-board[data-sm-rank-mode="all"] .sm-ranking-list {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    column-gap: 20px;
+}
+@media (max-width: 720px) {
+    .sm-live-board[data-sm-rank-mode="all"] .sm-ranking-list {grid-template-columns: repeat(2, minmax(0, 1fr)); column-gap: 12px;}
+}
+@media (max-width: 420px) {
+    .sm-live-board[data-sm-rank-mode="all"] .sm-ranking-list {grid-template-columns: minmax(0, 1fr);}
+}
 .sm-ranking-list li {display: grid; grid-template-columns: 1.5rem minmax(0, 1fr) auto; gap: 9px; align-items: center; padding: 8px 6px; border-top: 1px solid #e2ebe3;}
 .sm-ranking-trophy {grid-column: 1;}
 .sm-ranking-name {grid-column: 2;}
