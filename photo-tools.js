@@ -162,12 +162,20 @@
             field.name = 'sm_photo_page';
             field.value = page;
             event.target.append(field);
-            try { sessionStorage.setItem(key, String(window.scrollY)); } catch {}
+            const settings = Array.from(admin.querySelectorAll('.sm-photo-admin-settings details[open]'), item => item.id);
+            try { sessionStorage.setItem(key, JSON.stringify({y: window.scrollY, settings})); } catch {}
         });
         try {
-            const position = sessionStorage.getItem(key);
+            const saved = sessionStorage.getItem(key);
             sessionStorage.removeItem(key);
-            if (position !== null) requestAnimationFrame(() => window.scrollTo(0, Number(position)));
+            if (saved !== null) {
+                const {y, settings} = JSON.parse(saved);
+                for (const id of settings) {
+                    const panel = document.getElementById(id);
+                    if (panel) panel.open = true;
+                }
+                requestAnimationFrame(() => window.scrollTo(0, y));
+            }
         } catch {}
     }
 

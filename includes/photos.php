@@ -5,7 +5,7 @@ defined('ABSPATH') || exit;
 function install_photos(): void {
     q("CREATE TABLE IF NOT EXISTS photos (id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT, owner BIGINT UNSIGNED NOT NULL, title VARCHAR(180) NOT NULL, image LONGBLOB NOT NULL, width SMALLINT UNSIGNED NOT NULL, height SMALLINT UNSIGNED NOT NULL, bytes INT UNSIGNED NOT NULL, status VARCHAR(12) NOT NULL DEFAULT 'pending', created DATETIME NOT NULL, PRIMARY KEY(id), KEY gallery(status,id), KEY user_date(owner,created)) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
 }
-add_action('admin_init',function(){if(current_user_can('manage_options') && get_option('sports_meet_db_version')!=='2.5.7')activate();});
+add_action('admin_init',function(){if(current_user_can('manage_options') && get_option('sports_meet_db_version')!=='2.5.8')activate();});
 function page_url(string $key): string {
     $pages=get_option('sports_meet_pages',[]);
     $id=(int)($pages[$key]??0);
@@ -327,14 +327,14 @@ function photo_options(): void {
 }
 add_action('admin_post_sports_meet_photo_options',__NAMESPACE__.'\\photo_options');
 function photo_admin(): void {
-    echo '<div data-sm-photo-admin>';
+    echo '<div class="sm-site" data-sm-photo-admin><div class="sm-photo-admin-settings">';
     song_admin();
-    echo '<p>压缩后的照片保存在上传目录。备份时请同时备份数据库及上传目录。</p>';
-    echo '<p>已公开的照片也可在 WordPress 媒体库查看。已有照片会分批登记，待审核照片在此管理。</p>';
+
+
+    echo '<details id="sm-photo-site-settings"><summary>网站页面</summary><form method="post" action="'.esc_url(admin_url('admin-post.php')).'"><input type="hidden" name="action" value="sports_meet_setup">'.wp_nonce_field('sports_meet_setup','sm_nonce',false,false).'<p>补齐缺少的运动会页面，保留已有页面。</p><label><input type="checkbox" name="set_home" value="1" checked> 将运动会首页设为网站首页</label><button>创建／补齐网站页面</button></form></details><details id="sm-photo-gallery-settings"><summary>相册设置</summary><form method="post" action="'.esc_url(admin_url('admin-post.php')).'"><input type="hidden" name="action" value="sports_meet_photo_options">'.wp_nonce_field('sports_meet_photo_options','sm_nonce',false,false).'<label><input type="checkbox" name="upload_enabled" value="1" '.checked(photo_upload_enabled(),true,false).'> 允许会员上传照片</label><label><input type="checkbox" name="gallery_enabled" value="1" '.checked(photo_gallery_enabled(),true,false).'> 显示前台相册</label><p>新照片直接公开，可在此管理，也可在媒体库查看。备份时请同时备份数据库和上传目录。</p><button>保存相册设置</button></form></details></div>';
     $migrationError=get_option('sports_meet_photo_files_error');
     if($migrationError)echo '<p class="error">照片迁移将重试：'.esc_html($migrationError).'</p>';
     elseif(!get_option('sports_meet_photo_files_done'))echo '<p>旧照片正在分批迁移，迁移期间可以继续查看和上传。</p>';
-    echo '<div class="sm-site"><h2>网站页面与相册</h2><form method="post" action="'.esc_url(admin_url('admin-post.php')).'"><input type="hidden" name="action" value="sports_meet_setup">'.wp_nonce_field('sports_meet_setup','sm_nonce',false,false).'<p>建立首页、相册、上传照片、排行榜、项目成绩、报名名单及裁判工作台七个页面。已有的本插件页面不会被覆盖；从旧版升级后请再点击一次，补齐新增页面。</p><label><input type="checkbox" name="set_home" value="1" checked> 将运动会首页设为网站首页</label><button>创建／补齐网站页面</button></form><p>普通参与者角色选订阅者可上传照片；裁判账号角色选“运动会裁判”，可在前台裁判工作台检录及录入比赛。</p><form method="post" action="'.esc_url(admin_url('admin-post.php')).'"><input type="hidden" name="action" value="sports_meet_photo_options">'.wp_nonce_field('sports_meet_photo_options','sm_nonce',false,false).'<label><input type="checkbox" name="upload_enabled" value="1" '.checked(photo_upload_enabled(),true,false).'> 允许会员上传照片</label><label><input type="checkbox" name="gallery_enabled" value="1" '.checked(photo_gallery_enabled(),true,false).'> 显示前台相册</label><p>新上传的照片会直接公开，管理员可在下方删除。</p><button>保存相册设置</button></form>';
     if(!extension_loaded('gd') || !function_exists('exif_read_data'))echo '<p class="error">请在主机PHP设置中启用GD及exif扩展。</p>';
     $page=max(1,absint($_GET['sm_photo_page']??1));$offset=($page-1)*12;$total=(int)q('SELECT COUNT(*) FROM photos')->fetchColumn();
     $rows=q("SELECT id,owner,title,width,height,status,created FROM photos ORDER BY FIELD(status,'pending','published'),id DESC LIMIT 12 OFFSET $offset")->fetchAll();
@@ -344,5 +344,5 @@ function photo_admin(): void {
     }
     echo photo_cards($rows,true,true);
     echo '<nav class="sm-pagination">';if($page>1)echo '<a href="'.esc_url(add_query_arg('sm_photo_page',$page-1,view_url('photos'))).'">← 上一页</a>';echo '<span>共'.$total.'张</span>';if($page*12<$total)echo '<a href="'.esc_url(add_query_arg('sm_photo_page',$page+1,view_url('photos'))).'">下一页 →</a>';echo '</nav>';
-    community_author_admin('photos');echo '</div></div>';
+    community_author_admin('photos');echo '</div>';
 }

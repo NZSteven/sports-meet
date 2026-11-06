@@ -32,8 +32,8 @@ function song_section():string {
 add_shortcode('sports_meet_song',__NAMESPACE__.'\\song_section');
 add_action('wp_enqueue_scripts',function(){
     $main=dirname(__DIR__).'/sports-meet.php';
-    wp_enqueue_style('sports-meet-song',plugins_url('song.css',$main),[],'2.5.7');
-    wp_enqueue_script('sports-meet-song-sync',plugins_url('song-sync.js',$main),[],'2.5.7',true);
+    wp_enqueue_style('sports-meet-song',plugins_url('song.css',$main),[],'2.5.8');
+    wp_enqueue_script('sports-meet-song-sync',plugins_url('song-sync.js',$main),[],'2.5.8',true);
 });
 add_filter('the_content',function($content){
     if(is_admin()||!is_front_page()||!is_main_query()||!in_the_loop()||has_shortcode($content,'sports_meet_home')||has_shortcode($content,'sports_meet_song')||str_contains($content,'class="sm-song"'))return $content;
@@ -41,7 +41,7 @@ add_filter('the_content',function($content){
 },20);
 
 function song_admin():void {
-    echo '<h3>主题曲封面</h3><form method="post" action="'.esc_url(admin_url('admin-post.php')).'"><input type="hidden" name="action" value="sports_meet_song_options">'.wp_nonce_field('sports_meet_song_options','sm_nonce',false,false).'<label>海报图片地址（从媒体库复制文件URL）<input type="url" name="poster" value="'.esc_attr(get_option('sports_meet_song_poster','')).'" placeholder="https://…"></label><p>海报完整展示，不裁切。留空使用《奔FUN赛道》吉祥物封面。</p><button>保存主题曲封面</button></form><p>主题曲短代码：[sports_meet_song]</p>';
+    echo '<details id="sm-photo-song-settings"><summary>主题曲封面</summary><form method="post" action="'.esc_url(admin_url('admin-post.php')).'"><input type="hidden" name="action" value="sports_meet_song_options">'.wp_nonce_field('sports_meet_song_options','sm_nonce',false,false).'<label>海报图片地址（从媒体库复制文件URL）<input type="url" name="poster" value="'.esc_attr(get_option('sports_meet_song_poster','')).'" placeholder="https://…"></label><p>海报完整展示，不裁切。留空使用《奔FUN赛道》吉祥物封面。</p><button>保存封面</button><p>短代码 <code>[sports_meet_song]</code></p></form></details>';
 }
 add_action('admin_post_sports_meet_song_options',function(){
     if(!current_user_can('manage_options'))wp_die('没有管理权限。','',['response'=>403]);

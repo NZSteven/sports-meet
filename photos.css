@@ -35,6 +35,32 @@
 .sm-photo-picker:focus-within {outline: 3px solid #e58a41; outline-offset: 3px;}
 .sm-upload-form .sm-btn:disabled {background: #e5ebe6; color: #58685d; cursor: default;}
 .sm-photo-details{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:12px;color:#536655}.sm-photo-grid .sm-photo-details strong{display:inline;color:#193e30}
+.sm-photo-admin-settings {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    align-items: start;
+    gap: 8px;
+}
+.sm-photo-admin-settings details {
+    min-width: 0;
+    border: 1px solid #d5e1eb;
+    border-radius: 6px;
+    background: #fff;
+}
+.sm-photo-admin-settings summary {padding: 8px 10px; font-weight: 600; cursor: pointer;}
+.sm-site .sm-photo-admin-settings form {
+    display: grid;
+    gap: 8px;
+    margin: 0;
+    padding: 8px 10px 10px;
+    border: 0;
+    background: transparent;
+}
+.sm-photo-admin-settings form p {margin: 0; font-size: 12px;}
+.sm-photo-admin-settings form button {justify-self: start; padding: 4px 10px;}
+@media (max-width: 650px) {
+    .sm-photo-admin-settings {grid-template-columns: minmax(0, 1fr);}
+}
 .sm-photo-grid.sm-admin-photo-grid {
     grid-template-columns: repeat(4, minmax(0, 1fr));
     gap: 12px;
