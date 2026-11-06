@@ -13,10 +13,7 @@ function install_disclaimer(): void {
         PRIMARY KEY (athlete_id,statement_hash,identity_hash),
         FOREIGN KEY (athlete_id) REFERENCES athletes(id) ON DELETE CASCADE
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4');
-    if(!q("SHOW COLUMNS FROM disclaimer_acceptances LIKE 'signature_data'")->fetch()){
-        try{q('ALTER TABLE disclaimer_acceptances ADD COLUMN signature_data TEXT NULL');}
-        catch(DatabaseException $error){if(!q("SHOW COLUMNS FROM disclaimer_acceptances LIKE 'signature_data'")->fetch())throw $error;}
-    }
+    upgrade_disclaimer_esign();
     $pages=get_option('sports_meet_pages',[]);
     if(empty($pages['disclaimer']) || get_post_status($pages['disclaimer'])!=='publish'){
         $page=get_page_by_path('sports-disclaimer');
@@ -30,16 +27,36 @@ function install_disclaimer(): void {
         }
         update_option('sports_meet_pages',$pages,false);
     }
-    $default=trim(file_get_contents(dirname(__DIR__).'/media/disclaimer.txt'));
-    if(!get_option('sports_meet_disclaimer_esign_installed')){
-        $old=disclaimer_text();
-        if($old!=='')add_option('sports_meet_disclaimer_'.hash('sha256',$old),$old,'',false);
-        update_option('sports_meet_disclaimer_text',$default,false);
-        update_option('sports_meet_disclaimer_esign_installed',1,false);
-    }
-    add_option('sports_meet_disclaimer_'.hash('sha256',$default),$default,'',false);
     update_option('sports_meet_disclaimer_ready',1,false);
 }
+
+function upgrade_disclaimer_esign(): void {
+    if(get_option('sports_meet_disclaimer_esign_installed'))return;
+    if(!q("SHOW COLUMNS FROM disclaimer_acceptances LIKE 'signature_data'")->fetch()){
+        try{q('ALTER TABLE disclaimer_acceptances ADD COLUMN signature_data TEXT NULL');}
+        catch(DatabaseException $error){if(!q("SHOW COLUMNS FROM disclaimer_acceptances LIKE 'signature_data'")->fetch())throw $error;}
+    }
+    $source=file_get_contents(dirname(__DIR__).'/media/disclaimer.txt');
+    if($source===false||trim($source)==='')throw new \RuntimeException('新版免责声明正文无法读取。');
+    $default=trim($source);
+    $old=disclaimer_text();
+    if($old!=='')add_option('sports_meet_disclaimer_'.hash('sha256',$old),$old,'',false);
+    add_option('sports_meet_disclaimer_'.hash('sha256',$default),$default,'',false);
+    if(!update_option('sports_meet_disclaimer_text',$default,false)&&disclaimer_text()!==$default){
+        throw new \RuntimeException('新版免责声明正文无法保存。');
+    }
+    update_option('sports_meet_disclaimer_esign_installed',1,false);
+}
+
+add_action('init',function(){
+    if(get_option('sports_meet_disclaimer_esign_installed')||!get_option('sports_meet_disclaimer_ready')
+        ||!get_option('sports_meet_community_ready')||get_transient('sports_meet_esign_retry_wait'))return;
+    try{upgrade_disclaimer_esign();}
+    catch(\Throwable $error){
+        set_transient('sports_meet_esign_retry_wait',1,MINUTE_IN_SECONDS);
+        error_log('Sports Meet disclaimer upgrade: '.$error->getMessage());
+    }
+},25);
 
 function disclaimer_text(): string {return (string)get_option('sports_meet_disclaimer_text','');}
 
@@ -228,5 +245,5 @@ add_filter('wp_nav_menu_items',function(string $items,$args): string {
 },10,2);
 
 add_action('wp_enqueue_scripts',function(){
-    wp_enqueue_script('sports-meet-disclaimer',plugins_url('disclaimer.js',dirname(__DIR__).'/sports-meet.php'),[],'2.5.26',true);
+    wp_enqueue_script('sports-meet-disclaimer',plugins_url('disclaimer.js',dirname(__DIR__).'/sports-meet.php'),[],'2.5.27',true);
 });
