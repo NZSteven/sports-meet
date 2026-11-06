@@ -42,8 +42,13 @@
         const input = form.querySelector('input[type="file"]');
         const previews = form.querySelector('.sm-photo-previews');
         const status = form.querySelector('.sm-preview-status');
+        const submit = form.querySelector('button[type="submit"]');
         if (!input || !previews || !status) return;
 
+        let uploading = false;
+        const updateSubmit = () => {
+            if (submit) submit.disabled = uploading || input.files.length < 1 || input.files.length > 5;
+        };
         let urls = [];
         const render = () => {
             urls.forEach(url => URL.revokeObjectURL(url));
@@ -52,6 +57,7 @@
             const files = Array.from(input.files);
             const tooMany = files.length > 5;
             input.setCustomValidity(tooMany ? '每次最多选择 5 张照片，请重新选择。' : '');
+            updateSubmit();
             status.textContent = tooMany ? '每次最多选择 5 张照片，请重新选择。' : (files.length ? `已选 ${files.length} 张照片` : '');
 
             files.slice(0, 5).forEach(file => {
@@ -75,7 +81,6 @@
         const progress = form.querySelector('.sm-upload-progress');
         const results = form.querySelector('.sm-upload-results');
         if (!progress || !results || typeof fetch !== 'function' || typeof AbortController !== 'function') return;
-        let uploading = false;
         input.addEventListener('invalid', () => {
             progress.textContent = input.files.length ? input.validationMessage : '请先选择照片，再点击上传。';
         });
@@ -142,6 +147,7 @@
             } finally {
                 uploading = false;
                 controls.forEach(element => { element.disabled = false; });
+                updateSubmit();
             }
         });
     });

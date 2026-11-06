@@ -5,3 +5,32 @@
 .sm-site .sm-hero{grid-template-columns:minmax(0,1fr) minmax(0,1.1fr);align-items:center;gap:24px;min-height:0;padding:32px;background:linear-gradient(125deg,#f3f6eb,#e7efdf);border:1px solid #dbe4d2;border-radius:18px}.sm-site .sm-hero-copy{padding:28px 24px}.sm-site .sm-hero h1{font-size:clamp(42px,5.3vw,72px);line-height:1.15}.sm-hero-poster{display:block;justify-self:center;width:100%;max-width:580px;padding:8px;background:#fff;border-radius:14px;box-shadow:0 12px 32px #173d321c;line-height:0}.sm-hero-poster img{display:block;width:100%;height:auto;border-radius:8px}.sm-site .sm-hero-copy>.sm-eyebrow{font-size:12px;letter-spacing:.06em;line-height:1.8}@media(max-width:800px){.sm-site .sm-hero{grid-template-columns:1fr;padding:24px;gap:24px}.sm-site .sm-hero-copy{padding:8px}.sm-site .sm-hero h1{font-size:clamp(40px,8vw,60px)}.sm-hero-poster{max-width:580px}}@media(max-width:480px){.sm-site .sm-hero{padding:20px 16px;border-radius:12px}.sm-site .sm-hero-copy{padding:0}.sm-site .sm-hero h1{font-size:42px}.sm-hero-poster{max-width:100%}}
 .sm-photo-previews{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(120px,100%),1fr));gap:12px;margin:12px 0}.sm-photo-previews:empty,.sm-preview-status:empty{display:none}.sm-photo-previews figure{margin:0;background:#f3f6ef;border:1px solid #dbe2d8;border-radius:8px;overflow:hidden}.sm-photo-previews img{display:block;width:100%;height:110px;object-fit:contain}.sm-photo-previews figcaption{padding:5px 8px;font-size:12px;overflow-wrap:anywhere}.sm-batch-review{margin:12px 0 18px}.sm-batch-review [hidden]{display:none!important}.sm-review-choice{margin:8px 0;font-weight:600}.sm-batch-review button:disabled{opacity:.55;cursor:default}
 .sm-upload-progress:empty,.sm-upload-results:empty{display:none}.sm-upload-results{padding-left:1.4em;overflow-wrap:anywhere}.sm-upload-result-error{color:#98352e}
+.sm-upload-form .sm-photo-picker {
+    position: relative;
+    text-align: center;
+    padding: 22px 16px;
+    background: #eaf4ee;
+    border: 2px dashed #438168;
+    cursor: pointer;
+}
+.sm-photo-picker .sm-picker-label {
+    display: inline-block;
+    padding: 12px 24px;
+    border-radius: 7px;
+    background: #17503b;
+    color: #fff;
+    font-size: 20px;
+}
+.sm-photo-picker span {display: block; margin-top: 10px;}
+.sm-upload-form .sm-photo-picker input[type=file] {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    margin: 0;
+    opacity: 0;
+    cursor: pointer;
+}
+.sm-photo-picker:hover {background: #dfeee4;}
+.sm-photo-picker:focus-within {outline: 3px solid #e58a41; outline-offset: 3px;}
+.sm-upload-form .sm-btn:disabled {background: #e5ebe6; color: #58685d; cursor: default;}
