@@ -48,3 +48,22 @@ body.sm-brand-home{background:#f9fbff;isolation:isolate}
 }
 @media (max-width: 600px) {.sm-photo-grid.sm-public-gallery {grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px;}}
 @media (prefers-reduced-motion: reduce) {.sm-hero-slide {transition: none;} .sm-hero-slides.is-playing .sm-hero-slide.is-active img {animation: none;}}
+.sm-hero-showcase .sm-hero-copy {justify-content: flex-start;}
+.sm-hero-right {min-width: 0;}
+.sm-hero-right .sm-song {grid-template-columns: minmax(0, .85fr) minmax(0, 1.15fr); gap: 16px; margin: 18px 0 0; padding: 16px;}
+.sm-live-board {max-width: 900px; margin: 24px auto; padding: 20px; border: 1px solid #d7e4f2; border-radius: 14px; background: #ffffffef; color: #193e30;}
+.sm-hero-copy .sm-live-board {max-width: none; margin: 0; padding: 16px 12px; border-radius: 0 0 10px 10px;}
+.sm-hero-copy .sm-hero-counts {border-radius: 8px 8px 0 0;}
+.sm-live-board h2, .sm-site .sm-live-board h2 {font-size: clamp(22px, 2.4vw, 30px); margin: 0 0 6px; line-height: 1.25;}
+.sm-ranking-note {margin: 0 0 10px; font-size: 12px; color: #52695f;}
+.sm-ranking-list {list-style: none; padding: 0; margin: 0;}
+.sm-ranking-list li {display: grid; grid-template-columns: auto auto minmax(0, 1fr) auto; gap: 9px; align-items: center; padding: 8px 6px; border-top: 1px solid #e2ebe3;}
+.sm-ranking-list li[data-rank="1"] {background: #fff8e5;}
+.sm-ranking-position {font-size: 13px; color: #52695f;}
+.sm-ranking-name {font-size: 14px; overflow-wrap: anywhere;}
+.sm-ranking-score {color: #617668; filter: blur(2px); user-select: none;}
+.sm-ranking-list:not(:empty) + .sm-ranking-empty {display: none;}
+@media (max-width: 600px) {
+    .sm-hero-right .sm-song {grid-template-columns: minmax(0, 1fr);}
+    .sm-hero-copy .sm-live-board {padding: 14px 10px;}
+}

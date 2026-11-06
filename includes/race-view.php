@@ -24,9 +24,46 @@ function race_public_roster():string {
     else table(['所属高校','姓名','组别','比赛号码','参赛项目'],$rows);
     echo '</section>';return ob_get_clean();
 }
-function race_public_board():string {
+function race_admin_board():string {
     ob_start();echo '<section class="sports-meet"><h2>高校总积分</h2><p>每人每项目参赛分只计一次；决赛另加名次分。接力名次分由8名队员均分，计回各自所属高校。仅统计已提交完成的轮次。</p>';$rows=[];foreach(race_scoreboard() as $t)$rows[]=[$t['rank'],$t['name'],race_fmt($t['part']),race_fmt($t['place']),race_fmt($t['total'])];table(['名次','所属高校','参赛分','名次分','总积分'],$rows);echo '</section>';return ob_get_clean();
 }
+
+function race_top_six(): array {
+    $cached=get_transient('sports_meet_public_top_six');
+    if(is_array($cached))return $cached;
+    $teams=array_map(static fn(array $team)=>[
+        'rank'=>(int)$team['rank'],
+        'name'=>$team['name'],
+    ],array_slice(race_scoreboard(),0,6));
+    set_transient('sports_meet_public_top_six',$teams,10);
+    return $teams;
+}
+
+function race_public_board(): string {
+    $html='<section class="sm-live-board" data-sm-rank-url="'.esc_url(rest_url('sports-meet/v1/ranking')).'">'
+        .'<h2>实时排名榜</h2><p class="sm-ranking-note">前 6 支队伍 · 按已完成比赛更新</p>'
+        .'<ol class="sm-ranking-list">';
+    foreach(race_top_six() as $team){
+        $rank=(int)$team['rank'];
+        $html.='<li data-rank="'.$rank.'"><span class="sm-ranking-trophy" aria-hidden="true">🏆</span>'
+            .'<span class="sm-ranking-position" aria-label="第 '.$rank.' 名">'.$rank.'</span>'
+            .'<strong class="sm-ranking-name">'.esc_html($team['name']).'</strong>'
+            .'<span class="sm-ranking-score" role="img" aria-label="积分暂不公开">•••</span></li>';
+    }
+    return $html.'</ol><p class="sm-ranking-empty">暂无参赛队伍。</p></section>';
+}
+
+add_action('rest_api_init',function(){
+    register_rest_route('sports-meet/v1','/ranking',[
+        'methods'=>'GET',
+        'permission_callback'=>'__return_true',
+        'callback'=>static function(){
+            $response=new \WP_REST_Response(race_top_six());
+            $response->header('Cache-Control','no-store, max-age=0');
+            return $response;
+        },
+    ]);
+});
 function race_public_results(bool $includeQualifiers=true):string {
     ob_start();echo '<section class="sports-meet"><h2>项目决赛前三名</h2>';$groups=[];
     foreach(q("SELECT e.*,r.event_id FROM race_entries e JOIN race_rounds r ON r.id=e.round_id WHERE r.stage='final' AND r.status='finalized' AND e.place IS NOT NULL ORDER BY r.event_id,e.place")->fetchAll() as $r)$groups[$r['event_id']][]=$r;
