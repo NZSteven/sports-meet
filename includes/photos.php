@@ -5,7 +5,7 @@ defined('ABSPATH') || exit;
 function install_photos(): void {
     q("CREATE TABLE IF NOT EXISTS photos (id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT, owner BIGINT UNSIGNED NOT NULL, title VARCHAR(180) NOT NULL, image LONGBLOB NOT NULL, width SMALLINT UNSIGNED NOT NULL, height SMALLINT UNSIGNED NOT NULL, bytes INT UNSIGNED NOT NULL, status VARCHAR(12) NOT NULL DEFAULT 'pending', created DATETIME NOT NULL, PRIMARY KEY(id), KEY gallery(status,id), KEY user_date(owner,created)) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
 }
-add_action('admin_init',function(){if(current_user_can('manage_options') && get_option('sports_meet_db_version')!=='2.5.15')activate();});
+add_action('admin_init',function(){if(current_user_can('manage_options') && get_option('sports_meet_db_version')!=='2.5.16')activate();});
 function page_url(string $key): string {
     $pages=get_option('sports_meet_pages',[]);
     $id=(int)($pages[$key]??0);
@@ -266,7 +266,7 @@ function batch_publish_photos(): void {
 add_action('admin_post_sports_meet_batch_publish',__NAMESPACE__.'\\batch_publish_photos');
 function home_section_original(): string {
     $showGallery=photo_gallery_enabled();
-    $rows=$showGallery?q("SELECT id,owner,title,width,height,status,created FROM photos WHERE status='published' ORDER BY id DESC LIMIT 8")->fetchAll():[];
+
     $media=plugins_url('media/',dirname(__DIR__).'/sports-meet.php');
     $slides=[];
     $heroIds=$showGallery?hero_photo_ids():[];
@@ -295,17 +295,21 @@ function home_section_original(): string {
     $html.='<div class="sm-slide-controls" hidden><button type="button" data-sm-prev aria-label="上一张">‹</button>'
         .'<button type="button" data-sm-play>暂停</button><button type="button" data-sm-next aria-label="下一张">›</button></div></section>';
     $html.=song_section().'</div></section>';
-    if($showGallery){
-        $links=[['查看全部相册',page_url('gallery')]];
-        if(photo_upload_enabled())$links[]=['分享你的照片',page_url('upload')];
-        $html.='<section class="sm-gallery-preview sm-photo-carousel"><div class="sm-section-head"><div><p class="sm-eyebrow">THE HIGHLIGHTS</p>'
-            .'<h2>不止终点，还有沿途的精彩...</h2></div><div class="sm-gallery-actions">'
-            .'<div class="sm-strip-controls" hidden><button type="button" data-sm-strip-prev aria-label="上一张照片">‹</button>'
-            .'<button type="button" data-sm-strip-play>暂停</button>'
-            .'<button type="button" data-sm-strip-next aria-label="下一张照片">›</button></div>'
-            .community_buttons($links).'</div></div>'.photo_cards($rows).'</section>';
-    }
-    return $html.guestbook_home().'</div>';
+    return $html.photo_carousel().guestbook_home().'</div>';
+}
+
+function photo_carousel(): string {
+    if(!photo_gallery_enabled())return '';
+    $rows=q("SELECT id,owner,title,width,height,status,created FROM photos WHERE status='published' ORDER BY id DESC LIMIT 8")->fetchAll();
+    $links=[['查看全部相册',page_url('gallery')]];
+    if(photo_upload_enabled())$links[]=['分享你的照片',page_url('upload')];
+    return '<section class="sm-gallery-preview sm-photo-carousel"><div class="sm-section-head"><div><p class="sm-eyebrow">THE HIGHLIGHTS</p>'
+        .'<h2>不止终点，还有沿途的精彩...</h2></div><div class="sm-gallery-actions">'
+        .'<div class="sm-strip-controls" hidden><button type="button" data-sm-strip-prev aria-label="上一张照片">‹</button>'
+        .'<button type="button" data-sm-strip-play>暂停</button>'
+        .'<button type="button" data-sm-strip-next aria-label="下一张照片">›</button></div>'
+        .community_buttons($links).'</div></div>'.photo_cards($rows).'</section>';
+
 }
 add_shortcode('sports_meet_home',__NAMESPACE__.'\\home_section');
 function setup_site(): void {

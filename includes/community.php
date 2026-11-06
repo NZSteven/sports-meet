@@ -68,6 +68,7 @@ add_filter('wp_nav_menu_args',static function(array $args):array {
 function community_hub($attrs=[]): string {
     $key=shortcode_atts(['kind'=>'intro'],(array)$attrs)['kind'];
     if($key==='messages')return guestbook_page();
+    if($key==='media_hub')return '<section class="sm-site sm-media-hub">'.photo_carousel().guestbook_home(8).'</section>';
     $html='<section class="sm-site sm-community">';
     if($key==='intro')$html.='<p>'.esc_html(SITE_NAME).' · '.esc_html(SITE_SLOGAN).'</p>'
         .'<p>第五届奔Fun运动会于 2026 年 11 月 15 日举行。校友和家人一起参赛、观赛，分享运动场上的精彩瞬间。</p>'
@@ -77,12 +78,6 @@ function community_hub($attrs=[]): string {
         ?community_buttons([['赛事管理',view_url('races')],['照片管理',view_url('photos')],['留言管理',view_url('messages')],['免责声明设置',view_url('disclaimer')]])
         :'<p>组委会负责赛事和网站管理。组委会成员请用管理员账号登录。</p>'.(!is_user_logged_in()?wp_login_form(['echo'=>false,'redirect'=>page_url('committee')]):'');
     elseif($key==='sponsors')$html.='<p>感谢支持奔Fun运动会的伙伴。</p><p>赞助伙伴资料待公布。</p>';
-    elseif($key==='media_hub'){
-        $links=[['留言板',page_url('messages')]];
-        if(photo_gallery_enabled())$links[]=['精彩相册',page_url('gallery')];
-        if(photo_upload_enabled())$links[]=['分享你的照片',page_url('upload')];
-        $html.=community_buttons($links);
-    }
     return $html.'</section>';
 }
 add_shortcode('sports_meet_hub',__NAMESPACE__.'\\community_hub');
@@ -120,10 +115,10 @@ function guestbook_cards(array $rows,bool $short=false): string {
     return $html.'</div>';
 }
 
-function guestbook_home(): string {
+function guestbook_home(int $limit=3): string {
     if(!get_option('sports_meet_community_ready'))return '';
     $order=get_option('sports_meet_guestbook_pins_ready')?'pinned DESC,id DESC':'id DESC';
-    $rows=q("SELECT * FROM guest_messages WHERE status='published' ORDER BY $order LIMIT 3")->fetchAll();
+    $rows=q("SELECT * FROM guest_messages WHERE status='published' ORDER BY $order LIMIT $limit")->fetchAll();
     return '<section class="sm-gallery-preview sm-guestbook-preview"><div class="sm-section-head"><h2>除了精彩瞬间，更有心里的感言...</h2>'
         .community_buttons([['查看全部留言',page_url('messages')],['说出你的感言',page_url('messages').'#sm-message-form']]).'</div>'.guestbook_cards($rows,true).'</section>';
 }
