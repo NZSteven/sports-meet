@@ -20,11 +20,27 @@ add_filter('body_class',function(array $classes):array {
     $classes[]='sm-brand-home';
     return $classes;
 });
+
+add_filter('the_content',function(string $content):string {
+    // The page template already prints the primary title above the content.
+    if(is_admin()||!is_page()||is_front_page()||!is_main_query()||!in_the_loop())return $content;
+    $normalize=static fn(string $value):string=>trim(html_entity_decode(wp_strip_all_tags($value),ENT_QUOTES,'UTF-8'));
+    $title=$normalize(get_the_title(get_queried_object_id()));
+    if($title==='')return $content;
+    $aliases=[
+        '报名名单'=>['高校及报名名单'],
+        '排行榜'=>['实时排名榜'],
+        '队伍排行榜'=>['实时排名榜'],
+    ];
+    $duplicates=array_merge([$title],$aliases[$title]??[]);
+    return preg_replace_callback('/<h([12])\b[^>]*>(.*?)<\/h\1\s*>/is',
+        static fn(array $match):string=>in_array($normalize($match[2]),$duplicates,true)?'':$match[0],$content)??$content;
+},30);
 add_action('wp_enqueue_scripts',function(){
     $main=dirname(__DIR__).'/sports-meet.php';
-    wp_enqueue_style('sports-meet-header',plugins_url('header-identity.css',$main),[],'2.4.36');
-    wp_enqueue_script('sports-meet-header',plugins_url('header-identity.js',$main),[],'2.4.36',true);
-    wp_enqueue_style('sports-meet-home-corners',plugins_url('home-corners.css',$main),['sports-meet-photos'],'2.4.36');
-    wp_enqueue_script('sports-meet-slides',plugins_url('photo-slides.js',$main),[],'2.4.36',true);
-    wp_enqueue_script('sports-meet-rankings',plugins_url('live-ranking.js',$main),[],'2.4.36',true);
+    wp_enqueue_style('sports-meet-header',plugins_url('header-identity.css',$main),[],'2.4.37');
+    wp_enqueue_script('sports-meet-header',plugins_url('header-identity.js',$main),[],'2.4.37',true);
+    wp_enqueue_style('sports-meet-home-corners',plugins_url('home-corners.css',$main),['sports-meet-photos'],'2.4.37');
+    wp_enqueue_script('sports-meet-slides',plugins_url('photo-slides.js',$main),[],'2.4.37',true);
+    wp_enqueue_script('sports-meet-rankings',plugins_url('live-ranking.js',$main),[],'2.4.37',true);
 });
