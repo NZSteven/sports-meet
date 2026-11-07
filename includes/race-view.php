@@ -170,12 +170,12 @@ function race_round_label(array $round): string {
 }
 
 function race_ui_rounds(?string $stage=null):void {
-    if($stage==='final'){$selectedRound=race_final_projects();if(!$selectedRound)return;$_GET['round_id']=$selectedRound;}
     $admin=current_user_can('manage_options');
-    if($admin){
-        echo '<details><summary>100米预先随机分组</summary><p>请在报名名单核对完成后操作。各100米项目超过8人时随机均分预赛，每组最多8人，8人以内直接决赛。已生成赛程的项目会跳过。生成后该项目报名锁定。</p>';
-        race_form('prepare_sprints','rounds');finish('生成全部100米项目分组');echo '</details>';
-    }
+    echo '<section class="race-sprint-draw"><h2>100米预先随机分组</h2><p>报名名单核对完成后，由管理员生成各组名单。超过8人时随机均分预赛，每组最多8人；8人以内直接决赛。已生成赛程的项目会跳过，生成后该项目报名锁定。</p>';
+    if($admin){race_form('prepare_sprints','rounds');finish('生成全部100米项目分组');}
+    else echo '<p>请联系管理员使用管理员账号登录此页生成分组。裁判可在下方录入已生成的比赛。</p>';
+    echo '</section>';
+    if($stage==='final'){$selectedRound=race_final_projects();if(!$selectedRound)return;$_GET['round_id']=$selectedRound;}
     if($admin&&!$stage){echo '<details><summary>生成预赛／直接决赛名单</summary><p>生成后锁定此项目报名。100米每组最多8人，接力每组最多5队。系统随机均分并按组内冲线名次晋级，需要时自动安排半决赛。其他个人项目仍可按下方设置分组。</p>';race_form('generate','rounds');race_options('event_id','项目',all('events'));race_options('stage','比赛安排',[['id'=>'heat','name'=>'先预赛，自动晋级决赛'],['id'=>'final','name'=>'直接决赛']],'heat');field('capacity','其他个人项目每组人数','number','8','min="1" max="100"');echo '<label><input type="checkbox" name="individual_split" value="1"> 其他个人项目分组（每组前三晋级）</label>';finish('生成名单');echo '</details>';}
     if($stage!=='final'){echo '<h2>选择项目及预赛／决赛</h2><div class="race-round-links">';foreach(q('SELECT r.*,e.name AS event_name FROM race_rounds r JOIN events e ON e.id=r.event_id ORDER BY e.id,r.stage DESC,r.heat_no')->fetchAll() as $r){if($stage==='heat'&&$r['stage']==='final')continue;echo '<a href="'.esc_url(race_url('rounds',['round_id'=>$r['id']])).'">'.esc_html($r['event_name'].' · '.race_round_label($r).' · '.($r['status']==='finalized'?'已完成':'待提交')).'</a>';}echo '</div>';}
     if(empty($_GET['round_id']))return;$round=race_one('race_rounds',(int)$_GET['round_id']);$event=race_event((int)$round['event_id']);if($stage&&($stage==='final')!==($round['stage']==='final')){echo '<p class="error">此轮不属于当前页面，请从对应预赛／决赛入口选择。</p>';return;}$ready=true;try{race_round_ready($round);}catch(\Throwable $e){$ready=false;echo '<p class="error">'.esc_html($e->getMessage()).'</p>';}
