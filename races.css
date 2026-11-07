@@ -104,3 +104,8 @@
     .race-judge-sidebar {max-height:240px;}
     .sm-brand-home .sd-main {padding-top:12px;}
 }
+
+.race-workspace .race-judge-sidebar .race-judge-event summary {border-inline-start:0;border-radius:3px;margin:2px 0;}
+.race-workspace .race-judge-sidebar .race-judge-event.is-open summary {background:#fff5d6;color:#6d4c00;}
+.race-workspace .race-judge-sidebar .race-judge-event.is-running summary {background:#e2efff;color:#174f8c;}
+.race-workspace .race-judge-sidebar .race-judge-event.is-finalized summary {background:#e6f5e8;color:#215c2c;}
