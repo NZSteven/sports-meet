@@ -20,6 +20,11 @@ function race_enroll(int $event,int $athlete):void {
     if(!in_array(race_category($a),race_event_categories($e),true))throw new \RuntimeException('运动员组别不符合项目要求。');
     if($e['gender']!=='X' && $a['gender']!==$e['gender'])throw new \RuntimeException('运动员性别不符合项目要求。');
     if(!race_group_matches($e['age_group'],$a['age_group'],$a['gender']))throw new \RuntimeException('运动员组别不符合项目要求。');
+    if($e['kind']==='relay'){
+        $count=(int)q('SELECT COUNT(*) FROM race_enrollments n JOIN athletes a ON a.id=n.athlete_id
+            WHERE n.event_id=? AND a.team_id=? AND a.id<>?',[$event,$a['team_id'],$athlete])->fetchColumn();
+        if($count>=8)throw new \RuntimeException('同一高校在同一接力项目最多报名8人。');
+    }
     q('INSERT IGNORE INTO race_enrollments(event_id,athlete_id) VALUES(?,?)',[$event,$athlete]);
 }
 function race_checkin(int $athlete,string $bib,int $version):void {

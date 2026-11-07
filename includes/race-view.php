@@ -144,18 +144,13 @@ function race_ui_events():void {
     echo '<h2>比赛项目</h2><p>不同性别、年龄组分别建立项目。比赛名次直接由裁判填写，不按计时自动排名。</p>';race_form('event','events');field('id','项目ID：新增填0','number','0','min="0"');field('name','项目名称');race_options('kind','项目类型',[['id'=>'individual','name'=>'个人项目'],['id'=>'relay','name'=>'8×50米混合接力']]);race_options('gender','个人项目性别',[['id'=>'X','name'=>'不限'],['id'=>'M','name'=>'男'],['id'=>'F','name'=>'女']],'X');echo '<label>年龄组（可空）<input name="age_group"></label>';finish();$rows=[];foreach(all('events') as $e)$rows[]=[$e['id'],$e['name'],$e['kind']==='relay'?'接力':'个人',$e['gender'],$e['age_group'],q('SELECT COUNT(*) FROM race_enrollments WHERE event_id=?',[$e['id']])->fetchColumn()];table(['ID','名称','类型','性别','组别','报名人数'],$rows);race_delete_ui();
 }
 function race_ui_relay():void {
-    echo '<h2>8×50米混合接力组队</h2><p>同校队选择高校后勾选8名队员，无需比赛号码。跨校混合队留空高校，填写8个已检录的号码。名次分由8人均分并计回所属高校。</p>';
+    echo '<h2>8×50米混合接力组队</h2><p>同校队选择高校后，系统自动使用该校已报名该接力项目的8名队员组队，无需选人或输入号码。同一高校每个接力项目最多报名8人。跨校混合队留空高校，填写8个已检录的号码。名次分由8人均分并计回所属高校。</p>';
     race_form('relay','relay');
     field('id','接力队ID：新增填0，编辑填现有ID','number','0','min="0"');
     race_options('event_id','接力项目',array_values(array_filter(all('events'),fn($e)=>$e['kind']==='relay')));
     field('name','接力队名称');
     race_options('relay_school','同校队所属高校（跨校队留空）',all('teams'),'',false);
-    echo '<fieldset data-relay-athletes><legend>同校队员（勾选8人）</legend><div class="race-event-grid">';
-    foreach(race_roster_rows() as $athlete){
-        echo '<label data-relay-school="'.(int)$athlete['team_id'].'"><input type="checkbox" name="relay_athletes[]" value="'.(int)$athlete['id'].'"> '
-            .esc_html($athlete['name'].' · '.$athlete['team_name'].' · '.race_category($athlete)).'</label>';
-    }
-    echo '</div></fieldset><label>跨校队8个比赛号码（英文逗号分隔）<input name="bibs" type="text"></label>';
+    echo '<label>跨校队8个比赛号码（同校队留空）<input name="bibs" type="text"></label>';
     finish('保存8人名单');
     $rows=[];foreach(q('SELECT r.*,e.name AS event_name FROM race_relays r JOIN events e ON e.id=r.event_id ORDER BY r.id')->fetchAll() as $r){$m=race_members((int)$r['id']);$rows[]=[$r['id'],$r['event_name'],$r['name'],count($m).'/8',implode('、',array_map(fn($a)=>$a['name'].'('.($a['race_bib']??'未检录').' / '.$a['team_name'].')',$m))];}table(['ID','项目','接力队','人数','队员及所属高校'],$rows);race_delete_ui();
 }
@@ -177,6 +172,10 @@ function race_round_label(array $round): string {
 function race_ui_rounds(?string $stage=null):void {
     if($stage==='final'){$selectedRound=race_final_projects();if(!$selectedRound)return;$_GET['round_id']=$selectedRound;}
     $admin=current_user_can('manage_options');
+    if($admin){
+        echo '<details><summary>100米预先随机分组</summary><p>请在报名名单核对完成后操作。各100米项目超过8人时随机均分预赛，每组最多8人，8人以内直接决赛。已生成赛程的项目会跳过。生成后该项目报名锁定。</p>';
+        race_form('prepare_sprints','rounds');finish('生成全部100米项目分组');echo '</details>';
+    }
     if($admin&&!$stage){echo '<details><summary>生成预赛／直接决赛名单</summary><p>生成后锁定此项目报名。100米每组最多8人，接力每组最多5队。系统随机均分并按组内冲线名次晋级，需要时自动安排半决赛。其他个人项目仍可按下方设置分组。</p>';race_form('generate','rounds');race_options('event_id','项目',all('events'));race_options('stage','比赛安排',[['id'=>'heat','name'=>'先预赛，自动晋级决赛'],['id'=>'final','name'=>'直接决赛']],'heat');field('capacity','其他个人项目每组人数','number','8','min="1" max="100"');echo '<label><input type="checkbox" name="individual_split" value="1"> 其他个人项目分组（每组前三晋级）</label>';finish('生成名单');echo '</details>';}
     if($stage!=='final'){echo '<h2>选择项目及预赛／决赛</h2><div class="race-round-links">';foreach(q('SELECT r.*,e.name AS event_name FROM race_rounds r JOIN events e ON e.id=r.event_id ORDER BY e.id,r.stage DESC,r.heat_no')->fetchAll() as $r){if($stage==='heat'&&$r['stage']==='final')continue;echo '<a href="'.esc_url(race_url('rounds',['round_id'=>$r['id']])).'">'.esc_html($r['event_name'].' · '.race_round_label($r).' · '.($r['status']==='finalized'?'已完成':'待提交')).'</a>';}echo '</div>';}
     if(empty($_GET['round_id']))return;$round=race_one('race_rounds',(int)$_GET['round_id']);$event=race_event((int)$round['event_id']);if($stage&&($stage==='final')!==($round['stage']==='final')){echo '<p class="error">此轮不属于当前页面，请从对应预赛／决赛入口选择。</p>';return;}$ready=true;try{race_round_ready($round);}catch(\Throwable $e){$ready=false;echo '<p class="error">'.esc_html($e->getMessage()).'</p>';}

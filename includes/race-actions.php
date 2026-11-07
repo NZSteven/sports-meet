@@ -76,11 +76,9 @@ function race_mutate(array $p):void {
         $school=absint($p['relay_school']??0);
         $ids=[];
         if($school){
-            foreach((array)($p['relay_athletes']??[]) as $value){
-                $id=absint($value);
-                if(!$id||!q('SELECT id FROM athletes WHERE id=? AND team_id=?',[$id,$school])->fetch())throw new \RuntimeException('同校组队只能选择该校队员。');
-                $ids[]=$id;
-            }
+            $ids=q('SELECT a.id FROM race_enrollments n JOIN athletes a ON a.id=n.athlete_id
+                WHERE n.event_id=? AND a.team_id=? ORDER BY a.id',[(int)$p['event_id'],$school])->fetchAll(7);
+            if(count($ids)!==8)throw new \RuntimeException('同校接力队须恰有8名已报名该接力项目的队员，请先核对报名名单。');
         }else{
             foreach(array_map('trim',explode(',',(string)($p['bibs']??''))) as $b){
                 if(!preg_match('/^\d{1,8}$/',$b))throw new \RuntimeException('请用英文逗号分隔8个比赛号码。');
@@ -91,6 +89,17 @@ function race_mutate(array $p):void {
         }
         race_set_relay((int)$p['event_id'],(int)($p['id']??0),(string)$p['name'],$ids);break;
     case 'generate':race_generate((int)$p['event_id'],(string)$p['stage'],(int)$p['capacity'],!empty($p['individual_split']));break;
+    case 'prepare_sprints':
+        $prepared=0;
+        foreach(all('events') as $event){
+            if($event['kind']!=='individual'||!race_eight_lane_event($event))continue;
+            if(q('SELECT id FROM race_rounds WHERE event_id=? LIMIT 1',[$event['id']])->fetch())continue;
+            if(!q('SELECT id FROM race_enrollments WHERE event_id=? LIMIT 1',[$event['id']])->fetch())continue;
+            race_generate((int)$event['id'],'heat',8,true);
+            $prepared++;
+        }
+        race_audit('prepare_sprints',0,['events'=>$prepared]);
+        break;
     case 'move':race_move((int)$p['entry_id'],(int)$p['heat_no']);break;
     case 'reopen':if(($p['confirm']??'')!=='REOPEN')throw new \RuntimeException('请输入REOPEN确认撤回。');race_reopen((int)$p['round_id']);break;
     case 'import':if(!isset($_FILES['csv'])||$_FILES['csv']['error']!==UPLOAD_ERR_OK||$_FILES['csv']['size']>2097152||!is_uploaded_file($_FILES['csv']['tmp_name']))throw new \RuntimeException('请上传不超过2MB的CSV。');race_import_csv($_FILES['csv']['tmp_name'],!empty($p['update']));break;
