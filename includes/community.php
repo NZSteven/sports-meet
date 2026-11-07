@@ -12,6 +12,41 @@ function community_sections(): array {
     ];
 }
 
+function is_lineups_page_content(string $content):bool {
+    if(!has_shortcode($content,'sports_meet_hub'))return false;
+    return (bool)preg_match('/\[sports_meet_hub\b[^\]]*\bkind\s*=\s*["\x27]?lineups(?:["\x27\s\]])/i',$content);
+}
+
+function ensure_lineups_page():void {
+    $pages=get_option('sports_meet_pages',[]);
+    $id=(int)($pages['lineups']??0);
+    if($id&&get_post_status($id)==='publish'&&is_lineups_page_content((string)get_post_field('post_content',$id)))return;
+    $page=get_page_by_path('sports-lineups');
+    if($page&&$page->post_status==='publish'&&is_lineups_page_content($page->post_content)){
+        $pages['lineups']=$page->ID;
+        update_option('sports_meet_pages',$pages,false);
+        return;
+    }
+    $lock='sports_meet_lineups_page_lock';
+    $held=(int)get_option($lock,0);
+    if($held&&$held<time()-60)delete_option($lock);
+    if(!add_option($lock,time(),'',false))return;
+    try{
+        $id=wp_insert_post(['post_title'=>'分组名单','post_name'=>'sports-lineups','post_type'=>'page',
+            'post_status'=>'publish','post_content'=>'<!-- wp:shortcode -->[sports_meet_hub kind="lineups"]<!-- /wp:shortcode -->'],true);
+        if(is_wp_error($id)||!$id)throw new \RuntimeException('无法创建分组名单页面。');
+        $pages=get_option('sports_meet_pages',[]);
+        $pages['lineups']=$id;
+        update_option('sports_meet_pages',$pages,false);
+    }finally{delete_option($lock);}
+}
+
+add_action('init',function(){
+    if(!get_option('sports_meet_community_ready'))return;
+    try{ensure_lineups_page();}
+    catch(\Throwable $error){error_log('Sports Meet lineups page: '.$error->getMessage());}
+},26);
+
 function install_community(): void {
     q('CREATE TABLE IF NOT EXISTS guest_messages (
         id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY, owner BIGINT UNSIGNED NOT NULL,

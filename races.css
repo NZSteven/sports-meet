@@ -42,3 +42,10 @@
 .race-status-group.is-finalized a {border-color:#8ab399;background:#f5fff7;}
 @media(max-width:1000px){.race-results-grid,.race-lineup-grid{grid-template-columns:repeat(2,minmax(0,1fr));}}
 @media(max-width:560px){.race-results-grid,.race-lineup-grid{grid-template-columns:minmax(0,1fr);}}
+
+.race-results-grid .race-podium li {white-space:nowrap;overflow-x:auto;}
+.race-results-grid .race-podium li>strong,
+.race-results-grid .race-podium li>span,
+.race-results-grid .race-podium li>small {display:inline;margin-inline-end:7px;font-size:12px;}
+.race-results-grid .race-podium li>details {display:inline-block;vertical-align:top;padding:0;white-space:normal;}
+.race-results-grid .race-podium li>details[open] {display:block;margin-top:5px;}
