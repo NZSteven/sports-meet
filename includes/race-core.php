@@ -244,7 +244,7 @@ function race_save_round(int $id,int $version,array $submitted,bool $finalize,bo
     $format=(int)($round['eight_lanes']??0);
     $timedHeat=$round['stage']==='heat'&&$format===1;
     $placingRound=$round['stage']!=='final'&&$format>=2;
-    $maxPlace=$placingRound?race_placing_quota($round):3;
+    $maxPlace=($placingRound||$round['stage']==='final')?count($rows):3;
     $distanceEvent=race_is_distance(race_event((int)$round['event_id']));if($distanceEvent)$submitted=race_rank_distances($rows,$submitted,$finalize);
     if($timedHeat)$submitted=race_timed_heat_results($rows,$submitted,$finalize);
     $places=[];$confirmed=0;$clean=[];
@@ -258,7 +258,8 @@ function race_save_round(int $id,int $version,array $submitted,bool $finalize,bo
     if($empty&&$confirmed)throw new \RuntimeException('仍有已确认参赛者，不能提交为无人出赛。');
     $ranked=$distanceEvent?count(array_filter($clean,fn($r)=>$r['confirmed']&&$r['distance']!==null&&!$r['no_mark'])):$confirmed;
     if($placingRound)$ranked-=array_sum(array_column($clean,'no_mark'));
-    if($finalize){if(!$confirmed&&!$empty)throw new \RuntimeException('无人出赛请使用专门的无人出赛确认，避免误提交。');if(!$timedHeat)for($i=1;$i<=min($maxPlace,$ranked);$i++)if(!isset($places[$i]))throw new \RuntimeException('提交完成前须依次填写前'.min($maxPlace,$ranked).'名。');}
+    $requiredPlaces=$placingRound?$ranked:min(3,$ranked);
+    if($finalize){if(!$confirmed&&!$empty)throw new \RuntimeException('无人出赛请使用专门的无人出赛确认，避免误提交。');if(!$timedHeat)for($i=1;$i<=$requiredPlaces;$i++)if(!isset($places[$i]))throw new \RuntimeException('提交完成前须依次填写前'.$requiredPlaces.'名。');}
     q('UPDATE race_entries SET place=NULL WHERE round_id=?',[$id]);foreach($clean as $r)q('UPDATE race_entries SET confirmed=?,place=?,distance=?,no_mark=?,tie_order=?,elapsed=? WHERE id=?',[$r['confirmed'],$r['place'],$r['distance'],$r['no_mark'],$r['tie_order'],$r['elapsed'],$r['id']]);
     [$actor,$now]=race_actor();q('UPDATE race_rounds SET status=?,version=version+1,actor=?,updated=? WHERE id=?',[$finalize?'finalized':'open',$actor,$now,$id]);
     if($finalize && $round['stage']!=='final')race_advance_round($round);
@@ -281,7 +282,7 @@ function race_scoreboard():array {
     $rules=get_option('sports_meet_race_rules');$tot=[];foreach(all('teams') as $t)$tot[$t['id']]=['id'=>$t['id'],'name'=>$t['name'],'part'=>0,'place'=>0,'total'=>0];$seen=[];
     $rows=q("SELECT e.*,r.event_id,r.stage FROM race_entries e JOIN race_rounds r ON r.id=e.round_id WHERE r.status='finalized' AND e.confirmed=1 ORDER BY r.id,e.id")->fetchAll();
     foreach($rows as $r){$relay=!empty($r['relay_id']);$members=$relay?race_members((int)$r['relay_id']):[race_one('athletes',(int)$r['athlete_id'])];foreach($members as $a){$team=$a['team_id'];$key=$r['event_id'].':'.$a['id'];if(!isset($seen[$key])){$tot[$team]['part']+=race_cents($rules[$relay?'relay_part':'individual_part'])*8;$seen[$key]=true;}
-            if($r['stage']==='final' && $r['place']!==null){$cents=race_cents($rules[$relay?'relay_places':'individual_places'][(int)$r['place']-1]);$tot[$team]['place']+=$relay?$cents:$cents*8;}
+            if($r['stage']==='final' && $r['place']!==null&&(int)$r['place']<=3){$cents=race_cents($rules[$relay?'relay_places':'individual_places'][(int)$r['place']-1]);$tot[$team]['place']+=$relay?$cents:$cents*8;}
         }
     }
     foreach($tot as &$t)$t['total']=$t['part']+$t['place'];unset($t);usort($tot,fn($a,$b)=>($b['total']<=>$a['total'])?:strcmp($a['name'],$b['name']));$rank=0;$last=null;foreach($tot as $i=>&$t){if($last===null||$last!==$t['total'])$rank=$i+1;$last=$t['total'];$t['rank']=$rank;}unset($t);return $tot;

@@ -11,10 +11,11 @@ function race_prepare_final(int $event,bool $direct):int {
 function race_finals_url(int $event):string {
     $base=is_admin()?race_url('rounds'):page_url('finals');return add_query_arg(['event_id'=>$event],$base);
 }
-function race_final_projects():int {
+function race_final_projects(bool $showSelect=true):int {
     $events=all('events');$rounds=q('SELECT * FROM race_rounds ORDER BY id')->fetchAll();$byEvent=[];foreach($rounds as $r)$byEvent[$r['event_id']][]=$r;
     $counts=[];foreach(q('SELECT event_id,COUNT(*) AS n FROM race_enrollments GROUP BY event_id')->fetchAll() as $r)$counts[$r['event_id']]=(int)$r['n'];
     $selected=absint($_GET['event_id']??0);if(!$selected&&!empty($_GET['round_id'])){$r=race_one('race_rounds',(int)$_GET['round_id']);if($r['stage']!=='final'){echo '<p class="error">此轮不属于当前页面，请从对应预赛／决赛入口选择。</p>';return 0;}$selected=(int)$r['event_id'];}
+    if($showSelect){
     echo '<h2>选择决赛项目</h2><form method="get" class="race-final-select" action="'.esc_url(is_admin()?admin_url('admin.php'):page_url('finals')).'">';if(is_admin())echo '<input type="hidden" name="page" value="sports-meet"><input type="hidden" name="tab" value="races"><input type="hidden" name="race_tab" value="rounds">';elseif(!get_option('permalink_structure'))echo '<input type="hidden" name="page_id" value="'.(int)(get_option('sports_meet_pages',[])['finals']??0).'">';echo '<label>比赛项目<select name="event_id" data-final-project-select required><option value="">请选择决赛项目</option>';
     $options=['open'=>[],'finalized'=>[]];
     foreach($events as $e){$final=null;$hasHeat=false;$pending=false;foreach($byEvent[$e['id']]??[] as $r){if($r['stage']==='final')$final=$r;else{$hasHeat=true;$pending=$pending||$r['status']!=='finalized';}}
@@ -25,7 +26,9 @@ function race_final_projects():int {
         if(!$options[$status])continue;
         echo '<optgroup label="'.esc_attr($heading).'">'.implode('',$options[$status]).'</optgroup>';
     }
-    echo '</select></label><button type="submit">打开项目</button></form>';if(!$events){echo '<p>尚无比赛项目，请管理员先添加项目和报名。</p>';return 0;}if(!$selected){echo '<p>请从下拉菜单选择要录入决赛的项目。</p>';return 0;}
+    echo '</select></label><button type="submit">打开项目</button></form>';
+    }
+if(!$events){echo '<p>尚无比赛项目，请管理员先添加项目和报名。</p>';return 0;}if(!$selected){echo '<p>'.($showSelect?'请从下拉菜单选择要录入决赛的项目。':'请从左侧选择决赛项目。').'</p>';return 0;}
     $event=race_event($selected);$final=null;$heats=[];foreach($byEvent[$selected]??[] as $r){if($r['stage']==='final')$final=$r;else$heats[]=$r;}if($final)return (int)$final['id'];
     echo '<h3>'.esc_html($event['name']).'</h3>';
     if($heats){$pending=array_filter($heats,fn($r)=>$r['status']!=='finalized');if($pending){echo '<p class="notice">等待预赛完成及晋级名单。请先在预赛页面提交所有组的结果。</p>';return 0;}if(!race_qualifiers($selected)){echo '<p>预赛已完成，没有符合晋级条件的参赛者。</p>';return 0;}race_form('prepare_final','rounds');echo '<input type="hidden" name="event_id" value="'.$selected.'"><button>生成晋级选手决赛名单</button></form>';return 0;}

@@ -49,3 +49,21 @@
 .race-results-grid .race-podium li>small {display:inline;margin-inline-end:7px;font-size:12px;}
 .race-results-grid .race-podium li>details {display:inline-block;vertical-align:top;padding:0;white-space:normal;}
 .race-results-grid .race-podium li>details[open] {display:block;margin-top:5px;}
+
+.race-judge-layout {display:grid;grid-template-columns:minmax(220px,280px) minmax(0,1fr);gap:22px;align-items:start;}
+.race-judge-sidebar {position:sticky;top:20px;max-height:calc(100vh - 60px);overflow-y:auto;}
+.race-judge-sidebar .race-status-group {margin:0 0 14px;padding:12px;}
+.race-judge-sidebar .race-status-group>h2 {font-size:18px;margin:0 0 8px;}
+.race-judge-sidebar .race-judge-event {padding:8px 0;border-top:1px solid #c9d7cf;}
+.race-judge-event summary {cursor:pointer;font-size:14px;}
+.race-judge-sidebar .race-round-links {display:grid;gap:6px;margin:8px 0 0;}
+.race-judge-sidebar .race-round-links a {padding:7px 10px;font-size:13px;}
+.race-judge-sidebar a[aria-current=page] {outline:2px solid #245b80;outline-offset:-2px;font-weight:700;}
+.race-judge-detail {min-width:0;}
+.race-judge-detail .scroll {overflow-x:auto;}
+.race-judge-detail table th,.race-judge-detail table td {padding:6px 8px;font-size:13px;white-space:nowrap;}
+.race-judge-detail .race-sprint-draw {margin-top:0;}
+@media(max-width:760px){
+    .race-judge-layout {grid-template-columns:minmax(0,1fr);}
+    .race-judge-sidebar {position:static;max-height:300px;}
+}
