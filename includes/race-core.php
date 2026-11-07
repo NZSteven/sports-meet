@@ -261,7 +261,7 @@ function race_save_round(int $id,int $version,array $submitted,bool $finalize,bo
     $requiredPlaces=$placingRound?$ranked:min(3,$ranked);
     if($finalize){if(!$confirmed&&!$empty)throw new \RuntimeException('无人出赛请使用专门的无人出赛确认，避免误提交。');if(!$timedHeat)for($i=1;$i<=$requiredPlaces;$i++)if(!isset($places[$i]))throw new \RuntimeException('提交完成前须依次填写前'.$requiredPlaces.'名。');}
     q('UPDATE race_entries SET place=NULL WHERE round_id=?',[$id]);foreach($clean as $r)q('UPDATE race_entries SET confirmed=?,place=?,distance=?,no_mark=?,tie_order=?,elapsed=? WHERE id=?',[$r['confirmed'],$r['place'],$r['distance'],$r['no_mark'],$r['tie_order'],$r['elapsed'],$r['id']]);
-    [$actor,$now]=race_actor();q('UPDATE race_rounds SET status=?,version=version+1,actor=?,updated=? WHERE id=?',[$finalize?'finalized':'open',$actor,$now,$id]);
+    [$actor,$now]=race_actor();q('UPDATE race_rounds SET status=?,version=version+1,actor=?,updated=? WHERE id=?',[$finalize?'finalized':'running',$actor,$now,$id]);
     if($finalize && $round['stage']!=='final')race_advance_round($round);
     race_audit($finalize?'finalize_round':'save_round',$id,['entries'=>$clean]);
 }

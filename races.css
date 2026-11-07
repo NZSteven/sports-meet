@@ -67,3 +67,40 @@
     .race-judge-layout {grid-template-columns:minmax(0,1fr);}
     .race-judge-sidebar {position:static;max-height:300px;}
 }
+
+/* Compact shared page spacing. */
+.sm-brand-home .sd-main {padding-top:16px;padding-bottom:28px;}
+.sm-brand-home .sd-page-title {font-size:clamp(26px,3vw,38px);margin:8px 0 16px;}
+.sm-brand-home .sd-header-inner {min-height:76px;}
+.sm-brand-home .sd-footer {padding-block:18px;}
+.sm-brand-home .sd-main .sports-meet h2 {font-size:22px;margin:14px 0 8px;}
+.sm-brand-home .sd-main .sports-meet p {margin-block:8px;}
+.sm-brand-home .sd-main .sports-meet nav {margin:10px 0;gap:8px;}
+.sm-brand-home .sd-main .sports-meet form {padding:12px;margin:10px 0;gap:10px;}
+.sm-brand-home .sd-main .sports-meet th,
+.sm-brand-home .sd-main .sports-meet td {padding:6px 9px;line-height:1.45;}
+.sm-brand-home .sd-main .sports-meet .race-tabs {margin:0 0 10px;gap:6px;}
+.race-tabs a {padding:6px 10px;}
+.race-judge-layout {grid-template-columns:minmax(190px,235px) minmax(0,1fr);gap:14px;}
+.race-judge-sidebar {background:#fff;border:1px solid #d5e0e6;border-radius:6px;padding:7px;top:12px;}
+.race-judge-legend {display:flex;flex-wrap:wrap;gap:5px;padding:0 0 7px;border-bottom:1px solid #d5e0e6;font-size:11px;}
+.race-judge-legend span {padding:3px 5px;border:1px solid;border-radius:3px;}
+.race-judge-legend .is-open,.race-judge-sidebar .race-round-links a.is-open {background:#fff5d6;border-color:#e3b651;color:#6d4c00;}
+.race-judge-legend .is-running,.race-judge-sidebar .race-round-links a.is-running {background:#e2efff;border-color:#75a7e5;color:#174f8c;}
+.race-judge-legend .is-finalized,.race-judge-sidebar .race-round-links a.is-finalized {background:#e6f5e8;border-color:#86ba90;color:#215c2c;}
+.race-workspace .race-judge-sidebar .race-judge-event {padding:0;margin:0;border:0;border-bottom:1px solid #e0e7e4;}
+.race-workspace .race-judge-sidebar .race-judge-event summary {padding:6px 5px;line-height:1.3;font-size:13px;font-weight:600;cursor:pointer;}
+.race-judge-event.is-open summary {border-inline-start:3px solid #e3b651;}
+.race-judge-event.is-running summary {border-inline-start:3px solid #75a7e5;}
+.race-judge-event.is-finalized summary {border-inline-start:3px solid #86ba90;}
+.race-workspace .race-judge-sidebar .race-round-links {margin:0;padding:0 0 6px 8px;gap:4px;}
+.race-judge-sidebar .race-round-links a {padding:5px 7px;line-height:1.3;font-size:12px;min-height:28px;}
+.race-workspace .race-judge-detail details {padding:8px 0;}
+.race-workspace .race-judge-detail .race-sprint-draw {padding:8px 12px;margin:0 0 10px;}
+.race-workspace .race-judge-detail .race-sprint-draw summary {font-size:13px;line-height:1.3;}
+.sm-brand-home .sd-main .race-judge-detail .race-completed-summary {padding:8px 10px;font-size:12px;}
+@media(max-width:760px){
+    .race-judge-layout {grid-template-columns:minmax(0,1fr);gap:10px;}
+    .race-judge-sidebar {max-height:240px;}
+    .sm-brand-home .sd-main {padding-top:12px;}
+}

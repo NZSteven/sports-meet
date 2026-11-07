@@ -174,3 +174,13 @@ body.sm-brand-home{background:#f9fbff;isolation:isolate}
 @media(max-width:700px){
     .sm-message-grid{grid-template-columns:minmax(0,1fr);}
 }
+
+.sm-brand-home .sm-gallery-preview {padding-top:28px;padding-bottom:16px;}
+.sm-brand-home .sm-section-head {margin-bottom:12px;gap:14px;}
+.sm-brand-home .race-day-links {padding-block:16px;}
+.sm-brand-home .race-day-grid {gap:12px;}
+.sm-brand-home .race-day-grid>a {padding:16px;gap:6px;}
+.sm-brand-home .sm-live-board {margin-block:14px;padding:14px;}
+.sm-brand-home .sm-hero-copy .sm-live-board {margin:0;padding:10px 12px;}
+.sm-brand-home .sm-song {margin-block:18px;}
+.sm-brand-home .sm-hero-right .sm-song {margin-top:auto;margin-bottom:0;}
