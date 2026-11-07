@@ -229,10 +229,13 @@ function race_judge_round_links(?string $stage,bool $public=false):void {
             (e.confirmed=1 OR e.place IS NOT NULL OR e.distance IS NOT NULL OR e.elapsed IS NOT NULL OR e.no_mark=1)) AS has_draft
         FROM race_rounds r ORDER BY event_id,FIELD(stage,'heat','semi','final'),heat_no")->fetchAll();
     $byEvent=[];
+    $eventProgress=[];
     foreach($rounds as $round){
+        $displayStatus=$round['status']==='finalized'?'finalized':($round['status']==='running'||$round['has_draft']?'running':'open');
+        $eventProgress[$round['event_id']][]=['stage'=>$round['stage'],'status'=>$displayStatus];
         if($stage==='heat'&&$round['stage']==='final')continue;
         if($stage==='final'&&$round['stage']!=='final')continue;
-        $round['display_status']=$round['status']==='finalized'?'finalized':($round['status']==='running'||$round['has_draft']?'running':'open');
+        $round['display_status']=$displayStatus;
         $byEvent[$round['event_id']][]=$round;
     }
     $selectedRound=absint($_GET['round_id']??0);
@@ -241,8 +244,12 @@ function race_judge_round_links(?string $stage,bool $public=false):void {
         .'<span class="is-open">待比赛</span><span class="is-running">比赛中</span><span class="is-finalized">已完成</span></div>';
     foreach(all('events') as $event){
         $rows=$byEvent[$event['id']]??[];
-        $statuses=array_column($rows,'display_status');
-        $status=in_array('running',$statuses,true)?'running':($rows&&count(array_unique($statuses))===1&&$statuses[0]==='finalized'?'finalized':'open');
+        $progress=$eventProgress[$event['id']]??[];
+        $statuses=array_column($progress,'status');
+        $hasFinal=in_array('final',array_column($progress,'stage'),true);
+        $completed=$hasFinal&&count(array_unique($statuses))===1&&$statuses[0]==='finalized';
+        $started=in_array('running',$statuses,true)||in_array('finalized',$statuses,true);
+        $status=$completed?'finalized':($started?'running':'open');
         $active=$selectedEvent===(int)$event['id']||in_array($selectedRound,array_map('intval',array_column($rows,'id')),true);
         echo '<details class="race-judge-event is-'.$status.'" '.($active?'open':'').'><summary>'.esc_html($event['name']).'</summary><div class="race-round-links">';
         foreach($rows as $round){
