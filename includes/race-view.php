@@ -85,10 +85,21 @@ function race_public_results(bool $includeQualifiers=true):string {
     ob_start();echo '<section class="sports-meet"><h2>'.($includeQualifiers?'比赛成绩榜':'项目决赛前三名').'</h2>';$groups=[];
     foreach(q("SELECT e.*,r.event_id FROM race_entries e JOIN race_rounds r ON r.id=e.round_id WHERE r.stage='final' AND r.status='finalized' AND e.place IS NOT NULL ORDER BY r.event_id,e.place")->fetchAll() as $r)$groups[$r['event_id']][]=$r;
     if(!$groups)echo '<p>暂无已完成决赛的前三名成绩。</p>';
-    foreach($groups as $eventId=>$entries){$event=race_event((int)$eventId);$relay=$event['kind']==='relay';$distance=race_is_distance($event);echo '<article class="race-event-result" data-result-event="'.(int)$eventId.'"><h3>'.esc_html($event['name']).'</h3>';$headers=['名次','所属高校','运动员／接力队','比赛号码'];if($relay)$headers[]='接力队员';if($distance)$headers[]='距离成绩';$rows=[];
-        foreach($entries as $r){$p=race_participant($r);$row=[$r['place'],$p['team'],$p['name'],$p['bib']];if($relay)$row[]=$p['members'];if($distance)$row[]=race_distance_text($r['distance']??null);$rows[]=$row;}
-        table($headers,$rows);echo '</article>';
+    echo '<div class="race-results-grid">';
+    foreach($groups as $eventId=>$entries){
+        $event=race_event((int)$eventId);
+        echo '<article class="race-event-result" data-result-event="'.(int)$eventId.'"><h3>'.esc_html($event['name']).'</h3><ol class="race-podium">';
+        foreach($entries as $entry){
+            $person=race_participant($entry);
+            echo '<li><strong>'.(int)$entry['place'].' · '.esc_html($person['name']).'</strong><span>'.esc_html($person['team']).'</span>';
+            if(race_is_distance($event))echo '<span>'.esc_html(race_distance_text($entry['distance']??null)).'</span>';
+            if($event['kind']==='relay')echo '<details><summary>接力队员</summary><p>'.esc_html($person['members']).'</p></details>';
+            else echo '<small>号码 '.esc_html($person['bib']).'</small>';
+            echo '</li>';
+        }
+        echo '</ol></article>';
     }
+    echo '</div>';
     if(!$includeQualifiers){echo '</section>';return ob_get_clean();}
     echo '<h2>预赛晋级名单</h2><p>100米与接力按各组的晋级安排选出决赛名单。其他个人项目每组取前3名。</p>';$rows=[];foreach(all('events') as $e)foreach(race_qualifiers((int)$e['id']) as $r){$p=race_participant($r);$rows[]=[$e['name'],$p['team'],$p['name'],$p['bib']];}table(['项目','所属高校','晋级参赛者','比赛号码'],$rows);race_relay_rules();echo '</section>';return ob_get_clean();
 }
@@ -169,15 +180,76 @@ function race_round_label(array $round): string {
     return ($round['stage']==='semi'?'半决赛':'预赛').'第'.$round['heat_no'].'组';
 }
 
+function race_public_lineups():string {
+    if(!race_roster_is_public()&&!current_user_can('manage_options'))return '<p>分组名单将在报名名单公开后显示。</p>';
+    $rounds=q("SELECT * FROM race_rounds ORDER BY event_id,FIELD(stage,'heat','semi','final'),heat_no")->fetchAll();
+    $byEvent=[];
+    foreach($rounds as $round)$byEvent[$round['event_id']][$round['stage']][]=$round;
+    $html='<section class="sports-meet race-lineups"><div class="race-lineup-grid">';
+    foreach(all('events') as $event){
+        $eventId=(int)$event['id'];
+        $html.='<article class="race-lineup-card"><h2>'.esc_html($event['name']).'</h2><div class="race-lineup-scroll" tabindex="0" role="region" aria-label="'.esc_attr($event['name'].'名单').'">';
+        if(isset($byEvent[$eventId])){
+            $stages=['heat'=>'预赛','semi'=>'半决赛','final'=>'决赛'];
+            foreach($stages as $stage=>$title){
+                if(!isset($byEvent[$eventId][$stage])){
+                    if(race_eight_lane_event($event))$html.='<p class="race-lineup-pending">'.esc_html($title).'名单待生成／本项目未安排</p>';
+                    continue;
+                }
+                foreach($byEvent[$eventId][$stage] as $round){
+                    $html.='<h3>'.esc_html(race_round_label($round)).'</h3><ol class="race-lineup-list">';
+                    foreach(q('SELECT * FROM race_entries WHERE round_id=? ORDER BY id',[$round['id']])->fetchAll() as $entry){
+                        $person=race_participant($entry);
+                        $html.='<li><strong>'.esc_html($person['name']).'</strong><span>'.esc_html($person['team']).'</span><small>'.esc_html($person['bib']).'</small></li>';
+                    }
+                    $html.='</ol>';
+                }
+            }
+        }else{
+            $rows=q('SELECT a.name,t.name AS school,c.bib FROM race_enrollments n JOIN athletes a ON a.id=n.athlete_id
+                JOIN teams t ON t.id=a.team_id LEFT JOIN checkins c ON c.athlete_id=a.id WHERE n.event_id=? ORDER BY t.name,a.name,a.id',[$eventId])->fetchAll();
+            $html.='<p class="race-lineup-pending">报名名单 · 尚未生成比赛分组</p><ol class="race-lineup-list">';
+            foreach($rows as $row)$html.='<li><strong>'.esc_html($row['name']).'</strong><span>'.esc_html($row['school']).'</span><small>'.esc_html($row['bib']??'待检录').'</small></li>';
+            $html.='</ol>';
+            if(!$rows)$html.='<p>暂无报名。</p>';
+        }
+        $html.='</div><button class="race-lineup-toggle" type="button" aria-expanded="false" hidden>展开全部名单</button></article>';
+    }
+    return $html.'</div></section>';
+}
+
+function race_judge_round_links(?string $stage):void {
+    $rows=q("SELECT r.*,e.name AS event_name FROM race_rounds r JOIN events e ON e.id=r.event_id
+        ORDER BY e.id,FIELD(r.stage,'heat','semi','final'),r.heat_no")->fetchAll();
+    foreach(['open'=>'待比赛／待提交','finalized'=>'已比赛／已完成'] as $status=>$heading){
+        echo '<section class="race-status-group is-'.$status.'"><h2>'.$heading.'</h2><div class="race-round-links">';
+        $count=0;
+        foreach($rows as $round){
+            if($stage==='heat'&&$round['stage']==='final')continue;
+            if($stage==='final'&&$round['stage']!=='final')continue;
+            if(($round['status']==='finalized')!==($status==='finalized'))continue;
+            echo '<a href="'.esc_url(race_url('rounds',['round_id'=>$round['id']])).'">'.esc_html($round['event_name'].' · '.race_round_label($round)).'</a>';
+            $count++;
+        }
+        if(!$count)echo '<p>暂无项目。</p>';
+        echo '</div></section>';
+    }
+}
+
 function race_ui_rounds(?string $stage=null):void {
     $admin=current_user_can('manage_options');
     echo '<section class="race-sprint-draw"><h2>100米预先随机分组</h2><p>报名名单核对完成后，由管理员生成各组名单。超过8人时随机均分预赛，每组最多8人；8人以内直接决赛。已生成赛程的项目会跳过，生成后该项目报名锁定。</p>';
     if($admin){race_form('prepare_sprints','rounds');finish('生成全部100米项目分组');}
     else echo '<p>请联系管理员使用管理员账号登录此页生成分组。裁判可在下方录入已生成的比赛。</p>';
     echo '</section>';
-    if($stage==='final'){$selectedRound=race_final_projects();if(!$selectedRound)return;$_GET['round_id']=$selectedRound;}
+    if($stage==='final'){
+        race_judge_round_links('final');
+        $selectedRound=race_final_projects();
+        if(!$selectedRound)return;
+        $_GET['round_id']=$selectedRound;
+    }
     if($admin&&!$stage){echo '<details><summary>生成预赛／直接决赛名单</summary><p>生成后锁定此项目报名。100米每组最多8人，接力每组最多5队。系统随机均分并按组内冲线名次晋级，需要时自动安排半决赛。其他个人项目仍可按下方设置分组。</p>';race_form('generate','rounds');race_options('event_id','项目',all('events'));race_options('stage','比赛安排',[['id'=>'heat','name'=>'先预赛，自动晋级决赛'],['id'=>'final','name'=>'直接决赛']],'heat');field('capacity','其他个人项目每组人数','number','8','min="1" max="100"');echo '<label><input type="checkbox" name="individual_split" value="1"> 其他个人项目分组（每组前三晋级）</label>';finish('生成名单');echo '</details>';}
-    if($stage!=='final'){echo '<h2>选择项目及预赛／决赛</h2><div class="race-round-links">';foreach(q('SELECT r.*,e.name AS event_name FROM race_rounds r JOIN events e ON e.id=r.event_id ORDER BY e.id,r.stage DESC,r.heat_no')->fetchAll() as $r){if($stage==='heat'&&$r['stage']==='final')continue;echo '<a href="'.esc_url(race_url('rounds',['round_id'=>$r['id']])).'">'.esc_html($r['event_name'].' · '.race_round_label($r).' · '.($r['status']==='finalized'?'已完成':'待提交')).'</a>';}echo '</div>';}
+    if($stage!=='final')race_judge_round_links($stage);
     if(empty($_GET['round_id']))return;$round=race_one('race_rounds',(int)$_GET['round_id']);$event=race_event((int)$round['event_id']);if($stage&&($stage==='final')!==($round['stage']==='final')){echo '<p class="error">此轮不属于当前页面，请从对应预赛／决赛入口选择。</p>';return;}$ready=true;try{race_round_ready($round);}catch(\Throwable $e){$ready=false;echo '<p class="error">'.esc_html($e->getMessage()).'</p>';}
     $format=(int)($round['eight_lanes']??0);
     $timedHeat=$round['stage']==='heat'&&$format===1;

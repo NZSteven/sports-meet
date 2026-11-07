@@ -15,3 +15,30 @@
 
 .race-sprint-draw {padding:16px 20px;margin:16px 0 24px;background:#f2f7fc;border:1px solid #cbdcec;border-radius:8px;}
 .race-sprint-draw h2 {margin:0 0 8px;font-size:22px;}
+
+.race-results-grid,.race-lineup-grid {display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px;align-items:start;}
+.sports-meet .race-results-grid .race-event-result {margin:0;padding:12px;min-width:0;}
+.sports-meet .race-results-grid .race-event-result h3 {font-size:17px;margin:0 0 8px;}
+.race-podium {list-style:none;margin:0;padding:0;font-size:13px;}
+.race-podium li {padding:8px 0;border-top:1px solid #e1e8e4;overflow-wrap:anywhere;}
+.race-podium li>strong,.race-podium li>span,.race-podium li>small {display:block;}
+.race-podium details {padding:4px 0;}
+.race-lineup-card {min-width:0;padding:12px;background:#fff;border:1px solid #d5e1e9;border-radius:8px;}
+.sports-meet .race-lineup-card h2 {font-size:18px;margin:0 0 8px;}
+.sports-meet .race-lineup-card h3 {font-size:14px;margin:10px 0 4px;}
+.race-lineup-scroll {max-height:340px;overflow-y:auto;scrollbar-gutter:stable;}
+.race-lineup-list {list-style:none;margin:0;padding:0;}
+.race-lineup-list li {display:flex;flex-wrap:wrap;align-items:center;gap:3px 8px;min-height:34px;padding:5px 0;border-bottom:1px solid #e7ece8;font-size:12px;overflow-wrap:anywhere;}
+.race-lineup-list strong {font-size:13px;}
+.race-lineup-list small {color:#65746f;}
+.race-lineup-pending {font-size:12px;color:#65746f;}
+.race-lineup-card.is-expanded .race-lineup-scroll {max-height:none;}
+.race-lineup-toggle {margin-top:8px;}
+.race-status-group {border:1px solid;padding:12px 16px;border-radius:8px;margin:14px 0;}
+.race-status-group.is-open {border-color:#e7b559;background:#fff8e6;}
+.race-status-group.is-finalized {border-color:#91bba0;background:#edf7f0;}
+.race-status-group .race-round-links {margin:8px 0;}
+.race-status-group.is-open a {border-color:#d3a34e;background:#fffdf5;}
+.race-status-group.is-finalized a {border-color:#8ab399;background:#f5fff7;}
+@media(max-width:1000px){.race-results-grid,.race-lineup-grid{grid-template-columns:repeat(2,minmax(0,1fr));}}
+@media(max-width:560px){.race-results-grid,.race-lineup-grid{grid-template-columns:minmax(0,1fr);}}

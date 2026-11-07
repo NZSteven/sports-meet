@@ -8,6 +8,7 @@ function community_sections(): array {
         'committee'=>['组委会','sports-committee'], 'sponsors'=>['赞助伙伴','sports-sponsors'],
         'media_hub'=>['图文现场','sports-media-hub'], 'messages'=>['留言板','sports-messages'],
         'new_registration'=>['新增报名','sports-new-registration'],
+        'lineups'=>['分组名单','sports-lineups'],
     ];
 }
 
@@ -34,7 +35,32 @@ function install_community(): void {
     }
     update_option('sports_meet_pages',$pages,false);
     update_option('sports_meet_community_ready',1,false);
+    $board=(int)($pages['board']??0);
+    if($board&&in_array(get_the_title($board),['队伍排行榜','排行榜','积分榜'],true)){
+        wp_update_post(['ID'=>$board,'post_title'=>'成绩积分榜']);
+    }
+    $results=(int)($pages['results']??0);
+    if($results&&in_array(get_the_title($results),['项目成绩','成绩榜'],true)){
+        wp_update_post(['ID'=>$results,'post_title'=>'成绩积分榜']);
+    }
 }
+
+add_filter('wp_nav_menu_objects',function(array $items):array {
+    $pages=get_option('sports_meet_pages',[]);
+    $board=(int)($pages['board']??0);
+    $results=(int)($pages['results']??0);
+    if(!$board)return $items;
+    $seen=[];
+    foreach($items as $key=>$item){
+        if($item->object!=='page'||!in_array((int)$item->object_id,[$board,$results],true))continue;
+        $parent=(int)$item->menu_item_parent;
+        if(isset($seen[$parent])){unset($items[$key]);continue;}
+        $seen[$parent]=true;
+        $item->url=get_permalink($board);
+        $item->title='成绩积分榜';
+    }
+    return array_values($items);
+},30);
 
 function community_banned(int $user,string $scope): bool {
     $key='sports_meet_community_banned_'.$scope;
@@ -50,7 +76,7 @@ function community_buttons(array $links): string {
 
 function community_menu(): string {
     $menu='';
-    foreach(['intro'=>'奔Fun简介','board'=>'积分榜','race_hub'=>'赛场直通车','officials'=>'裁判工作台',
+    foreach(['intro'=>'奔Fun简介','board'=>'成绩积分榜','race_hub'=>'赛场直通车','officials'=>'裁判工作台',
         'committee'=>'组委会','sponsors'=>'赞助伙伴','media_hub'=>'图文现场'] as $key=>$label){
         $menu.='<li class="menu-item"><a href="'.esc_url(page_url($key)).'">'.esc_html($label).'</a></li>';
     }
@@ -69,6 +95,7 @@ function community_hub($attrs=[]): string {
     $key=shortcode_atts(['kind'=>'intro'],(array)$attrs)['kind'];
     if($key==='messages')return guestbook_page();
     if($key==='new_registration')return race_new_registration_page();
+    if($key==='lineups')return race_public_lineups();
     if($key==='media_hub')return '<section class="sm-site sm-media-hub">'.photo_carousel().guestbook_home(8).'</section>';
     $html='<section class="sm-site sm-community">';
     if($key==='intro')$html.='<p>'.esc_html(SITE_NAME).' · '.esc_html(SITE_SLOGAN).'</p>'
@@ -78,8 +105,8 @@ function community_hub($attrs=[]): string {
         $html.='<nav class="race-day-grid" aria-label="赛场直通车">';
         foreach([
             'roster'=>['报名名单','按高校、组别或项目查看报名名单'],
-            'results'=>['成绩榜','查看决赛前三名及预赛晋级名单'],
-            'board'=>['积分榜','查看实时高校积分排名'],
+            'board'=>['成绩积分榜','查看各项目赛果及高校积分排名'],
+            'lineups'=>['分组名单','查看各项目及预赛、半决赛、决赛名单'],
         ] as $page=>[$title,$description]){
             $html.='<a href="'.esc_url(page_url($page)).'"><strong>'.esc_html($title).' ↗</strong><span>'.esc_html($description).'</span></a>';
         }
