@@ -119,7 +119,7 @@ function race_handler():void {
         wp_safe_redirect($url);exit;
     }
     if(!isset(race_day_definitions()[$day]))$day='judge';
-    if(($p['race_action']??'')==='prepare_final'&&!empty($p['event_id'])){$params['event_id']=(int)$p['event_id'];if(!empty($p['frontend']))$day='finals';}
+    if(($p['race_action']??'')==='prepare_final'&&!empty($p['event_id'])){$params['event_id']=(int)$p['event_id'];if(!empty($p['frontend']))$day='heats';}
     if(!empty($p['frontend']))$url=add_query_arg($params,page_url($day));else{$url=add_query_arg($params,admin_url('admin.php?page=sports-meet&tab=races'));}
     wp_safe_redirect($url);exit;
 }

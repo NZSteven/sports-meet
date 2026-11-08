@@ -272,7 +272,7 @@ function race_round_detail(?string $stage=null):void {
     if($admin){race_form('prepare_sprints','rounds');finish('生成全部100米项目分组');}
     else echo '<p>请联系管理员使用管理员账号登录此页生成分组。裁判可在下方录入已生成的比赛。</p>';
     echo '</details>';
-    if($stage==='final'){
+    if($stage==='final'||(!$stage&&empty($_GET['round_id'])&&!empty($_GET['event_id']))){
         $selectedRound=race_final_projects(false);
         if(!$selectedRound)return;
         $_GET['round_id']=$selectedRound;

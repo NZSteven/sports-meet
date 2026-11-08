@@ -1,7 +1,7 @@
 <?php
 namespace SportsMeetWP;
 defined('ABSPATH') || exit;
-function race_day_definitions():array {return ['checkin'=>['检录发号','sports-checkin','sports_meet_checkin'],'heats'=>['预赛录入','sports-prelim','sports_meet_prelim'],'finals'=>['决赛录入','sports-finals','sports_meet_finals']];}
+function race_day_definitions():array {return ['checkin'=>['检录发号','sports-checkin','sports_meet_checkin'],'heats'=>['比赛录入','sports-prelim','sports_meet_prelim'],'finals'=>['比赛录入','sports-finals','sports_meet_finals']];}
 function race_ensure_day_pages():void {
     $pages=get_option('sports_meet_pages',[]);
     foreach(race_day_definitions() as $key=>$def){if(!empty($pages[$key])&&get_post_status($pages[$key])&&get_post_status($pages[$key])!=='trash')continue;
@@ -18,11 +18,11 @@ function race_day_links():string {
     return '<section class="sm-site race-day-links">'.race_judge_navigation().'</section>';
 }
 function race_judge_navigation(string $active=''):string {
+    if($active==='finals')$active='heats';
     return race_section_cards([
         'checkin'=>['检录发号','搜索选手、筛选高校及项目、发放号码',page_url('checkin')],
         'relay'=>['接力组队','按高校自动组队或组合跨校队伍',add_query_arg('race_tab','relay',page_url('judge'))],
-        'heats'=>['预赛录入','确认参赛、录入名次、查看半决赛',page_url('heats')],
-        'finals'=>['决赛录入','录入决赛名次、提交并汇总积分',page_url('finals')],
+        'heats'=>['比赛录入','选择预赛、半决赛或决赛，确认参赛并录入成绩',page_url('heats')],
     ],$active,'裁判专区');
 }
 function home_section():string {return home_section_original();}
@@ -34,7 +34,7 @@ function race_day_page(string $key):string {
     if(!is_user_logged_in())return '<section class="sports-meet race-day-login"><h2>'.esc_html($defs[$key][0]).'</h2><p>请输入裁判账号及密码登录后操作。</p>'.wp_login_form(['echo'=>false,'redirect'=>page_url($key),'label_username'=>'裁判用户名或邮箱','label_password'=>'密码','label_remember'=>'记住登录','label_log_in'=>'登录进入']).'<p>没有裁判账号？请联系管理员创建，角色选择“运动会裁判”。</p></section>';
     if(!race_can_judge())return '<section class="sports-meet"><p class="error">此页面仅供管理员或运动会裁判使用。当前账号没有裁判权限，请联系管理员。</p></section>';
     $previous=race_day_context();$GLOBALS['sports_meet_day_context']=$key;ob_start();
-    try{echo '<section class="sports-meet race-workspace race-day-page">'.race_judge_navigation($key);race_notice();if($key==='checkin')race_ui_checkin();else race_ui_rounds($key==='heats'?'heat':'final');echo '</section>';return ob_get_clean();}
+    try{echo '<section class="sports-meet race-workspace race-day-page">'.race_judge_navigation($key);race_notice();if($key==='checkin')race_ui_checkin();else race_ui_rounds();echo '</section>';return ob_get_clean();}
     catch(\Throwable $e){ob_end_clean();error_log('Sports Meet day: '.$e->getMessage());return '<p>无法显示赛事工作页面，请刷新或联系管理员。</p>';}
     finally{$GLOBALS['sports_meet_day_context']=$previous;}
 }
@@ -54,7 +54,18 @@ function race_ui_checkin():void {
 }
 add_shortcode('sports_meet_checkin',fn()=>race_day_page('checkin'));
 add_shortcode('sports_meet_prelim',fn()=>race_day_page('heats'));
-add_shortcode('sports_meet_finals',fn()=>race_day_page('finals'));
+add_shortcode('sports_meet_finals',fn()=>race_day_page('heats'));
+add_shortcode('sports_meet_race_entry',fn()=>race_day_page('heats'));
+add_action('init',function(){
+    $id=(int)(get_option('sports_meet_pages',[])['heats']??0);
+    if($id&&in_array(get_post_field('post_title',$id),['预赛录入','决赛录入'],true))wp_update_post(['ID'=>$id,'post_title'=>'比赛录入']);
+},27);
+add_action('template_redirect',function(){
+    $pages=get_option('sports_meet_pages',[]);$old=(int)($pages['finals']??0);$new=(int)($pages['heats']??0);
+    if(!$old||!$new||$old===$new||!is_page($old))return;
+    $args=[];foreach(['round_id','event_id'] as $key)if(!empty($_GET[$key]))$args[$key]=absint($_GET[$key]);
+    wp_safe_redirect(add_query_arg($args,page_url('heats')),302);exit;
+});
 // The previous homepage shortcode is intentionally retired: entries now live in the footer.
 add_shortcode('sports_meet_official_links',fn()=>'');
 function race_official_portal():string {
