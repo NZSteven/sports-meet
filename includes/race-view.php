@@ -32,7 +32,7 @@ function race_public_roster():string {
         echo '<div class="scroll"><table><thead><tr><th>免责声明</th><th>所属高校</th><th>姓名</th><th>组别</th><th>比赛号码</th><th>参赛项目</th><th>参加活动</th></tr></thead><tbody>';
         foreach($result['rows'] as $a){
             echo '<tr><td>'.disclaimer_dot($a,$accepted).'</td>';
-            foreach([$a['team_name'],$a['name'],race_category($a),$a['race_bib']??'待检录',$a['entry_names'],$a['activity_names']] as $value)echo '<td>'.esc_html((string)$value).'</td>';
+            foreach([$a['team_name'],$a['name'],race_category($a),race_roster_bib($a),$a['entry_names'],$a['activity_names']] as $value)echo '<td>'.esc_html((string)$value).'</td>';
             echo '</tr>';
         }
         echo '</tbody></table></div>';
