@@ -32,7 +32,7 @@ function race_upgrade_relay_draws():void {
 }
 
 add_action('init',function(){
-    if(get_option('sports_meet_portal_schema')==='2.5.49')return;
+    if(get_option('sports_meet_portal_schema')==='2.5.50')return;
     try{
         install_distances();install_registration_extras();
         q('UPDATE race_relays r JOIN (SELECT m.relay_id,MIN(a.team_id) AS school FROM race_members m JOIN athletes a ON a.id=m.athlete_id GROUP BY m.relay_id HAVING COUNT(*)=8 AND COUNT(DISTINCT a.team_id)=1) x ON x.relay_id=r.id SET r.school_id=x.school WHERE r.school_id IS NULL');
@@ -44,7 +44,7 @@ add_action('init',function(){
             $round=q('SELECT * FROM race_rounds WHERE id=?',[$id])->fetch();
             if($round&&$round['status']==='open')race_assign_lanes((int)$id);
         });
-        update_option('sports_meet_portal_schema','2.5.49',false);
+        update_option('sports_meet_portal_schema','2.5.50',false);
     }catch(\Throwable $e){error_log('Sports Meet draw upgrade: '.$e->getMessage());}
 },24);
 
@@ -68,7 +68,7 @@ add_filter('the_content',function(string $content):string {
     if(is_admin()||!is_page()||!is_main_query()||!in_the_loop())return $content;
     if(!in_array(trim(get_the_title(get_queried_object_id())),['赛程与赛制','赛程赛制'],true))return $content;
     $content=preg_replace('/<h2\b[^>]*>报名与检录<\/h2>.*?(?=<h[12]\b|$)/us',
-        '<h2>报名与检录</h2><p>各校负责人在「各队报名」页面选择所属高校，首次创建或由系统生成本校报名密码。以后凭同一高校和密码查看、修改或删除本校资料。报名修改截止为新西兰时间2026年11月12日00:00，截止后资料锁定，名单公开。</p><p>2人3足比赛、拔河比赛、晚宴只统计报名人数，不纳入本系统比赛分组、成绩或积分。100米及8×50米接力的预赛、半决赛和决赛均保存固定赛道号，按公布赛道参赛。参赛者须先同意当前免责声明，再检录发号。</p>',$content);
+        '<h2>报名与检录</h2><p>各校负责人在「各队报名」页面选择所属高校，首次创建或由系统生成本校报名密码。以后凭同一高校和密码查看、修改或删除本校资料。报名修改截止为新西兰时间2026年11月12日00:00，截止后资料锁定，名单公开。</p><p>2人3足和拔河属于不计积分的比赛，单独统计报名人数，不计入高校总积分；晚宴属于活动报名。100米及8×50米接力的预赛、半决赛和决赛均保存固定赛道号，按公布赛道参赛。参赛者须先同意当前免责声明，再检录发号。</p>',$content);
     if(str_contains($content,'race-current-relay-rules'))return $content;
     // Replace the complete old subsection, including any smaller subheadings.
     preg_match_all('/<h([2-6])\b[^>]*>.*?<\/h\1>/us',$content,$headings,PREG_OFFSET_CAPTURE);

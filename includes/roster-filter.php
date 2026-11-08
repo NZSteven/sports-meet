@@ -19,7 +19,10 @@ function race_filter_roster(array $params):array {
     $matched=[];$needle=mb_strtolower($params['roster_q']??'');
     foreach($all as $a){$a['entry_ids']=$entries[$a['id']]['ids']??[];$a['entry_names']=implode('、',$entries[$a['id']]['names']??[]);$category=race_category($a);
         $a['activity_ids']=$activities[$a['id']]??[];
-        $a['activity_names']=implode('、',array_map(fn($key)=>$labels[$key]??'',$a['activity_ids']));
+        $nonScoring=array_filter($a['activity_ids'],fn($key)=>$key!=='dinner');
+        $extraNames=array_map(fn($key)=>($labels[$key]??'').'（不计积分）',$nonScoring);
+        $a['entry_names']=implode('、',array_filter([$a['entry_names'],...$extraNames]));
+        $a['activity_names']=in_array('dinner',$a['activity_ids'],true)?$labels['dinner']:'';
         if(isset($params['roster_school'])&&(int)$a['team_id']!==(int)$params['roster_school'])continue;
         if(isset($params['roster_category'])&&$category!==$params['roster_category'])continue;
         if(isset($params['roster_event'])){
@@ -41,7 +44,7 @@ function race_filter_roster(array $params):array {
 }
 function race_roster_project_options(?array $events=null):array {
     $items=$events??all('events');
-    foreach(registration_extra_options() as $key=>$label)$items[]=['id'=>'activity:'.$key,'name'=>$label];
+    foreach(registration_extra_options() as $key=>$label)$items[]=['id'=>'activity:'.$key,'name'=>$label.($key==='dinner'?'':'（不计积分）')];
     return $items;
 }
 function race_roster_select(string $name,string $label,array $items,string $value):void {

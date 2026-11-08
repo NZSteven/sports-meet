@@ -13,7 +13,7 @@ function race_notice_key():string {
 function race_notice():void {$key=race_notice_key();$n=get_transient($key);if($n){delete_transient($key);echo '<p role="status" class="'.($n[0]?'error':'notice').'">'.esc_html($n[1]).'</p>';}}
 function race_options(string $name,string $label,array $items,string $selected='',bool $required=true):void {echo '<label>'.esc_html($label).'<select name="'.esc_attr($name).'" '.($required?'required':'').'><option value="">请选择</option>';foreach($items as $i)echo '<option value="'.esc_attr($i['id']).'" '.selected((string)$i['id'],$selected,false).'>'.esc_html($i['name']).'</option>';echo '</select></label>';}
 function race_roster_rows():array {return q('SELECT a.*,t.name AS team_name,c.bib AS race_bib,c.version AS check_version FROM athletes a JOIN teams t ON t.id=a.team_id LEFT JOIN checkins c ON c.athlete_id=a.id ORDER BY t.name,a.name,a.id')->fetchAll();}
-function race_event_names(int $athlete):string {return implode('、',q('SELECT e.name FROM race_enrollments n JOIN events e ON e.id=n.event_id WHERE n.athlete_id=? ORDER BY e.id',[$athlete])->fetchAll(7));}
+function race_event_names(int $athlete):string {$names=q('SELECT e.name FROM race_enrollments n JOIN events e ON e.id=n.event_id WHERE n.athlete_id=? ORDER BY e.id',[$athlete])->fetchAll(7);$extra=registration_extra_names($athlete,true);if($extra!=='')$names[]=$extra;return implode('、',$names);}
 function race_public_roster():string {
     if(!race_roster_is_public()&&!current_user_can('manage_options')){
         return race_registration_navigation('roster').'<p>报名名单将于'.esc_html(race_registration_deadline_label()).'公开。</p>';
@@ -111,12 +111,12 @@ function race_registration_form(array $teams,array $events,array $edit=[],bool $
     field('name','姓名','text',$edit['name']??'');race_options('category','组别',array_map(fn($label)=>['id'=>$label,'name'=>$label],array_keys(race_categories())),$edit?race_category($edit):'');
     if($school)echo '<input type="hidden" name="team_id" value="'.$school.'">';
     else race_options('team_id','所属高校',$teams,(string)($edit['team_id']??''));
-    echo '<fieldset class="race-event-picker"><legend>参赛项目（可多选）</legend><p class="race-filter-status" role="status" aria-live="polite">项目会随所选组别筛选，不适用项目会隐藏。</p><div class="race-event-grid">';
+    echo '<fieldset class="race-event-picker"><legend>比赛项目（可多选）</legend><p class="race-filter-status" role="status" aria-live="polite">项目会随所选组别筛选，不适用项目会隐藏。</p><div class="race-event-grid">';
     foreach($events as $e){$selected=in_array((int)$e['id'],$chosen,true);$locked=$selected && q('SELECT id FROM race_rounds WHERE event_id=? LIMIT 1',[$e['id']])->fetch();
         if($locked)echo '<input type="hidden" name="event_ids[]" value="'.(int)$e['id'].'">';
         echo '<label class="race-event-choice" data-race-categories="'.esc_attr(wp_json_encode(race_event_categories($e))).'" data-race-locked="'.($locked?'1':'0').'"><input type="checkbox" name="event_ids[]" value="'.(int)$e['id'].'" '.checked($selected,true,false).' '.($locked?'disabled':'').'><span>'.esc_html($e['name']).'<small>'.esc_html(($e['kind']==='relay'?'接力':'个人').($e['age_group']!==''?' / '.$e['age_group']:'').($e['gender']==='M'?' / 男':($e['gender']==='F'?' / 女':'')).($locked?' / 已生成比赛名单，报名已锁定':'')).'</small></span></label>';
     }
-    if(!$events)echo '<p>尚无比赛项目。</p>';echo '</div></fieldset>';registration_extras_fields((int)($edit['id']??0));echo '<p class="race-registration-help">至少选择一个比赛项目或统计活动。编辑时取消勾选即取消该项报名；已生成比赛名单的项目会锁定。</p><button>'.($edit?'更新报名':'提交报名').'</button>';if($edit)echo '<a href="'.esc_url($standalone?page_url('new_registration'):race_url('registration')).'">取消编辑／新增报名</a>';echo '</form>';
+    registration_unscored_fields((int)($edit['id']??0));echo '</div></fieldset>';registration_extras_fields((int)($edit['id']??0));echo '<p class="race-registration-help">至少选择一个比赛项目或晚宴。2人3足、拔河属于不计积分的比赛；其他比赛按原赛制计分。编辑时取消勾选即取消该项报名；已生成赛程的计分项目会锁定。</p><button>'.($edit?'更新报名':'提交报名').'</button>';if($edit)echo '<a href="'.esc_url($standalone?page_url('new_registration'):race_url('registration')).'">取消编辑／新增报名</a>';echo '</form>';
 }
 
 function race_new_registration_page():string {return team_portal_page();}

@@ -6,14 +6,23 @@ function install_registration_extras():void {
     q('CREATE TABLE IF NOT EXISTS registration_extras (athlete_id INT NOT NULL, activity VARCHAR(24) NOT NULL, PRIMARY KEY(athlete_id,activity), FOREIGN KEY(athlete_id) REFERENCES athletes(id) ON DELETE CASCADE) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4');
 }
 function registration_extra_options():array {return ['three_legged'=>'2人3足比赛','tug_of_war'=>'拔河比赛','dinner'=>'晚宴'];}
-function registration_extra_names(int $id):string {
+function registration_extra_names(int $id,bool $competitions=false):string {
     $labels=registration_extra_options();
-    return implode('、',array_map(fn($key)=>$labels[$key]??'',q('SELECT activity FROM registration_extras WHERE athlete_id=? ORDER BY activity',[$id])->fetchAll(7)));
+    $keys=q('SELECT activity FROM registration_extras WHERE athlete_id=? ORDER BY activity',[$id])->fetchAll(7);
+    $keys=array_filter($keys,fn($key)=>$competitions?$key!=='dinner':$key==='dinner');
+    return implode('、',array_map(fn($key)=>($labels[$key]??'').($competitions?'（不计积分）':''),$keys));
+}
+function registration_unscored_fields(int $id=0):void {
+    $selected=$id?q('SELECT activity FROM registration_extras WHERE athlete_id=?',[$id])->fetchAll(7):[];
+    foreach(registration_extra_options() as $key=>$label){
+        if($key==='dinner')continue;
+        echo '<label class="race-event-choice" data-race-categories="'.esc_attr(wp_json_encode(array_keys(race_categories()))).'" data-race-locked="0"><input type="checkbox" name="activities[]" value="'.esc_attr($key).'" '.checked(in_array($key,$selected,true),true,false).'><span>'.esc_html($label).'<small>比赛项目 · 不计积分</small></span></label>';
+    }
 }
 function registration_extras_fields(int $id=0):void {
     $selected=$id?q('SELECT activity FROM registration_extras WHERE athlete_id=?',[$id])->fetchAll(7):[];
-    echo '<fieldset class="race-activities-picker"><legend>活动报名（仅统计人数，不计分、不安排比赛分组）</legend><input type="hidden" name="extras_present" value="1"><div class="race-event-grid">';
-    foreach(registration_extra_options() as $key=>$label)echo '<label class="race-event-choice"><input type="checkbox" name="activities[]" value="'.esc_attr($key).'" '.checked(in_array($key,$selected,true),true,false).'><span>'.esc_html($label).'</span></label>';
+    echo '<fieldset class="race-activities-picker"><legend>活动报名</legend><input type="hidden" name="extras_present" value="1"><div class="race-event-grid">';
+    echo '<label class="race-event-choice"><input type="checkbox" name="activities[]" value="dinner" '.checked(in_array('dinner',$selected,true),true,false).'><span>晚宴<small>活动报名 · 统计人数</small></span></label>';
     echo '</div></fieldset>';
 }
 function team_portal_token():string {
