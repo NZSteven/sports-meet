@@ -19,18 +19,18 @@
           if (eligible) count++;
           if (locked) {
             input.disabled = true;
-            choice.hidden = !eligible && !input.checked;
+            choice.hidden = false;
             if (!eligible && input.checked) conflict = true;
           } else {
-            choice.hidden = !eligible;
+            choice.hidden = false;
             input.disabled = !eligible;
             if (!eligible) input.checked = false;
           }
         });
         status.textContent = conflict
           ? '已有锁定的参赛项目不适用于当前组别，请恢复原组别或联系管理员核对。'
-          : !group.value ? '请先选择组别，再勾选参赛项目。'
-          : count ? `当前组别可选 ${count} 个项目；不适用项目已隐藏。`
+          : !group.value ? '所有比赛项目如下，请先选择上方组别，再勾选适用项目。'
+          : count ? `当前组别可选 ${count} 个项目；灰色项目不适用于当前组别。`
           : '此组别暂时没有可报名项目，请联系管理员添加。';
         buttons.forEach(button => { button.disabled = conflict || !group.value; });
       }

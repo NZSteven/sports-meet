@@ -132,3 +132,11 @@
 .sports-meet .race-activities-picker{width:100%;box-sizing:border-box;border:1px solid #d0ddca;border-radius:6px;padding:10px;margin:8px 0}
 .sports-meet .sm-team-portal td form,.sm-team-portal td form{display:inline-flex;align-items:center;gap:8px;margin:0 0 0 10px;padding:0;border:0;background:transparent;box-shadow:none}
 .sm-team-portal code{user-select:all;overflow-wrap:anywhere}
+.sm-team-portal .race-activities-picker{grid-column:1/-1;min-width:0}
+.sm-team-portal .race-activities-picker legend{font-weight:700;padding:0 8px}
+.race-event-choice:has(input:disabled):not(:has(input:checked)){opacity:.55}
+.sm-team-portal .sm-team-roster th,.sm-team-portal .sm-team-roster td{padding:5px 9px!important;font-size:13px!important;line-height:1.3!important;vertical-align:middle;white-space:nowrap;height:auto!important}
+.sm-team-portal .sm-team-roster td form{display:inline-flex!important;flex-direction:row!important;flex-wrap:nowrap!important;align-items:center!important;gap:7px!important;margin:0 0 0 10px!important;padding:0!important;min-height:0!important;width:auto!important}
+.sm-team-portal .sm-team-roster td form label{display:inline-flex!important;align-items:center;gap:4px;margin:0!important;padding:0!important;white-space:nowrap;width:auto!important;min-height:0!important}
+.sm-team-portal .sm-team-roster td form input[type=checkbox]{width:14px;height:14px;margin:0!important}
+.sm-team-portal .sm-team-roster td form button{padding:3px 9px!important;min-height:25px!important;margin:0!important;line-height:1.2!important;font-size:12px!important;width:auto!important}
