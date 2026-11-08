@@ -40,7 +40,7 @@
             if (state === previous) return;
             boards.forEach(board => {
                 const list = board.querySelector('.sm-ranking-list');
-                const visible = board.dataset.smRankMode === 'top' ? teams.filter(team => team.trophy) : teams;
+                const visible = ['top', 'home'].includes(board.dataset.smRankMode) ? teams.filter(team => team.trophy) : teams;
                 const rows = Array.from(list.children);
                 if (rows.length === visible.length && rows.every((row, i) => row.dataset.teamId === String(visible[i].id))) {
                     rows.forEach((row, i) => {
@@ -59,6 +59,15 @@
         }
     }
 
+    function pulseTrophies() {
+        boards.forEach(board => {
+            board.querySelectorAll('.sm-ranking-trophy.is-popped').forEach(cup => cup.classList.remove('is-popped'));
+            if (document.hidden || window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+            const cups = Array.from(board.querySelectorAll('.sm-ranking-trophy:not([hidden])'));
+            if (cups.length) cups[Math.floor(Math.random() * cups.length)].classList.add('is-popped');
+        });
+    }
+    setInterval(pulseTrophies, 1000);
     refresh();
     setInterval(refresh, 30000);
     document.addEventListener('visibilitychange', refresh);

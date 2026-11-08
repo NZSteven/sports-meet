@@ -201,3 +201,13 @@ body.sm-brand-home{background:#f9fbff;isolation:isolate}
 .sm-hero-copy .sm-ranking-link {margin:6px 0 0;}
 .sm-hero-copy .sm-ranking-link .sm-btn {display:flex;width:100%;padding:6px 12px;}
 .sm-live-board[data-sm-rank-mode="home"] .sm-ranking-list > li:last-child:nth-child(odd) {grid-column:1 / -1;}
+
+.sm-ranking-trophy {transform-origin:center;transition:transform .22s ease;position:relative;z-index:1;}
+.sm-ranking-trophy.is-popped:not([hidden]) {transform:scale(2);}
+@media(min-width:801px){
+ .sm-brand-home .sm-site .sm-hero-showcase {align-items:stretch;}
+ .sm-hero-right .sm-hero-slides {flex:1;aspect-ratio:auto;min-height:220px;}
+ .sm-hero-right .sm-song {flex:none;}
+ .sm-hero-showcase .sm-hero-copy {justify-content:space-between;}
+}
+@media(prefers-reduced-motion:reduce){.sm-ranking-trophy{transition:none;}.sm-ranking-trophy.is-popped:not([hidden]){transform:none;}}

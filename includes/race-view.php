@@ -60,6 +60,7 @@ function race_public_board(bool $topOnly=false): string {
         .'<h2>实时积分排名榜</h2><p class="sm-ranking-note">排名不分先后 · 🏆 表示积分前 6</p>'
         .'<ol class="sm-ranking-list">';
     foreach(race_public_teams() as $team){
+        if($topOnly&&!$team['trophy'])continue;
         $html.='<li data-team-id="'.$team['id'].'"><span class="sm-ranking-trophy"'.($team['trophy']?'':' hidden').' role="img" aria-label="积分前六">🏆</span>'
             .'<strong class="sm-ranking-name">'.esc_html($team['name']).'</strong>'
             .'<span class="sm-ranking-score" role="img" aria-label="积分暂不公开">•••</span></li>';
