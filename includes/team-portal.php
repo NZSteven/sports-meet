@@ -111,10 +111,22 @@ function team_portal_page():string {
     $grant=team_portal_grant();$school=(int)($grant['school']??0);$closed=race_registration_closed();
     if(!$school||!empty($_GET['registration_entry'])){
         if($closed)echo '<p>报名已截止，输入本校密码可查看资料，不能修改或删除。</p>';
-        team_portal_form('unlock');race_options('school_id','先选择你的高校／队伍',all('teams'));
-        echo '<label>高校报名密码<input type="password" name="school_password" maxlength="128" autocomplete="current-password"></label><label>确认新密码（首次自设时填写）<input type="password" name="password_confirm" maxlength="128" autocomplete="new-password"></label>'
-            .'<label><input type="checkbox" name="create_password" value="1"> 首次为本校创建密码（至少10个字符；留空由系统生成）</label>'
-            .'<label><input type="checkbox" name="school_representative" value="1"> 我确认是该高校授权的报名负责人</label><p>已设置密码的高校请直接输入密码进入。密码由本校负责人保管；忘记密码请联系组委会重置。</p><button>进入本校报名</button></form>';
+        echo '<div class="sm-registration-entry-cards">';
+        echo '<section class="sm-registration-entry-card"><h2>首次进入</h2><p>为本校创建报名密码</p>';
+        if($closed)echo '<p>报名已截止，首次创建已关闭。</p>';
+        else{
+            team_portal_form('unlock');echo '<input type="hidden" name="create_password" value="1">';
+            race_options('school_id','所属高校／队伍',all('teams'));
+            echo '<label>设置新密码（可选）<input type="password" name="school_password" minlength="10" maxlength="128" autocomplete="new-password"></label>'
+                .'<label>再次输入新密码<input type="password" name="password_confirm" maxlength="128" autocomplete="new-password"></label>'
+                .'<p>自设密码至少10个字符；两栏都留空，系统会生成密码并显示一次，请保存。</p>'
+                .'<label class="sm-entry-confirm"><input type="checkbox" name="school_representative" value="1" required> 我是该高校授权的报名负责人</label>'
+                .'<button>创建密码并进入报名</button></form>';
+        }
+        echo '</section><section class="sm-registration-entry-card"><h2>已有密码，再次进入</h2><p>使用本校已经设置的密码</p>';
+        team_portal_form('unlock');race_options('school_id','所属高校／队伍',all('teams'));
+        echo '<label>高校报名密码<input type="password" name="school_password" maxlength="128" autocomplete="current-password" required></label>'
+            .'<button>登录本校报名</button><p>忘记密码？请联系组委会重置。</p></form></section></div>';
         if($school)echo '<p><a href="'.esc_url(page_url('new_registration')).'">返回本校报名</a></p>';
         relay_auto_ui(0);echo '</section>';
         return ob_get_clean();
