@@ -57,8 +57,12 @@ function race_mutate(array $p):void {
         throw new \RuntimeException('报名已截止，报名资料已锁定。');
     }
     if(!$admin&&current_user_can('sports_meet_school_registration'))$p=race_school_registration_input($p);
-    elseif(!$admin&&!in_array($action,['checkin','round','relay','prepare_final'],true))throw new \RuntimeException('此操作需要管理员权限。');
+    elseif(!$admin&&!in_array($action,['checkin','round','relay','prepare_final','prepare_relay'],true))throw new \RuntimeException('此操作需要管理员权限。');
     switch($action){
+    case 'prepare_relay':
+        $event=absint($p['event_id']??0);
+        if(race_event($event)['kind']!=='relay')throw new \RuntimeException('请选择接力项目。');
+        race_generate($event,'heat',4,true);break;
     case 'checkin':race_checkin((int)$p['athlete_id'],(string)$p['bib'],(int)$p['version']);break;
     case 'prepare_final':race_prepare_final((int)$p['event_id'],!empty($p['confirm_direct']));break;
     case 'round':$empty=($p['decision']??'')==='empty';if($empty&&($p['empty_confirm']??'')!=='DNS')throw new \RuntimeException('无人出赛请在确认框输入DNS。');race_save_round((int)$p['round_id'],(int)$p['version'],(array)($p['entries']??[]),in_array($p['decision']??'',['finalize','empty'],true),$empty);break;
@@ -111,6 +115,10 @@ function race_handler():void {
     try{race_transaction(fn()=>race_mutate($p));}catch(\Throwable $e){$error=true;error_log('Sports Meet race: '.$e->getMessage());$message=$e instanceof DatabaseException?'保存失败：号码重复、资料仍被引用，或数据已变化。请刷新后核对。':$e->getMessage();}
     set_transient(race_notice_key(),[$error,$message],120);
     $tab=sanitize_key($p['race_tab']??'registration');$params=['race_tab'=>$tab];if($tab==='registration')$params=array_merge($params,race_roster_params($p));if(!empty($p['round_id']))$params['round_id']=(int)$p['round_id'];
+    if(!$error&&($p['race_action']??'')==='prepare_relay'){
+        $params['event_id']=absint($p['event_id']);
+        $params['round_id']=(int)q("SELECT id FROM race_rounds WHERE event_id=? ORDER BY FIELD(stage,'heat','semi','final'),heat_no LIMIT 1",[$params['event_id']])->fetchColumn();
+    }
     if($tab==='checkin')$params=array_merge($params,race_checkin_params($p));
     $day=is_scalar($p['day_page']??null)?(string)$p['day_page']:'';
     if($day==='new_registration'&&!empty($p['frontend'])&&($p['race_action']??'')==='registration'){

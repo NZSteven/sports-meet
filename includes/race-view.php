@@ -244,10 +244,11 @@ function race_judge_round_links(?string $stage,bool $public=false):void {
                 .esc_html(race_round_label($round).' · '.$label).'</a>';
         }
         if(!$rows){
-            if($public&&$event['kind']==='relay'){
+            if($event['kind']==='relay'){
                 $plan=relay_auto_draw_plan((int)$event['id']);
                 foreach($plan['draw_groups'] as $i=>$group){
-                    $url=add_query_arg(['event_id'=>$event['id'],'relay_heat'=>$i+1],page_url('lineups'));
+                    $args=['event_id'=>$event['id'],'relay_heat'=>$i+1];
+                    $url=$public?add_query_arg($args,page_url('lineups')):race_url('rounds',$args);
                     echo '<a class="is-open" href="'.esc_url($url).'">'.esc_html((count($plan['draw_groups'])===1?'决赛':'预赛第'.($i+1).'组').' · 预编排').'</a>';
                 }
                 if($plan['draw_groups']){echo '</div></details>';continue;}
@@ -268,6 +269,23 @@ function race_ui_rounds(?string $stage=null):void {
 }
 function race_round_detail(?string $stage=null):void {
     $admin=current_user_can('manage_options');
+    if(empty($_GET['round_id'])&&!empty($_GET['event_id'])){
+        $event=race_event(absint($_GET['event_id']));
+        if($event['kind']==='relay'){
+            $existing=q("SELECT id FROM race_rounds WHERE event_id=? ORDER BY FIELD(stage,'heat','semi','final'),heat_no LIMIT 1",[$event['id']])->fetchColumn();
+            if($existing)$_GET['round_id']=(int)$existing;
+            else{
+                echo '<h2>'.esc_html($event['name']).' · 系统自动组队</h2>';
+                relay_auto_lineups((int)$event['id'],absint($_GET['relay_heat']??0));
+                $plan=relay_auto_draw_plan((int)$event['id']);
+                if($plan['teams']){
+                    echo '<p>采用后固定本项目的8人上场名单、分组和赛道，并锁定接力报名；已生成的赛程不会被覆盖。</p>';
+                    race_form('prepare_relay','rounds');echo '<input type="hidden" name="event_id" value="'.(int)$event['id'].'"><button>采用系统组队并生成正式赛程</button></form>';
+                }
+                return;
+            }
+        }
+    }
     echo '<details class="race-sprint-draw"><summary>100米预先随机分组</summary><p>报名名单核对完成后，由管理员生成各组名单。超过8人时随机均分预赛，每组最多8人；8人以内直接决赛。已生成赛程的项目会跳过，生成后该项目报名锁定。</p>';
     if($admin){race_form('prepare_sprints','rounds');finish('生成全部100米项目分组');}
     else echo '<p>请联系管理员使用管理员账号登录此页生成分组。裁判可在下方录入已生成的比赛。</p>';
