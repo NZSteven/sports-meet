@@ -140,3 +140,9 @@
 .sm-team-portal .sm-team-roster td form label{display:inline-flex!important;align-items:center;gap:4px;margin:0!important;padding:0!important;white-space:nowrap;width:auto!important;min-height:0!important}
 .sm-team-portal .sm-team-roster td form input[type=checkbox]{width:14px;height:14px;margin:0!important}
 .sm-team-portal .sm-team-roster td form button{padding:3px 9px!important;min-height:25px!important;margin:0!important;line-height:1.2!important;font-size:12px!important;width:auto!important}
+.sm-relay-auto-columns{display:grid;grid-template-columns:minmax(230px,1fr) minmax(0,2fr);gap:18px;align-items:start}
+.sm-relay-auto-team{padding:9px 12px;margin:6px 0;background:#edf7ef;border:1px solid #c8ddce;border-radius:6px}
+.sm-relay-auto-team p{margin:4px 0!important;font-size:13px}
+.sm-relay-auto-pending{font-size:13px;color:#79551b}
+.sm-relay-auto th,.sm-relay-auto td{padding:5px 8px!important;font-size:13px!important}
+@media(max-width:700px){.sm-relay-auto-columns{grid-template-columns:1fr}}

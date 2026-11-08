@@ -72,31 +72,7 @@ function race_mutate(array $p):void {
         if(!in_array($kind,['individual','relay'],true)||!in_array($gender,['X','M','F'],true))throw new \RuntimeException('项目类型或性别无效。');if($kind==='relay')$gender='X';
         if($id){race_unstarted($id);$old=race_event($id);if($old['kind']!==$kind && q('SELECT id FROM race_enrollments WHERE event_id=?',[$id])->fetch())throw new \RuntimeException('已有报名，不能改变项目类型。');q('UPDATE events SET name=?,kind=?,gender=?,age_group=? WHERE id=?',[$name,$kind,$gender,$group,$id]);foreach(q('SELECT athlete_id FROM race_enrollments WHERE event_id=?',[$id])->fetchAll() as $a)race_enroll($id,(int)$a['athlete_id']);}
         else q("INSERT INTO events(name,kind,gender,age_group,direction,unit) VALUES(?,?,?,?,'asc','秒')",[$name,$kind,$gender,$group]);break;
-    case 'relay':
-        $school=absint($p['relay_school']??0);
-        $ids=[];
-        if($school){
-            $ids=q('SELECT a.id FROM race_enrollments n JOIN athletes a ON a.id=n.athlete_id
-                WHERE n.event_id=? AND a.team_id=? ORDER BY a.id',[(int)$p['event_id'],$school])->fetchAll(7);
-            if(count($ids)!==8){
-                $selected=[];
-                foreach(array_filter(array_map('trim',explode(',',(string)($p['bibs']??'')))) as $bib){
-                    $athlete=q('SELECT athlete_id FROM checkins WHERE bib=?',[(string)(int)$bib])->fetchColumn();
-                    if(!$athlete||!in_array((int)$athlete,array_map('intval',$ids),true))throw new \RuntimeException('所选号码不是本校已报名该接力项目的队员。');
-                    $selected[]=(int)$athlete;
-                }
-                if(count(array_unique($selected))!==8)throw new \RuntimeException('本校报名不足8人或多于8人；多于8人请填8个上场号码，或在各队报名及接力组队页选择8人。');
-                $ids=$selected;
-            }
-        }else{
-            foreach(array_map('trim',explode(',',(string)($p['bibs']??''))) as $b){
-                if(!preg_match('/^\d{1,8}$/',$b))throw new \RuntimeException('请用英文逗号分隔8个比赛号码。');
-                $a=q('SELECT athlete_id FROM checkins WHERE bib=?',[(string)(int)$b])->fetchColumn();
-                if(!$a)throw new \RuntimeException('比赛号码'.$b.'尚未检录。');
-                $ids[]=(int)$a;
-            }
-        }
-        race_set_relay((int)$p['event_id'],(int)($p['id']??0),(string)$p['name'],$ids);break;
+    case 'relay':throw new \RuntimeException('接力现由系统自动组队，请查看各队报名及接力组队页面。');
     case 'generate':race_generate((int)$p['event_id'],(string)$p['stage'],(int)$p['capacity'],!empty($p['individual_split']));break;
     case 'prepare_sprints':
         $prepared=0;

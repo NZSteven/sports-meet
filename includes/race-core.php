@@ -102,13 +102,11 @@ function race_placing_stage(int $event,string $stage,int $quota): array {
 
 function race_generate(int $event,string $stage,int $capacity,bool $individualSplit=false):void {
     race_unstarted($event);$e=race_event($event);if(!in_array($stage,['heat','final'],true)||$capacity<1||$capacity>100)throw new \RuntimeException('分组人数须为1至100。');
+    if($e['kind']==='relay')relay_auto_materialize($event);
     $keys=[];
     if($e['kind']==='individual'){foreach(q('SELECT athlete_id FROM race_enrollments WHERE event_id=? ORDER BY id',[$event])->fetchAll() as $r)$keys[]='A'.$r['athlete_id'];}
     else{
         $relays=q('SELECT id FROM race_relays WHERE event_id=? ORDER BY id',[$event])->fetchAll();foreach($relays as $r){race_relay_validate((int)$r['id']);$keys[]='R'.$r['id'];}
-        $reserved=relay_reserved_schools($event);
-        foreach(q('SELECT a.team_id FROM race_enrollments n JOIN athletes a ON a.id=n.athlete_id LEFT JOIN race_members m ON m.event_id=n.event_id AND m.athlete_id=n.athlete_id WHERE n.event_id=? AND m.athlete_id IS NULL',[$event])->fetchAll() as $unused)
-            if(!isset($reserved[(int)$unused['team_id']]))throw new \RuntimeException('仍有未组队的接力报名者；独立校队的候补可保留，其他报名者请先组队或取消报名。');
     }
     if(!$keys)throw new \RuntimeException('此项目没有参赛者。');
     if(race_eight_lane_event($e)){
