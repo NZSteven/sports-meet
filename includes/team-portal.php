@@ -57,6 +57,7 @@ function team_portal_save(array $input,int $school):int {
     $id=absint($input['id']??0);
     if($id&&!q('SELECT id FROM athletes WHERE id=? AND team_id=?',[$id,$school])->fetch())throw new \RuntimeException('只能操作本校报名。');
     if(($input['operation']??'')==='delete'){
+        tug_registration_guard($id,['delete_athlete'=>true]);
         if(!$id||empty($input['delete_confirm']))throw new \RuntimeException('请确认删除本条报名。');
         foreach(q('SELECT event_id FROM race_enrollments WHERE athlete_id=?',[$id])->fetchAll(7) as $event)race_unstarted((int)$event);
         if(q('SELECT id FROM race_entries WHERE athlete_id=? LIMIT 1',[$id])->fetch()||q('SELECT id FROM results WHERE athlete_id=? LIMIT 1',[$id])->fetch())throw new \RuntimeException('该报名已有比赛记录，请联系管理员。');
@@ -131,6 +132,7 @@ function team_portal_page():string {
     $totals=array_fill_keys(array_keys(registration_extra_options()),0);
     foreach(q('SELECT x.activity,COUNT(*) AS n FROM registration_extras x JOIN athletes a ON a.id=x.athlete_id WHERE a.team_id=? GROUP BY x.activity',[$school])->fetchAll() as $count)$totals[$count['activity']]=(int)$count['n'];
     echo '<p>本校报名 '.count($rows).' 人 · '.implode(' · ',array_map(fn($key)=>esc_html(registration_extra_options()[$key]).' '.$totals[$key].' 人',array_keys(registration_extra_options()))).'</p>';
+    tug_team_ui($school);
     echo '<div class="scroll"><table class="sm-team-roster"><thead><tr><th>姓名</th><th>组别</th><th>比赛项目</th><th>活动统计</th><th>操作</th></tr></thead><tbody>';
     foreach($rows as $row){
         $id=(int)$row['id'];echo '<tr><td>'.esc_html($row['name']).'</td><td>'.esc_html(race_category($row)).'</td><td>'.esc_html(race_event_names($id)).'</td><td>'.esc_html(registration_extra_names($id)).'</td><td>';

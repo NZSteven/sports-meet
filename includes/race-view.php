@@ -143,6 +143,7 @@ function race_ui_events():void {
     echo '<h2>比赛项目</h2><p>不同性别、年龄组分别建立项目。比赛名次直接由裁判填写，不按计时自动排名。</p>';race_form('event','events');field('id','项目ID：新增填0','number','0','min="0"');field('name','项目名称');race_options('kind','项目类型',[['id'=>'individual','name'=>'个人项目'],['id'=>'relay','name'=>'8×50米混合接力']]);race_options('gender','个人项目性别',[['id'=>'X','name'=>'不限'],['id'=>'M','name'=>'男'],['id'=>'F','name'=>'女']],'X');echo '<label>年龄组（可空）<input name="age_group"></label>';finish();$rows=[];foreach(all('events') as $e)$rows[]=[$e['id'],$e['name'],$e['kind']==='relay'?'接力':'个人',$e['gender'],$e['age_group'],q('SELECT COUNT(*) FROM race_enrollments WHERE event_id=?',[$e['id']])->fetchColumn()];table(['ID','名称','类型','性别','组别','报名人数'],$rows);race_delete_ui();
 }
 function race_ui_relay():void {
+    if(current_user_can('manage_options'))tug_team_ui();
     echo '<h2>8×50米混合接力组队</h2><p>同校队选择高校后，系统自动使用该校已报名该接力项目的8名队员组队，无需选人或输入号码。同一高校每个接力项目最多报名8人。跨校混合队留空高校，填写8个已检录的号码。名次分由8人均分并计回所属高校。</p>';
     race_form('relay','relay');
     field('id','接力队ID：新增填0，编辑填现有ID','number','0','min="0"');

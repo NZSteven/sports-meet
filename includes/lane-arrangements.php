@@ -31,7 +31,7 @@ function race_upgrade_relay_draws():void {
 }
 
 add_action('init',function(){
-    if(get_option('sports_meet_portal_schema')==='2.5.40')return;
+    if(get_option('sports_meet_portal_schema')==='2.5.41')return;
     try{
         install_distances();install_registration_extras();
         race_upgrade_relay_draws();
@@ -39,7 +39,7 @@ add_action('init',function(){
             $round=q('SELECT * FROM race_rounds WHERE id=?',[$id])->fetch();
             if($round&&$round['status']==='open')race_assign_lanes((int)$id);
         });
-        update_option('sports_meet_portal_schema','2.5.40',false);
+        update_option('sports_meet_portal_schema','2.5.41',false);
     }catch(\Throwable $e){error_log('Sports Meet draw upgrade: '.$e->getMessage());}
 },24);
 

@@ -163,6 +163,7 @@ function race_event_categories(array $event):array {
     return $allowed;
 }
 function race_registration_save(array $p):int {
+    tug_registration_guard((int)($p['id']??0),$p);
     $category=race_text($p['category']??'',20);$spec=race_categories()[$category]??null;if(!$spec)throw new \RuntimeException('请选择成年男子、成年女子、少年男子或少年女子。');
     $activities=$p['activities']??[];
     if(!is_array($activities)||count($activities)>3)throw new \RuntimeException('活动报名选项无效。');
