@@ -100,8 +100,7 @@ function race_public_results(bool $includeQualifiers=true):string {
         echo '</ol></article>';
     }
     echo '</div>';
-    if(!$includeQualifiers){echo '</section>';return ob_get_clean();}
-    echo '<h2>预赛晋级名单</h2><p>100米与接力按各组的晋级安排选出决赛名单。其他个人项目每组取前3名。</p>';$rows=[];foreach(all('events') as $e)foreach(race_qualifiers((int)$e['id']) as $r){$p=race_participant($r);$rows[]=[$e['name'],$p['team'],$p['name'],$p['bib']];}table(['项目','所属高校','晋级参赛者','比赛号码'],$rows);race_relay_rules();echo '</section>';return ob_get_clean();
+    echo '</section>';return ob_get_clean();
 }
 function race_registration_form(array $teams,array $events,array $edit=[],bool $standalone=false,int $school=0):void {
     $chosen=$edit?array_map('intval',q('SELECT event_id FROM race_enrollments WHERE athlete_id=?',[$edit['id']])->fetchAll(7)):[];

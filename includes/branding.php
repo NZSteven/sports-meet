@@ -5,6 +5,27 @@ defined('ABSPATH') || exit;
 const SITE_NAME='新西兰中国高校校友 奔Fun运动会';
 const SITE_SLOGAN='为Fun而奔，奔而得分';
 
+function race_schedule_columns(string $content):string {
+    if(str_contains($content,'race-schedule-columns'))return $content;
+    preg_match_all('/<h([1-6])\b[^>]*>.*?<\/h\1>/us',$content,$headings,PREG_OFFSET_CAPTURE);
+    $position=null;
+    foreach($headings[0] as [$heading,$offset]){
+        if(str_contains(wp_strip_all_tags($heading),'赛制')){$position=$offset;break;}
+    }
+    if($position===null)return $content;
+    $schedule=trim(substr($content,0,$position));
+    if($schedule==='')return $content;
+    $rules=substr($content,$position);
+    return '<section class="race-schedule-columns"><div class="race-schedule-column"><h2>赛程</h2>'.$schedule
+        .'</div><div class="race-rules-column">'.$rules.'</div></section>';
+}
+
+add_filter('the_content',function(string $content):string {
+    if(is_admin()||!is_page()||!is_main_query()||!in_the_loop())return $content;
+    $title=trim(get_the_title(get_queried_object_id()));
+    return in_array($title,['赛程与赛制','赛程赛制'],true)?race_schedule_columns($content):$content;
+},40);
+
 // Apply this approved identity once, including after unattended plugin updates.
 function apply_site_identity():void {
     if(get_option('sports_meet_identity_version')==='1')return;
@@ -36,9 +57,9 @@ add_filter('the_content',function(string $content):string {
 },30);
 add_action('wp_enqueue_scripts',function(){
     $main=dirname(__DIR__).'/sports-meet.php';
-    wp_enqueue_style('sports-meet-header',plugins_url('header-identity.css',$main),[],'2.5.36');
-    wp_enqueue_script('sports-meet-header',plugins_url('header-identity.js',$main),[],'2.5.36',true);
-    wp_enqueue_style('sports-meet-home-corners',plugins_url('home-corners.css',$main),['sports-meet-photos'],'2.5.36');
-    wp_enqueue_script('sports-meet-slides',plugins_url('photo-slides.js',$main),[],'2.5.36',true);
-    wp_enqueue_script('sports-meet-rankings',plugins_url('live-ranking.js',$main),[],'2.5.36',true);
+    wp_enqueue_style('sports-meet-header',plugins_url('header-identity.css',$main),[],'2.5.37');
+    wp_enqueue_script('sports-meet-header',plugins_url('header-identity.js',$main),[],'2.5.37',true);
+    wp_enqueue_style('sports-meet-home-corners',plugins_url('home-corners.css',$main),['sports-meet-photos'],'2.5.37');
+    wp_enqueue_script('sports-meet-slides',plugins_url('photo-slides.js',$main),[],'2.5.37',true);
+    wp_enqueue_script('sports-meet-rankings',plugins_url('live-ranking.js',$main),[],'2.5.37',true);
 });

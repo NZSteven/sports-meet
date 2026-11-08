@@ -119,3 +119,13 @@
 .race-section-cards>a:hover {background:#f4f8f6;}
 @media(max-width:850px){.sm-brand-home nav.race-section-cards:has(>a:nth-child(4)){grid-template-columns:repeat(2,minmax(0,1fr));}}
 @media(max-width:560px){.sm-brand-home nav.race-section-cards,.sm-brand-home nav.race-section-cards:has(>a:nth-child(4)){grid-template-columns:minmax(0,1fr);gap:8px;}.race-section-cards>a{padding:10px 12px;}.race-section-cards strong{font-size:16px;}}
+
+.race-schedule-columns {display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:24px;align-items:start;}
+.race-schedule-columns>div {min-width:0;padding:16px 18px;background:#fff;border:1px solid #d5e0e6;border-radius:8px;}
+.race-schedule-columns :is(h1,h2) {font-size:23px;line-height:1.3;margin:14px 0 8px;}
+.race-schedule-columns p {margin:8px 0;font-size:14px;line-height:1.65;}
+.race-schedule-columns li {font-size:14px;margin-bottom:5px;}
+.race-schedule-columns figure.wp-block-table {margin:12px 0;overflow-x:auto;}
+.race-schedule-columns table {width:100%;border-collapse:collapse;font-size:13px;}
+.race-schedule-columns :is(th,td) {padding:6px 8px;border:1px solid #d8e2dc;text-align:left;overflow-wrap:anywhere;}
+@media(max-width:800px){.race-schedule-columns{grid-template-columns:minmax(0,1fr);gap:14px;}}
