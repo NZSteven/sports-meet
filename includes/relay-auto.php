@@ -74,17 +74,23 @@ function relay_auto_materialize(int $event):void {
         if($team['school'])q('UPDATE race_relays SET school_id=? WHERE id=?',[$team['school'],$id]);
     }
 }
+function relay_auto_table(array $rows):void {
+    echo '<div class="scroll"><table class="sm-relay-team-table"><thead><tr><th>队名</th><th>组队状态</th><th>男</th><th>女</th><th>组成／候补</th></tr></thead><tbody>';
+    foreach($rows as $row){echo '<tr>';foreach($row as $value)echo '<td>'.esc_html((string)$value).'</td>';echo '</tr>';}
+    if(!$rows)echo '<tr><td colspan="5">暂无满足4男4女的组合</td></tr>';
+    echo '</tbody></table></div>';
+}
 function relay_auto_ui(int $school):void {
-    wp_enqueue_script('sports-meet-relay-auto',plugins_url('relay-auto.js',dirname(__DIR__).'/sports-meet.php'),[],'2.5.43',true);
-    $url=add_query_arg(['action'=>'sports_meet_relay_preview','nonce'=>wp_create_nonce('sports_meet_relay_preview'.team_portal_token())],admin_url('admin-ajax.php'));
+    wp_enqueue_script('sports-meet-relay-auto',plugins_url('relay-auto.js',dirname(__DIR__).'/sports-meet.php'),[],'2.5.44',true);
+    $url=add_query_arg('action','sports_meet_relay_preview',admin_url('admin-ajax.php'));
     echo '<section class="sm-relay-auto" data-relay-auto-url="'.esc_url($url).'"><h2>接力自动组队</h2><p>每队4男4女。高校达到至少4男4女时自动独立成队，队名为高校名，其他报名者作本校候补。其余高校优先两校组合，必要时三校组合。报名变动后自动重新计算；生成赛程后锁定。</p>';
     foreach(all('events') as $event){
         if($event['kind']!=='relay')continue;$id=(int)$event['id'];
         echo '<h3>'.esc_html($event['name']).'</h3>';
         if(q('SELECT id FROM race_rounds WHERE event_id=? LIMIT 1',[$id])->fetch()){
-            echo '<p>已生成赛程，组队名单已锁定。</p><ul>';
-            foreach(q('SELECT * FROM race_relays WHERE event_id=? ORDER BY id',[$id])->fetchAll() as $team){$members=race_members((int)$team['id']);$names=array_unique(array_column($members,'team_name'));echo '<li>'.esc_html($team['name'].' · '.implode('＋',$names)).' · 4男4女</li>';}
-            echo '</ul>';continue;
+            echo '<p>已生成赛程，组队名单已锁定。</p>';$rows=[];
+            foreach(q('SELECT * FROM race_relays WHERE event_id=? ORDER BY id',[$id])->fetchAll() as $team){$members=race_members((int)$team['id']);$names=array_unique(array_column($members,'team_name'));$m=count(array_filter($members,fn($a)=>$a['gender']==='M'));$rows[]=[$team['name'],'已锁定',$m,count($members)-$m,implode('＋',$names)];}
+            relay_auto_table($rows);continue;
         }
         $plan=relay_auto_plan(relay_auto_school_rows($id));
         echo '<div class="sm-relay-auto-columns"><div><h3>待组合高校</h3><table><thead><tr><th>高校</th><th>男</th><th>女</th></tr></thead><tbody>';
@@ -94,16 +100,17 @@ function relay_auto_ui(int $school):void {
         }
         if(!$waiting)echo '<tr><td colspan="3">暂无待组合高校</td></tr>';
         echo '</tbody></table></div><div><h3>自动组队结果</h3>';
+        $teamRows=[];
         foreach($plan['teams'] as $team){
-            echo '<article class="sm-relay-auto-team"><strong>'.esc_html($team['name']).'</strong> · '.($team['school']?'自成组队':'混合队').' · 4男4女';
+            $description='';
             if($team['school']){
-                $row=$plan['schools'][$team['school']];echo '<p>已报名：'.count($row['M']).'男'.count($row['F']).'女；本校候补'.(count($row['M'])+count($row['F'])-8).'人。</p>';
+                $row=$plan['schools'][$team['school']];$description='已报'.count($row['M']).'男'.count($row['F']).'女；候补'.(count($row['M'])+count($row['F'])-8).'人';
             }else{
-                echo '<p>';foreach($team['parts'] as $sid=>$counts)echo esc_html($plan['schools'][$sid]['name']).' '.$counts[0].'男'.$counts[1].'女　';echo '</p>';
+                $parts=[];foreach($team['parts'] as $sid=>$counts)$parts[]=$plan['schools'][$sid]['name'].' '.$counts[0].'男'.$counts[1].'女';$description=implode('＋',$parts);
             }
-            echo '</article>';
+            $teamRows[]=[$team['name'],$team['school']?'自成组队':'混合队',4,4,$description];
         }
-        if(!$plan['teams'])echo '<p>暂无满足4男4女的组合。</p>';
+        relay_auto_table($teamRows);
         foreach($plan['remaining'] as $row){$m=count($row['M']);$f=count($row['F']);if($m+$f)echo '<p class="sm-relay-auto-pending">'.esc_html($row['name']).'：仍有'.$m.'男'.$f.'女待组合。</p>';}
         echo '<p>以上为动态预编排；不足4男4女或需要超过三校的剩余人员继续待组合。同一人不会重复入队，独立校队候补不参与混合组队。</p></div></div>';
     }
@@ -111,9 +118,10 @@ function relay_auto_ui(int $school):void {
 }
 
 function relay_auto_preview_handler():void {
-    nocache_headers();$school=(int)(team_portal_grant()['school']??0);
-    if((!$school&&!race_can_judge())||!wp_verify_nonce(sanitize_text_field(wp_unslash($_GET['nonce']??'')),'sports_meet_relay_preview'.team_portal_token()))wp_send_json_error([],403);
-    ob_start();relay_auto_ui($school);$html=ob_get_clean();wp_send_json_success(['html'=>$html]);
+    // Public entrance shows school totals and team composition, never personal names.
+    nocache_headers();$html=get_transient('sports_meet_relay_entrance_preview');
+    if(!is_string($html)){ob_start();relay_auto_ui(0);$html=ob_get_clean();set_transient('sports_meet_relay_entrance_preview',$html,5);}
+    wp_send_json_success(['html'=>$html]);
 }
 add_action('wp_ajax_sports_meet_relay_preview',__NAMESPACE__.'\\relay_auto_preview_handler');
 add_action('wp_ajax_nopriv_sports_meet_relay_preview',__NAMESPACE__.'\\relay_auto_preview_handler');

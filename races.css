@@ -146,3 +146,4 @@
 .sm-relay-auto-pending{font-size:13px;color:#79551b}
 .sm-relay-auto th,.sm-relay-auto td{padding:5px 8px!important;font-size:13px!important}
 @media(max-width:700px){.sm-relay-auto-columns{grid-template-columns:1fr}}
+.sm-relay-team-table th,.sm-relay-team-table td{white-space:nowrap;vertical-align:middle;line-height:1.3!important;padding:5px 8px!important}

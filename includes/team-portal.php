@@ -109,15 +109,18 @@ function team_portal_page():string {
     if(!defined('DONOTCACHEPAGE'))define('DONOTCACHEPAGE',true);
     ob_start();echo '<section class="sports-meet race-workspace sm-team-portal"><p>报名及修改截止：'.esc_html(race_registration_deadline_label()).'。本页仅显示已验证高校的报名资料。</p>';
     $grant=team_portal_grant();$school=(int)($grant['school']??0);$closed=race_registration_closed();
-    if(!$school){
+    if(!$school||!empty($_GET['registration_entry'])){
         if($closed)echo '<p>报名已截止，输入本校密码可查看资料，不能修改或删除。</p>';
         team_portal_form('unlock');race_options('school_id','先选择你的高校／队伍',all('teams'));
         echo '<label>高校报名密码<input type="password" name="school_password" maxlength="128" autocomplete="current-password"></label><label>确认新密码（首次自设时填写）<input type="password" name="password_confirm" maxlength="128" autocomplete="new-password"></label>'
             .'<label><input type="checkbox" name="create_password" value="1"> 首次为本校创建密码（至少10个字符；留空由系统生成）</label>'
-            .'<label><input type="checkbox" name="school_representative" value="1"> 我确认是该高校授权的报名负责人</label><p>已设置密码的高校请直接输入密码进入。密码由本校负责人保管；忘记密码请联系组委会重置。</p><button>进入本校报名</button></form></section>';
+            .'<label><input type="checkbox" name="school_representative" value="1"> 我确认是该高校授权的报名负责人</label><p>已设置密码的高校请直接输入密码进入。密码由本校负责人保管；忘记密码请联系组委会重置。</p><button>进入本校报名</button></form>';
+        if($school)echo '<p><a href="'.esc_url(page_url('new_registration')).'">返回本校报名</a></p>';
+        relay_auto_ui(0);echo '</section>';
         return ob_get_clean();
     }
     echo '<h2>'.esc_html(q('SELECT name FROM teams WHERE id=?',[$school])->fetchColumn()).' · 本校报名</h2>';
+    echo '<p><a href="'.esc_url(add_query_arg('registration_entry','1',page_url('new_registration'))).'">返回报名入口／查看接力组队</a></p>';
     $key='sm_portal_password_'.hash('sha256',team_portal_token());$password=get_transient($key);
     if(is_string($password)){delete_transient($key);echo '<p role="status">本校报名密码（仅显示一次，请保存）：<code>'.esc_html($password).'</code></p>';}
     if(isset($_GET['saved']))echo '<p role="status">操作已完成。</p>';
@@ -132,8 +135,7 @@ function team_portal_page():string {
     $totals=array_fill_keys(array_keys(registration_extra_options()),0);
     foreach(q('SELECT x.activity,COUNT(*) AS n FROM registration_extras x JOIN athletes a ON a.id=x.athlete_id WHERE a.team_id=? GROUP BY x.activity',[$school])->fetchAll() as $count)$totals[$count['activity']]=(int)$count['n'];
     echo '<p>本校报名 '.count($rows).' 人 · '.implode(' · ',array_map(fn($key)=>esc_html(registration_extra_options()[$key]).' '.$totals[$key].' 人',array_keys(registration_extra_options()))).'</p>';
-    relay_auto_ui($school);
-    echo '<div class="scroll"><table class="sm-team-roster"><thead><tr><th>姓名</th><th>组别</th><th>比赛项目</th><th>活动统计</th><th>操作</th></tr></thead><tbody>';
+    echo '<div class="scroll"><table class="sm-team-roster"><thead><tr><th>姓名</th><th>组别</th><th>比赛项目</th><th>参加活动</th><th>操作</th></tr></thead><tbody>';
     foreach($rows as $row){
         $id=(int)$row['id'];echo '<tr><td>'.esc_html($row['name']).'</td><td>'.esc_html(race_category($row)).'</td><td>'.esc_html(race_event_names($id)).'</td><td>'.esc_html(registration_extra_names($id)).'</td><td>';
         if(!$closed){
