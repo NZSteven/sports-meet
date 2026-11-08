@@ -164,3 +164,6 @@
 .sm-school-roster-actions .sm-add-athlete:hover{background:#9a3412}
 .sm-school-roster-actions button{margin:0!important}
 .sm-school-roster-filter{margin:12px 0!important}
+.sports-meet td:has(>.sm-consent-dot){text-align:center!important;vertical-align:middle!important}
+.race-public-roster th:first-child,#race-roster th:first-child,.race-checkin-table th:nth-child(2){text-align:center!important}
+.sm-consent-dot.is-agreed{display:inline-flex;align-items:center;justify-content:center;width:22px;height:22px;border-radius:0;background:transparent;color:#198044;font-size:22px;font-weight:800;line-height:1}

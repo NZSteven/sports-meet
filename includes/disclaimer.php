@@ -83,7 +83,7 @@ function disclaimer_agreed(array $athlete,array $accepted): bool {
 function disclaimer_dot(array $athlete,array $accepted): string {
     $yes=disclaimer_agreed($athlete,$accepted);
     $label=$yes?'已同意免责声明':'未同意免责声明';
-    return '<span class="sm-consent-dot'.($yes?' is-agreed':'').'" role="img" aria-label="'.$label.'" title="'.$label.'"></span>';
+    return '<span class="sm-consent-dot'.($yes?' is-agreed':'').'" role="img" aria-label="'.$label.'" title="'.$label.'">'.($yes?'✓':'').'</span>';
 }
 
 function disclaimer_page(): string {
@@ -245,5 +245,5 @@ add_filter('wp_nav_menu_items',function(string $items,$args): string {
 },10,2);
 
 add_action('wp_enqueue_scripts',function(){
-    wp_enqueue_script('sports-meet-disclaimer',plugins_url('disclaimer.js',dirname(__DIR__).'/sports-meet.php'),[],'2.5.56',true);
+    wp_enqueue_script('sports-meet-disclaimer',plugins_url('disclaimer.js',dirname(__DIR__).'/sports-meet.php'),[],'2.5.57',true);
 });
