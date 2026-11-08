@@ -107,7 +107,7 @@ add_action('admin_post_nopriv_sports_meet_team_portal',__NAMESPACE__.'\\team_por
 
 function team_portal_page():string {
     if(!defined('DONOTCACHEPAGE'))define('DONOTCACHEPAGE',true);
-    ob_start();echo '<section class="sports-meet race-workspace sm-team-portal"><p>报名及修改截止：'.esc_html(race_registration_deadline_label()).'。本页仅显示已验证高校的报名资料。</p>';
+    ob_start();echo '<section class="sports-meet race-workspace sm-team-portal">';
     $grant=team_portal_grant();$school=(int)($grant['school']??0);$closed=race_registration_closed();
     if(!$school||!empty($_GET['registration_entry'])){
         echo race_registration_navigation();
@@ -132,6 +132,7 @@ function team_portal_page():string {
         relay_auto_ui(0);echo '</section>';
         return ob_get_clean();
     }
+    echo '<p>报名及修改截止：'.esc_html(race_registration_deadline_label()).'。本页仅显示已验证高校的报名资料。</p>';
     echo '<h2>'.esc_html(q('SELECT name FROM teams WHERE id=?',[$school])->fetchColumn()).' · 本校报名</h2>';
     echo '<p><a href="'.esc_url(add_query_arg('registration_entry','1',page_url('new_registration'))).'">返回报名入口／查看接力组队</a></p>';
     $key='sm_portal_password_'.hash('sha256',team_portal_token());$password=get_transient($key);
