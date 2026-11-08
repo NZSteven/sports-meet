@@ -168,3 +168,21 @@
 .race-public-roster th:first-child,#race-roster th:first-child,.race-checkin-table th:nth-child(2){text-align:center!important}
 .sm-consent-dot.is-agreed{display:inline-flex;align-items:center;justify-content:center;width:22px;height:22px;border-radius:0;background:transparent;color:#198044;font-size:22px;font-weight:800;line-height:1}
 .sports-meet .sm-consent-cell{text-align:center!important;vertical-align:middle!important;white-space:nowrap}.sports-meet .sm-consent-dot.is-agreed{display:inline-flex;align-items:center;justify-content:center;width:22px;height:22px;border-radius:0;background:transparent;color:#198044;font-size:22px;font-weight:800;line-height:1}.sm-consent-count{display:block;font-size:11px;line-height:1.2}.sm-result-consent{white-space:nowrap;font-size:12px}.sm-result-consent .sm-consent-count{display:inline;margin-left:3px}
+/* Wrap long registrations while keeping the dinner and action columns visible. */
+.sports-meet table.sm-athlete-roster{table-layout:fixed;width:100%;min-width:0;white-space:normal}
+.sports-meet .sm-athlete-roster th,.sports-meet .sm-athlete-roster td{white-space:normal!important;overflow-wrap:anywhere;word-break:normal;line-height:1.45!important;vertical-align:middle}
+.sm-public-athlete-roster th:nth-child(1),.race-compact-roster.sm-athlete-roster th:nth-child(1){width:78px}
+.sm-public-athlete-roster th:nth-child(2),.race-compact-roster.sm-athlete-roster th:nth-child(2){width:104px}
+.sm-public-athlete-roster th:nth-child(3),.race-compact-roster.sm-athlete-roster th:nth-child(3){width:125px}
+.sm-public-athlete-roster th:nth-child(4),.race-compact-roster.sm-athlete-roster th:nth-child(4){width:82px}
+.sm-public-athlete-roster th:nth-child(5),.race-compact-roster.sm-athlete-roster th:nth-child(5){width:80px}
+.sm-public-athlete-roster th:nth-child(7),.race-compact-roster.sm-athlete-roster th:nth-child(7){width:72px;text-align:center}
+.race-compact-roster.sm-athlete-roster th:nth-child(8){width:224px}
+.sm-team-roster.sm-athlete-roster th:nth-child(1){width:78px}
+.sm-team-roster.sm-athlete-roster th:nth-child(2){width:125px}
+.sm-team-roster.sm-athlete-roster th:nth-child(3){width:85px}
+.sm-team-roster.sm-athlete-roster th:nth-child(4){width:82px}
+.sm-team-roster.sm-athlete-roster th:nth-child(6){width:72px;text-align:center}
+.sm-team-roster.sm-athlete-roster th:nth-child(7){width:224px}
+.sm-public-athlete-roster td:nth-child(7),.race-compact-roster.sm-athlete-roster td:nth-child(7),.sm-team-roster.sm-athlete-roster td:nth-child(6){text-align:center}
+@media(max-width:760px){.sports-meet table.sm-athlete-roster{min-width:920px}}

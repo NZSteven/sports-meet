@@ -169,7 +169,7 @@ function team_portal_page():string {
     race_roster_select('roster_event','比赛及活动项目',race_roster_project_options(),$params['roster_event']??'');
     echo '<div class="race-roster-filter-actions"><button>筛选</button><a href="'.esc_url(page_url('new_registration')).'">重置</a></div></form><p role="status">当前显示 '.count($rows).' 人。</p>';
     $accepted=disclaimer_acceptances();
-    echo '<div class="scroll"><table class="sm-team-roster"><thead><tr><th class="sm-consent-cell">免责声明</th><th>姓名</th><th>比赛号码</th><th>组别</th><th>比赛项目</th><th>参加活动</th><th>操作</th></tr></thead><tbody>';
+    echo '<div class="scroll"><table class="sm-team-roster sm-athlete-roster"><thead><tr><th class="sm-consent-cell">免责声明</th><th>姓名</th><th>比赛号码</th><th>组别</th><th>比赛项目</th><th>晚宴</th><th>操作</th></tr></thead><tbody>';
     foreach($rows as $row){
         $id=(int)$row['id'];echo '<tr><td class="sm-consent-cell">'.disclaimer_dot($row,$accepted).'</td><td>'.esc_html($row['name']).'</td><td>'.esc_html(race_roster_bib($row)).'</td><td>'.esc_html(race_category($row)).'</td><td>'.esc_html(race_event_names($id)).'</td><td>'.esc_html(registration_extra_names($id)).'</td><td>';
         if(!$closed){

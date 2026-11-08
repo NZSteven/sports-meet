@@ -29,7 +29,7 @@ function race_public_roster():string {
     if(!$result['rows'])echo '<p>没有符合条件的报名记录，请调整筛选条件。</p>';
     else{
         $accepted=disclaimer_acceptances();
-        echo '<div class="scroll"><table><thead><tr><th>免责声明</th><th>所属高校</th><th>姓名</th><th>组别</th><th>比赛号码</th><th>参赛项目</th><th>参加活动</th></tr></thead><tbody>';
+        echo '<div class="scroll"><table class="sm-athlete-roster sm-public-athlete-roster"><thead><tr><th>免责声明</th><th>所属高校</th><th>姓名</th><th>组别</th><th>比赛号码</th><th>参赛项目</th><th>晚宴</th></tr></thead><tbody>';
         foreach($result['rows'] as $a){
             echo '<tr><td>'.disclaimer_dot($a,$accepted).'</td>';
             foreach([$a['team_name'],$a['name'],race_category($a),race_roster_bib($a),$a['entry_names'],$a['activity_names']] as $value)echo '<td>'.esc_html((string)$value).'</td>';
