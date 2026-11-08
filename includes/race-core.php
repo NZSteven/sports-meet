@@ -20,11 +20,6 @@ function race_enroll(int $event,int $athlete):void {
     if(!in_array(race_category($a),race_event_categories($e),true))throw new \RuntimeException('运动员组别不符合项目要求。');
     if($e['gender']!=='X' && $a['gender']!==$e['gender'])throw new \RuntimeException('运动员性别不符合项目要求。');
     if(!race_group_matches($e['age_group'],$a['age_group'],$a['gender']))throw new \RuntimeException('运动员组别不符合项目要求。');
-    if($e['kind']==='relay'){
-        $count=(int)q('SELECT COUNT(*) FROM race_enrollments n JOIN athletes a ON a.id=n.athlete_id
-            WHERE n.event_id=? AND a.team_id=? AND a.id<>?',[$event,$a['team_id'],$athlete])->fetchColumn();
-        if($count>=8)throw new \RuntimeException('同一高校在同一接力项目最多报名8人。');
-    }
     q('INSERT IGNORE INTO race_enrollments(event_id,athlete_id) VALUES(?,?)',[$event,$athlete]);
 }
 function race_checkin(int $athlete,string $bib,int $version):void {
@@ -52,6 +47,7 @@ function race_set_relay(int $event,int $relay,string $name,array $athleteIds):in
     race_unstarted($event);$e=race_event($event);if($e['kind']!=='relay')throw new \RuntimeException('请选择接力项目。');$name=trim($name);
     if($name===''||mb_strlen($name)>80)throw new \RuntimeException('接力队名称须为1至80字。');
     $athleteIds=array_values(array_unique(array_map('intval',$athleteIds)));if(count($athleteIds)!==8)throw new \RuntimeException('须填写8名不同队员。');
+    relay_reservation_guard($event,$relay,$athleteIds);
     if($relay){$old=race_one('race_relays',$relay);if((int)$old['event_id']!==$event)throw new \RuntimeException('接力项目不符。');q('UPDATE race_relays SET name=? WHERE id=?',[$name,$relay]);q('DELETE FROM race_members WHERE relay_id=?',[$relay]);}
     else{q('INSERT INTO race_relays(event_id,name) VALUES(?,?)',[$event,$name]);global $wpdb;$relay=(int)$wpdb->insert_id;}
     foreach($athleteIds as $id){
@@ -60,7 +56,9 @@ function race_set_relay(int $event,int $relay,string $name,array $athleteIds):in
         if(q('SELECT relay_id FROM race_members WHERE event_id=? AND athlete_id=?',[$event,$id])->fetch())throw new \RuntimeException('同一队员不能在本项目加入两个接力队。');
         q('INSERT INTO race_members(relay_id,event_id,athlete_id) VALUES(?,?,?)',[$relay,$event,$id]);
     }
-    race_relay_validate($relay);race_audit('relay',$relay,['members'=>$athleteIds]);return $relay;
+    $members=race_relay_validate($relay);$schools=array_values(array_unique(array_map('intval',array_column($members,'team_id'))));
+    q('UPDATE race_relays SET school_id=? WHERE id=?',[count($schools)===1?$schools[0]:null,$relay]);
+    race_audit('relay',$relay,['members'=>$athleteIds]);return $relay;
 }
 function race_create_round(int $event,string $stage,int $heat):int {[$actor,$now]=race_actor();q('INSERT INTO race_rounds(event_id,stage,heat_no,actor,updated) VALUES(?,?,?,?,?)',[$event,$stage,$heat,$actor,$now]);global $wpdb;return (int)$wpdb->insert_id;}
 function race_add_entry(int $round,string $key):void {
@@ -108,7 +106,9 @@ function race_generate(int $event,string $stage,int $capacity,bool $individualSp
     if($e['kind']==='individual'){foreach(q('SELECT athlete_id FROM race_enrollments WHERE event_id=? ORDER BY id',[$event])->fetchAll() as $r)$keys[]='A'.$r['athlete_id'];}
     else{
         $relays=q('SELECT id FROM race_relays WHERE event_id=? ORDER BY id',[$event])->fetchAll();foreach($relays as $r){race_relay_validate((int)$r['id']);$keys[]='R'.$r['id'];}
-        $unassigned=(int)q('SELECT COUNT(*) FROM race_enrollments n LEFT JOIN race_members m ON m.event_id=n.event_id AND m.athlete_id=n.athlete_id WHERE n.event_id=? AND m.athlete_id IS NULL',[$event])->fetchColumn();if($unassigned)throw new \RuntimeException('还有接力报名者未编入接力队，请先组队或取消其接力报名。');
+        $reserved=relay_reserved_schools($event);
+        foreach(q('SELECT a.team_id FROM race_enrollments n JOIN athletes a ON a.id=n.athlete_id LEFT JOIN race_members m ON m.event_id=n.event_id AND m.athlete_id=n.athlete_id WHERE n.event_id=? AND m.athlete_id IS NULL',[$event])->fetchAll() as $unused)
+            if(!isset($reserved[(int)$unused['team_id']]))throw new \RuntimeException('仍有未组队的接力报名者；独立校队的候补可保留，其他报名者请先组队或取消报名。');
     }
     if(!$keys)throw new \RuntimeException('此项目没有参赛者。');
     if(race_eight_lane_event($e)){

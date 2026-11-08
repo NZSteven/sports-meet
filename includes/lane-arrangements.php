@@ -31,21 +31,22 @@ function race_upgrade_relay_draws():void {
 }
 
 add_action('init',function(){
-    if(get_option('sports_meet_portal_schema')==='2.5.41')return;
+    if(get_option('sports_meet_portal_schema')==='2.5.42')return;
     try{
         install_distances();install_registration_extras();
+        q('UPDATE race_relays r JOIN (SELECT m.relay_id,MIN(a.team_id) AS school FROM race_members m JOIN athletes a ON a.id=m.athlete_id GROUP BY m.relay_id HAVING COUNT(*)=8 AND COUNT(DISTINCT a.team_id)=1) x ON x.relay_id=r.id SET r.school_id=x.school WHERE r.school_id IS NULL');
         race_upgrade_relay_draws();
         foreach(q("SELECT id FROM race_rounds WHERE status='open' ORDER BY id")->fetchAll(7) as $id)race_transaction(function()use($id){
             $round=q('SELECT * FROM race_rounds WHERE id=?',[$id])->fetch();
             if($round&&$round['status']==='open')race_assign_lanes((int)$id);
         });
-        update_option('sports_meet_portal_schema','2.5.41',false);
+        update_option('sports_meet_portal_schema','2.5.42',false);
     }catch(\Throwable $e){error_log('Sports Meet draw upgrade: '.$e->getMessage());}
 },24);
 
 function race_relay_rules_html():string {
     ob_start();
-    echo '<section class="race-current-relay-rules"><h2>8×50米混合接力赛制</h2><p>不计时，按组内冲线名次晋级。每队8人，每所高校在同一接力项目最多报名8人；跨校队每名队员的积分计回所属高校。预赛随机均分，每组及决赛最多4队，各轮固定赛道号，未完赛不晋级。</p>';
+    echo '<section class="race-current-relay-rules"><h2>8×50米混合接力赛制</h2><p>不计时，按组内冲线名次晋级。每队8人上场，报名人数不限，其余候补。独立校队全部报名者（包括候补）均保留给本校，不可加入其他混合队；跨校队每名队员的积分计回所属高校。预赛随机均分，每组及决赛最多4队，各轮固定赛道号，未完赛不晋级。</p>';
     table(['报名队数','预赛安排','晋级及决赛'],[
         ['1–4队','直接决赛','按实际队数参赛'],
         ['5–8队','2组，均衡分组','各组前2名晋级，决赛最多4队'],

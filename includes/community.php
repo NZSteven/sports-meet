@@ -7,7 +7,7 @@ function community_sections(): array {
         'intro'=>['奔Fun简介','sports-about'], 'race_hub'=>['赛场直通车','sports-race-hub'],
         'committee'=>['组委会','sports-committee'], 'sponsors'=>['赞助伙伴','sports-sponsors'],
         'media_hub'=>['图文现场','sports-media-hub'], 'messages'=>['留言板','sports-messages'],
-        'new_registration'=>['各队报名','sports-new-registration'],
+        'new_registration'=>['各队报名及接力组队','sports-new-registration'],
         'lineups'=>['分组名单','sports-lineups'],
     ];
 }

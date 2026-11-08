@@ -6,6 +6,7 @@ function install_distances():void {
     foreach([
         'race_entries'=>['lane'=>'INT NULL','distance'=>'DECIMAL(12,4) NULL','no_mark'=>'TINYINT NOT NULL DEFAULT 0','tie_order'=>'INT NULL','elapsed'=>'DECIMAL(9,3) NULL'],
         'race_rounds'=>['eight_lanes'=>'TINYINT NOT NULL DEFAULT 0'],
+        'race_relays'=>['school_id'=>'INT NULL'],
     ] as $table=>$columns){
         foreach($columns as $column=>$definition)if(!q("SHOW COLUMNS FROM $table LIKE ?",[$column])->fetch()){
             try{q("ALTER TABLE $table ADD COLUMN $column $definition");}

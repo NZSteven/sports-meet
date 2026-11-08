@@ -4,7 +4,6 @@ defined('ABSPATH') || exit;
 
 function race_text($v,int $max,bool $required=true):string {if(!is_scalar($v))throw new \RuntimeException('文字格式错误。');$s=trim(sanitize_text_field((string)$v));if(($required&&$s==='')||mb_strlen($s)>$max)throw new \RuntimeException('必填文字为空或超出长度。');return $s;}
 function race_athlete_save(array $p):int {
-    tug_registration_guard((int)($p['id']??0),$p);
     $id=(int)($p['id']??0);$bib=race_text($p['registration_id']??'',40);$name=race_text($p['name']??'',80);$gender=$p['gender']??'';$group=race_text($p['age_group']??'',80,false);$team=(int)($p['team_id']??0);race_one('teams',$team);
     if(!in_array($gender,['M','F'],true))throw new \RuntimeException('性别须为M或F。');
     if($id){$old=race_one('athletes',$id);$structural=(int)$old['team_id']!==$team||$old['gender']!==$gender||$old['age_group']!==$group;
@@ -79,7 +78,16 @@ function race_mutate(array $p):void {
         if($school){
             $ids=q('SELECT a.id FROM race_enrollments n JOIN athletes a ON a.id=n.athlete_id
                 WHERE n.event_id=? AND a.team_id=? ORDER BY a.id',[(int)$p['event_id'],$school])->fetchAll(7);
-            if(count($ids)!==8)throw new \RuntimeException('同校接力队须恰有8名已报名该接力项目的队员，请先核对报名名单。');
+            if(count($ids)!==8){
+                $selected=[];
+                foreach(array_filter(array_map('trim',explode(',',(string)($p['bibs']??'')))) as $bib){
+                    $athlete=q('SELECT athlete_id FROM checkins WHERE bib=?',[(string)(int)$bib])->fetchColumn();
+                    if(!$athlete||!in_array((int)$athlete,array_map('intval',$ids),true))throw new \RuntimeException('所选号码不是本校已报名该接力项目的队员。');
+                    $selected[]=(int)$athlete;
+                }
+                if(count(array_unique($selected))!==8)throw new \RuntimeException('本校报名不足8人或多于8人；多于8人请填8个上场号码，或在各队报名及接力组队页选择8人。');
+                $ids=$selected;
+            }
         }else{
             foreach(array_map('trim',explode(',',(string)($p['bibs']??''))) as $b){
                 if(!preg_match('/^\d{1,8}$/',$b))throw new \RuntimeException('请用英文逗号分隔8个比赛号码。');
@@ -113,7 +121,7 @@ function race_mutate(array $p):void {
         q('UPDATE settings SET title=?,relay_males=? WHERE id=1',[race_text($p['title'],120),$male]);update_option('sports_meet_race_rules',$rules,false);break;
     case 'delete':
         if(($p['confirm']??'')!=='DELETE')throw new \RuntimeException('请输入DELETE确认。');$id=(int)$p['id'];$type=$p['type']??'';
-        if($type==='athlete'){tug_registration_guard($id,['delete_athlete'=>true]);race_one('athletes',$id);foreach(q('SELECT event_id FROM race_enrollments WHERE athlete_id=?',[$id])->fetchAll() as $r)race_unstarted((int)$r['event_id']);q('DELETE FROM race_members WHERE athlete_id=?',[$id]);q('DELETE FROM race_enrollments WHERE athlete_id=?',[$id]);q('DELETE FROM checkins WHERE athlete_id=?',[$id]);q('DELETE FROM athletes WHERE id=?',[$id]);}
+        if($type==='athlete'){race_one('athletes',$id);foreach(q('SELECT event_id FROM race_enrollments WHERE athlete_id=?',[$id])->fetchAll() as $r)race_unstarted((int)$r['event_id']);q('DELETE FROM race_members WHERE athlete_id=?',[$id]);q('DELETE FROM race_enrollments WHERE athlete_id=?',[$id]);q('DELETE FROM checkins WHERE athlete_id=?',[$id]);q('DELETE FROM athletes WHERE id=?',[$id]);}
         elseif($type==='event'){if(race_registration_closed()&&q('SELECT id FROM race_enrollments WHERE event_id=? LIMIT 1',[$id])->fetch())throw new \RuntimeException('报名已截止，不能删除已有报名的项目。');race_unstarted($id);q('DELETE FROM race_members WHERE event_id=?',[$id]);q('DELETE FROM race_relays WHERE event_id=?',[$id]);q('DELETE FROM race_enrollments WHERE event_id=?',[$id]);q('DELETE FROM events WHERE id=?',[$id]);}
         elseif($type==='relay'){$r=race_one('race_relays',$id);race_unstarted((int)$r['event_id']);q('DELETE FROM race_relays WHERE id=?',[$id]);}
         elseif($type==='team')q('DELETE FROM teams WHERE id=?',[$id]);else throw new \RuntimeException('删除类型无效。');break;
