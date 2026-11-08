@@ -9,7 +9,7 @@ function update_manifest():array {
     if(is_wp_error($response)||wp_remote_retrieve_response_code($response)!==200)return [];
     $data=json_decode(wp_remote_retrieve_body($response),true);
     if(!is_array($data)||!is_string($data['version']??null)||!preg_match('/^\d+\.\d+\.\d+$/D',$data['version'])||!is_string($data['commit']??null)||!preg_match('/^[a-f0-9]{40}$/D',$data['commit']))return [];
-    set_transient('sports_meet_update_manifest',$data,15*MINUTE_IN_SECONDS);
+    set_transient('sports_meet_update_manifest',$data,5*MINUTE_IN_SECONDS);
     return $data;
 }
 add_filter('update_plugins_github.com',function($update,$pluginData,$pluginFile){
@@ -37,4 +37,57 @@ add_action('admin_init',function(){
     update_site_option('auto_update_plugins',array_values(array_unique($plugins)));
     update_option('sports_meet_auto_update_initialized',1,false);
     delete_site_transient('update_plugins');
+});
+
+add_filter('cron_schedules',function(array $schedules):array {
+    $schedules['sports_meet_five_minutes']=['interval'=>5*MINUTE_IN_SECONDS,'display'=>'运动会插件每5分钟检查更新'];
+    return $schedules;
+});
+
+add_action('init',function(){
+    if(!wp_next_scheduled('sports_meet_fast_update')){
+        wp_schedule_event(time()+MINUTE_IN_SECONDS,'sports_meet_five_minutes','sports_meet_fast_update');
+    }
+});
+
+register_deactivation_hook(dirname(__DIR__).'/sports-meet.php',function(){
+    wp_clear_scheduled_hook('sports_meet_fast_update');
+});
+
+add_action('sports_meet_fast_update',function(){
+    $main=dirname(__DIR__).'/sports-meet.php';
+    $plugin=plugin_basename($main);
+    if(!in_array($plugin,(array)get_site_option('auto_update_plugins',[]),true))return;
+    require_once ABSPATH.'wp-admin/includes/update.php';
+    require_once ABSPATH.'wp-admin/includes/plugin.php';
+    require_once ABSPATH.'wp-admin/includes/file.php';
+    require_once ABSPATH.'wp-admin/includes/class-wp-upgrader.php';
+    require_once ABSPATH.'wp-admin/includes/class-wp-automatic-updater.php';
+    if(!wp_is_auto_update_enabled_for_type('plugin'))return;
+    $updater=new \WP_Automatic_Updater();
+    if($updater->is_disabled())return;
+    delete_transient('sports_meet_update_manifest');
+    $manifest=update_manifest();
+    $installed=get_plugin_data($main,false,false);
+    if(!$manifest||!version_compare($manifest['version'],$installed['Version'],'>'))return;
+    if(!is_wp_version_compatible('6.4')||!is_php_version_compatible('8.1'))return;
+    if(!\WP_Upgrader::create_lock('auto_updater'))return;
+    try{
+        $offer=(object)[
+            'id'=>'https://github.com/NZSteven/sports-meet','slug'=>'sports-meet','plugin'=>$plugin,
+            'new_version'=>$manifest['version'],'url'=>'https://github.com/NZSteven/sports-meet',
+            'package'=>'https://github.com/NZSteven/sports-meet/archive/'.$manifest['commit'].'.zip',
+            'requires'=>'6.4','requires_php'=>'8.1',
+        ];
+        // Plugin_Upgrader reads its package from this shared cache.
+        $updates=get_site_transient('update_plugins');
+        if(!is_object($updates))$updates=new \stdClass();
+        if(!isset($updates->response)||!is_array($updates->response))$updates->response=[];
+        $updates->response[$plugin]=$offer;
+        unset($updates->no_update[$plugin]);
+        set_site_transient('update_plugins',$updates);
+        $updater->update('plugin',$offer);
+    }finally{
+        \WP_Upgrader::release_lock('auto_updater');
+    }
 });
