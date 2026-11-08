@@ -55,3 +55,8 @@
 .sm-song {grid-template-columns:minmax(0,190px) minmax(0,1fr);}
 .sm-hero-right .sm-song {grid-template-columns:minmax(0,.7fr) minmax(0,1.3fr);}
 @media(max-width:700px){.sm-song,.sm-hero-right .sm-song{grid-template-columns:minmax(0,1fr);}.sm-song .sm-song-cover{max-width:230px;}}
+
+.sm-song .sm-song-cover img {max-height:90px;}
+.sm-song .sm-song-panel {padding:8px 10px;}
+.sm-song .sm-song-toolbar {margin-bottom:6px;}
+.sm-song .sm-song-cover audio {margin-top:5px;}

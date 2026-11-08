@@ -192,3 +192,12 @@ body.sm-brand-home{background:#f9fbff;isolation:isolate}
 .sm-ranking-trophy:not([hidden]) {animation:sm-cup-glow 1.8s ease-in-out infinite;}
 @keyframes sm-cup-glow {0%,100%{opacity:1}50%{opacity:.35}}
 @media(prefers-reduced-motion:reduce){.sm-ranking-trophy:not([hidden]){animation:none;}}
+
+/* Keep the two hero columns packed from the top rather than distributing blank space. */
+.sm-brand-home .sm-site .sm-hero-showcase {min-height:0;align-items:start;}
+.sm-site .sm-hero-showcase h1 {margin-bottom:12px;padding-bottom:0;}
+.sm-hero-right {display:flex;flex-direction:column;gap:10px;}
+.sm-brand-home .sm-hero-right .sm-song {margin:0;padding:12px;gap:12px;}
+.sm-hero-copy .sm-ranking-link {margin:6px 0 0;}
+.sm-hero-copy .sm-ranking-link .sm-btn {display:flex;width:100%;padding:6px 12px;}
+.sm-live-board[data-sm-rank-mode="home"] .sm-ranking-list > li:last-child:nth-child(odd) {grid-column:1 / -1;}
