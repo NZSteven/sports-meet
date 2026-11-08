@@ -22,19 +22,19 @@ function song_section():string {
     $audio=esc_url($base.'ben-fun-track.mp3');
     return '<section class="sm-song" aria-label="运动会主题曲《奔Fun赛道》">'
         .'<div class="sm-song-cover">'.$cover
+        .'<p class="sm-song-credit">作词/编曲：Steven Lee</p>'
         .'<audio controls preload="none" aria-label="播放主题曲奔Fun赛道">'
         .'<source src="'.$audio.'" type="audio/mpeg">你的浏览器不支持音频播放。<a href="'.$audio.'">打开歌曲</a></audio></div>'
         .'<div class="sm-song-body"><div class="sm-song-panel"><div class="sm-song-toolbar">'
         .'<label class="sm-song-follow"><input type="checkbox" data-sm-follow-lyrics checked> 跟随歌曲滚动</label></div>'
-        .'<p class="sm-song-credit"><strong>《奔FUN赛道》</strong><br>作词/编曲：Steven Lee</p>'
         .'<div class="sm-song-lyrics" tabindex="0" role="region" aria-label="完整歌词，可上下滚动">'
         .$lyrics.'</div></div></div></section>';
 }
 add_shortcode('sports_meet_song',__NAMESPACE__.'\\song_section');
 add_action('wp_enqueue_scripts',function(){
     $main=dirname(__DIR__).'/sports-meet.php';
-    wp_enqueue_style('sports-meet-song',plugins_url('song.css',$main),[],'2.5.60');
-    wp_enqueue_script('sports-meet-song-sync',plugins_url('song-sync.js',$main),[],'2.5.60',true);
+    wp_enqueue_style('sports-meet-song',plugins_url('song.css',$main),[],'2.5.61');
+    wp_enqueue_script('sports-meet-song-sync',plugins_url('song-sync.js',$main),[],'2.5.61',true);
 });
 add_filter('the_content',function($content){
     if(is_admin()||!is_front_page()||!is_main_query()||!in_the_loop()||has_shortcode($content,'sports_meet_home')||has_shortcode($content,'sports_meet_song')||str_contains($content,'class="sm-song"'))return $content;
