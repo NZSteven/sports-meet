@@ -126,27 +126,34 @@ add_filter('wp_nav_menu_args',static function(array $args):array {
     return $args;
 });
 
+function race_section_cards(array $links,string $active,string $label): string {
+    $html='<nav class="race-section-cards" aria-label="'.esc_attr($label).'">';
+    foreach($links as $key=>[$title,$description,$url]){
+        $html.='<a href="'.esc_url($url).'" '.($key===$active?'aria-current="page"':'').'><strong>'
+            .esc_html($title).' ↗</strong><span>'.esc_html($description).'</span></a>';
+    }
+    return $html.'</nav>';
+}
+
+function race_public_navigation(string $active='board'): string {
+    return race_section_cards([
+        'roster'=>['报名名单','按高校、组别或项目查看报名名单',page_url('roster')],
+        'board'=>['成绩积分榜','查看各项目赛果及高校积分排名',page_url('board')],
+        'lineups'=>['分组名单','查看预赛、半决赛及决赛名单',page_url('lineups')],
+    ],$active,'比赛公布区');
+}
+
 function community_hub($attrs=[]): string {
     $key=shortcode_atts(['kind'=>'intro'],(array)$attrs)['kind'];
     if($key==='messages')return guestbook_page();
     if($key==='new_registration')return race_new_registration_page();
     if($key==='lineups')return race_public_lineups();
     if($key==='media_hub')return '<section class="sm-site sm-media-hub">'.photo_carousel().guestbook_home(8).'</section>';
+    if($key==='race_hub')return '<section class="sm-site sm-community">'.shortcode_view('board').'</section>';
     $html='<section class="sm-site sm-community">';
     if($key==='intro')$html.='<p>'.esc_html(SITE_NAME).' · '.esc_html(SITE_SLOGAN).'</p>'
         .'<p>第五届奔Fun运动会于 2026 年 11 月 15 日举行。校友和家人一起参赛、观赛，分享运动场上的精彩瞬间。</p>'
         .community_buttons([['回到首页',home_url('/')],['进入赛场',page_url('race_hub')]]);
-    elseif($key==='race_hub'){
-        $html.='<nav class="race-day-grid" aria-label="赛场直通车">';
-        foreach([
-            'roster'=>['报名名单','按高校、组别或项目查看报名名单'],
-            'board'=>['成绩积分榜','查看各项目赛果及高校积分排名'],
-            'lineups'=>['分组名单','查看各项目及预赛、半决赛、决赛名单'],
-        ] as $page=>[$title,$description]){
-            $html.='<a href="'.esc_url(page_url($page)).'"><strong>'.esc_html($title).' ↗</strong><span>'.esc_html($description).'</span></a>';
-        }
-        $html.='</nav>';
-    }
     elseif($key==='committee')$html.=current_user_can('manage_options')
         ?community_buttons([['赛事管理',view_url('races')],['照片管理',view_url('photos')],['留言管理',view_url('messages')],['免责声明设置',view_url('disclaimer')]])
         :'<p>组委会负责赛事和网站管理。组委会成员请用管理员账号登录。</p>'.(!is_user_logged_in()?wp_login_form(['echo'=>false,'redirect'=>page_url('committee')]):'');

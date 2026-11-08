@@ -16,11 +16,11 @@ function race_roster_rows():array {return q('SELECT a.*,t.name AS team_name,c.bi
 function race_event_names(int $athlete):string {return implode('、',q('SELECT e.name FROM race_enrollments n JOIN events e ON e.id=n.event_id WHERE n.athlete_id=? ORDER BY e.id',[$athlete])->fetchAll(7));}
 function race_public_roster():string {
     if(!race_roster_is_public()&&!current_user_can('manage_options')){
-        return '<p>报名名单将于'.esc_html(race_registration_deadline_label()).'公开。</p>';
+        return race_public_navigation('roster').'<p>报名名单将于'.esc_html(race_registration_deadline_label()).'公开。</p>';
     }
     $params=race_roster_params(wp_unslash($_GET));unset($params['roster_q']);$result=race_filter_roster($params);
     $pageId=get_queried_object_id();$url=get_permalink($pageId)?:home_url('/');
-    ob_start();echo '<section id="sports-public-roster" class="sports-meet race-public-roster"><h2>高校及报名名单</h2><form class="race-roster-filter" method="get" action="'.esc_url($url).'#sports-public-roster">';
+    ob_start();echo race_public_navigation('roster').'<section id="sports-public-roster" class="sports-meet race-public-roster"><h2>高校及报名名单</h2><form class="race-roster-filter" method="get" action="'.esc_url($url).'#sports-public-roster">';
     if(!get_option('permalink_structure')&&$pageId)echo '<input type="hidden" name="page_id" value="'.(int)$pageId.'">';
     race_roster_select('roster_school','所属高校',all('teams'),$params['roster_school']??'');
     race_roster_select('roster_category','组别',array_map(fn($c)=>['id'=>$c,'name'=>$c],array_keys(race_categories())),$params['roster_category']??'');
@@ -181,9 +181,9 @@ function race_round_label(array $round): string {
 }
 
 function race_public_lineups():string {
-    if(!race_roster_is_public()&&!current_user_can('manage_options'))return '<p>分组名单将在报名名单公开后显示。</p>';
+    if(!race_roster_is_public()&&!current_user_can('manage_options'))return race_public_navigation('lineups').'<p>分组名单将在报名名单公开后显示。</p>';
     ob_start();
-    echo '<section class="sports-meet race-workspace race-public-lineups"><div class="race-judge-layout">';
+    echo race_public_navigation('lineups').'<section class="sports-meet race-workspace race-public-lineups"><div class="race-judge-layout">';
     race_judge_round_links(null,true);
     echo '<div class="race-judge-detail">';
     try{
@@ -340,8 +340,8 @@ function race_ui_rules():void {
 }
 function race_workspace(bool $frontend=false):string {
     if(!race_can_judge()){if(!is_user_logged_in())return '<div class="sports-meet"><h2>裁判工作台</h2>'.wp_login_form(['echo'=>false,'redirect'=>page_url('judge')]).'</div>';return '<p>此页面仅供管理员或运动会裁判使用，请联系管理员分配裁判角色。</p>';}
-    ob_start();echo '<section class="sports-meet race-workspace">';if(is_admin())echo '<h2>报名及比赛工作台</h2>';echo '<nav class="race-tabs">';$tabs=current_user_can('manage_options')?['registration'=>'报名及CSV','events'=>'项目','relay'=>'接力组队','checkin'=>'检录发号','rounds'=>'预赛／决赛','rules'=>'积分设置','audit'=>'操作记录']:['checkin'=>'检录发号','relay'=>'接力组队','rounds'=>'预赛／决赛'];
-    $tab=race_tab();if(!isset($tabs[$tab]))$tab='checkin';foreach($tabs as $t=>$label)echo '<a href="'.esc_url(race_url($t)).'">'.esc_html($label).'</a>';echo '</nav>';race_notice();
+    ob_start();echo '<section class="sports-meet race-workspace">';if(is_admin())echo '<h2>报名及比赛工作台</h2>';if(is_admin())echo '<nav class="race-tabs">';$tabs=current_user_can('manage_options')?['registration'=>'报名及CSV','events'=>'项目','relay'=>'接力组队','checkin'=>'检录发号','rounds'=>'预赛／决赛','rules'=>'积分设置','audit'=>'操作记录']:['checkin'=>'检录发号','relay'=>'接力组队','rounds'=>'预赛／决赛'];
+    $tab=race_tab();if(!isset($tabs[$tab]))$tab='checkin';if(is_admin())foreach($tabs as $t=>$label)echo '<a href="'.esc_url(race_url($t)).'">'.esc_html($label).'</a>';if(is_admin())echo '</nav>';else echo race_judge_navigation($tab==='rounds'?'heats':$tab);race_notice();
     try{switch($tab){case 'registration':race_ui_registration();break;case 'events':race_ui_events();break;case 'relay':race_ui_relay();break;case 'checkin':race_ui_checkin();break;case 'rounds':race_ui_rounds();break;case 'rules':race_ui_rules();break;case 'audit':$rows=[];foreach(q('SELECT * FROM race_audit ORDER BY id DESC LIMIT 100')->fetchAll() as $r){$user=get_userdata((int)$r['actor']);$rows[]=[$r['created'],$user?$user->display_name:$r['actor'],$r['action'],$r['record_id'],$r['payload']];}table(['时间','操作人','动作','记录ID','变更记录'],$rows);break;}}catch(\Throwable $e){error_log('Sports Meet UI: '.$e->getMessage());echo '<p class="error">无法显示，请刷新或检查所选资料是否仍存在。</p>';}
     echo '</section>';return ob_get_clean();
 }
