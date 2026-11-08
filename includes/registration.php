@@ -164,8 +164,12 @@ function race_event_categories(array $event):array {
 }
 function race_registration_save(array $p):int {
     $category=race_text($p['category']??'',20);$spec=race_categories()[$category]??null;if(!$spec)throw new \RuntimeException('请选择成年男子、成年女子、少年男子或少年女子。');
-    if(!isset($p['event_ids'])||!is_array($p['event_ids']))throw new \RuntimeException('请至少勾选一个参赛项目。');
-    $selected=[];foreach($p['event_ids'] as $v){if(!is_scalar($v)||!ctype_digit((string)$v)||(int)$v<1)throw new \RuntimeException('参赛项目格式错误。');$e=race_event((int)$v);if(!in_array($category,race_event_categories($e),true))throw new \RuntimeException($e['name'].'不适用于'.$category.'，请重新选择项目。');$selected[(int)$e['id']]=true;}if(!$selected)throw new \RuntimeException('请至少勾选一个参赛项目。');
+    $activities=$p['activities']??[];
+    if(!is_array($activities)||count($activities)>3)throw new \RuntimeException('活动报名选项无效。');
+    foreach($activities as $activity)if(!is_string($activity)||!isset(registration_extra_options()[$activity]))throw new \RuntimeException('活动报名选项无效。');
+    if(!isset($p['event_ids']))$p['event_ids']=[];
+    if(!is_array($p['event_ids']))throw new \RuntimeException('参赛项目格式错误。');
+    $selected=[];foreach($p['event_ids'] as $v){if(!is_scalar($v)||!ctype_digit((string)$v)||(int)$v<1)throw new \RuntimeException('参赛项目格式错误。');$e=race_event((int)$v);if(!in_array($category,race_event_categories($e),true))throw new \RuntimeException($e['name'].'不适用于'.$category.'，请重新选择项目。');$selected[(int)$e['id']]=true;}if(!$selected&&!$activities)throw new \RuntimeException('请至少勾选一个比赛项目或统计活动。');
     $id=(int)($p['id']??0);$old=$id?race_one('athletes',$id):null;$group=$spec[1];
     if($old && $old['age_group']!=='' && race_category($old)===$category)$group=$old['age_group'];
     if($old)$key=$old['bib'];else{$token=(string)($p['registration_token']??'');if(!preg_match('/^[a-f0-9-]{36}$/',$token))throw new \RuntimeException('报名页面已过期，请刷新重试。');$key='AUTO-'.str_replace('-','',$token);if(q('SELECT id FROM athletes WHERE bib=?',[$key])->fetch())throw new \RuntimeException('此报名已提交，请从报名名单点击编辑。');}
@@ -173,7 +177,11 @@ function race_registration_save(array $p):int {
     foreach($existing as $event=>$yes)if(!isset($selected[$event])){race_unstarted((int)$event);q('DELETE FROM race_members WHERE event_id=? AND athlete_id=?',[$event,$id]);q('DELETE FROM race_enrollments WHERE event_id=? AND athlete_id=?',[$event,$id]);}
     $id=race_athlete_save(['id'=>$id,'registration_id'=>$key,'name'=>$p['name']??'','team_id'=>$p['team_id']??0,'gender'=>$spec[0],'age_group'=>$group]);
     foreach($selected as $event=>$yes)if(!isset($existing[$event]))race_enroll((int)$event,$id);
-    race_audit('registration',$id,['events'=>array_keys($selected),'category'=>$category]);return $id;
+    if(isset($p['extras_present'])){
+        q('DELETE FROM registration_extras WHERE athlete_id=?',[$id]);
+        foreach(array_unique($activities) as $activity)q('INSERT INTO registration_extras(athlete_id,activity) VALUES(?,?)',[$id,$activity]);
+    }
+    race_audit('registration',$id,['events'=>array_keys($selected),'category'=>$category,'activities'=>$activities]);return $id;
 }
 function race_import_csv(string $path,bool $update=false):int {
     $f=fopen($path,'r');if(!$f)throw new \RuntimeException('无法读取CSV。');$temp=null;

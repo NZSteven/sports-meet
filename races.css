@@ -129,3 +129,6 @@
 .race-schedule-columns table {width:100%;border-collapse:collapse;font-size:13px;}
 .race-schedule-columns :is(th,td) {padding:6px 8px;border:1px solid #d8e2dc;text-align:left;overflow-wrap:anywhere;}
 @media(max-width:800px){.race-schedule-columns{grid-template-columns:minmax(0,1fr);gap:14px;}}
+.sports-meet .race-activities-picker{width:100%;box-sizing:border-box;border:1px solid #d0ddca;border-radius:6px;padding:10px;margin:8px 0}
+.sports-meet .sm-team-portal td form,.sm-team-portal td form{display:inline-flex;align-items:center;gap:8px;margin:0 0 0 10px;padding:0;border:0;background:transparent;box-shadow:none}
+.sm-team-portal code{user-select:all;overflow-wrap:anywhere}

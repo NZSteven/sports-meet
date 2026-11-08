@@ -65,6 +65,7 @@ function race_set_relay(int $event,int $relay,string $name,array $athleteIds):in
 function race_create_round(int $event,string $stage,int $heat):int {[$actor,$now]=race_actor();q('INSERT INTO race_rounds(event_id,stage,heat_no,actor,updated) VALUES(?,?,?,?,?)',[$event,$stage,$heat,$actor,$now]);global $wpdb;return (int)$wpdb->insert_id;}
 function race_add_entry(int $round,string $key):void {
     $kind=$key[0];$id=(int)substr($key,1);q('INSERT IGNORE INTO race_entries(round_id,participant,athlete_id,relay_id) VALUES(?,?,?,?)',[$round,$key,$kind==='A'?$id:null,$kind==='R'?$id:null]);
+    race_assign_lanes($round);
 }
 function race_eight_lane_event(array $event): bool {
     return $event['kind']==='relay'||(bool)preg_match('/(?<![0-9])100\s*(?:米|公尺|m)(?![a-z])/iu',$event['name']);
@@ -80,6 +81,7 @@ function race_lane_groups(array $keys,int $capacity=8): array {
 function race_lane_quota(int $groups): int {return $groups>0?intdiv(8,$groups):0;}
 
 function race_placing_plan(int $groups,int $format=2): array {
+    if($format===4)return [$groups===2?2:1,$groups>4?(int)ceil($groups/4):0];
     if($format===3)return [$groups===2?2:1,$groups>5?(int)ceil($groups/5):0];
     if(in_array($groups,[1,2,4,8],true))return [intdiv(8,$groups),0];
     $semis=$groups<=8?2:8;
@@ -89,7 +91,7 @@ function race_placing_plan(int $groups,int $format=2): array {
 function race_placing_quota(array $round): int {
     $groups=(int)q('SELECT COUNT(*) FROM race_rounds WHERE event_id=? AND stage=?',[$round['event_id'],$round['stage']])->fetchColumn();
     $format=(int)$round['eight_lanes'];
-    if($round['stage']==='semi')return $format===3?($groups===2?2:1):intdiv(8,$groups);
+    if($round['stage']==='semi')return in_array($format,[3,4],true)?($groups===2?2:1):intdiv(8,$groups);
     return race_placing_plan($groups,$format)[0];
 }
 
@@ -111,9 +113,9 @@ function race_generate(int $event,string $stage,int $capacity,bool $individualSp
     if(!$keys)throw new \RuntimeException('此项目没有参赛者。');
     if(race_eight_lane_event($e)){
         $relay=$e['kind']==='relay';
-        $lanes=$relay?5:8;
-        $format=$relay?3:2;
-        $limit=$relay?125:512;
+        $lanes=$relay?4:8;
+        $format=$relay?4:2;
+        $limit=$relay?64:512;
         if(count($keys)>$limit)throw new \RuntimeException('本赛制最多编排'.$limit.'人／队，请先拆分项目。');
         if($stage==='final'&&count($keys)>$lanes)throw new \RuntimeException('超过'.$lanes.'人／队，请先生成预赛。');
         $stage=count($keys)<=$lanes?'final':'heat';
@@ -139,7 +141,7 @@ function race_qualifiers(int $event):array {
     if($format>=2){
         [$quota,$semis]=race_placing_plan(count($heats),$format);
         $qualified=race_placing_stage($event,'heat',$quota);
-        if(!$semis||count($qualified)<=($format===3?5:8))return $qualified;
+        if(!$semis||count($qualified)<=($format===4?4:($format===3?5:8)))return $qualified;
         $semi=q("SELECT * FROM race_rounds WHERE event_id=? AND stage='semi' LIMIT 1",[$event])->fetch();
         return $semi?race_placing_stage($event,'semi',race_placing_quota($semi)):[];
     }
@@ -172,6 +174,8 @@ function race_sync_final(int $event):void {
     $final=q("SELECT * FROM race_rounds WHERE event_id=? AND stage='final'",[$event])->fetch();
     if($final && $final['status']==='finalized')throw new \RuntimeException('决赛已提交，不能更改晋级名单。');
     $id=$final?(int)$final['id']:race_create_round($event,'final',1);
+    $format=(int)(q("SELECT eight_lanes FROM race_rounds WHERE event_id=? AND stage='heat' LIMIT 1",[$event])->fetchColumn()?:0);
+    if($format)q('UPDATE race_rounds SET eight_lanes=? WHERE id=?',[$format,$id]);
     foreach($qualifiers as $r)race_add_entry($id,$r['participant']);
     q('UPDATE race_rounds SET version=version+1 WHERE id=?',[$id]);
 }
@@ -182,9 +186,9 @@ function race_advance_round(array $round): void {
         $groups=(int)q("SELECT COUNT(*) FROM race_rounds WHERE event_id=? AND stage='heat'",[$event])->fetchColumn();
         [$quota,$semis]=race_placing_plan($groups,$format);
         $qualified=race_placing_stage($event,'heat',$quota);
-        if($semis&&count($qualified)>($format===3?5:8)){
+        if($semis&&count($qualified)>($format===4?4:($format===3?5:8))){
             if(q("SELECT id FROM race_rounds WHERE event_id=? AND stage='semi' LIMIT 1",[$event])->fetch())return;
-            if($format===3)$semis=(int)ceil(count($qualified)/5);
+            if(in_array($format,[3,4],true))$semis=(int)ceil(count($qualified)/($format===4?4:5));
             else while(count($qualified)<=($semis/2)*8)$semis=intdiv($semis,2);
             $rounds=[];
             for($i=1;$i<=$semis;$i++){

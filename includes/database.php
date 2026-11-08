@@ -18,7 +18,7 @@ class Statement {
 function q(string $sql,array $args=[]): Statement {
     global $wpdb;
     // Only internal SQL reaches this adapter; all user values use placeholders.
-    $sql=preg_replace_callback('/\b(settings|teams|athletes|events|results|relay_members|photos|checkins|race_enrollments|race_relays|race_members|race_rounds|race_entries|race_audit|disclaimer_acceptances|athlete_accounts|guest_messages)\b/',fn($m)=>'`'.$wpdb->prefix.'sm_'.$m[1].'`',$sql);
+    $sql=preg_replace_callback('/\b(settings|teams|athletes|events|results|relay_members|photos|checkins|race_enrollments|race_relays|race_members|race_rounds|race_entries|race_audit|registration_extras|disclaimer_acceptances|athlete_accounts|guest_messages)\b/',fn($m)=>'`'.$wpdb->prefix.'sm_'.$m[1].'`',$sql);
     if(count($args)!==substr_count($sql,'?'))throw new DatabaseException('参数数量错误');
     if($args) {
         $parts=explode('?',$sql);$sql=array_shift($parts);$values=[];
