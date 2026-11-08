@@ -167,3 +167,4 @@
 .sports-meet td:has(>.sm-consent-dot){text-align:center!important;vertical-align:middle!important}
 .race-public-roster th:first-child,#race-roster th:first-child,.race-checkin-table th:nth-child(2){text-align:center!important}
 .sm-consent-dot.is-agreed{display:inline-flex;align-items:center;justify-content:center;width:22px;height:22px;border-radius:0;background:transparent;color:#198044;font-size:22px;font-weight:800;line-height:1}
+.sports-meet .sm-consent-cell{text-align:center!important;vertical-align:middle!important;white-space:nowrap}.sports-meet .sm-consent-dot.is-agreed{display:inline-flex;align-items:center;justify-content:center;width:22px;height:22px;border-radius:0;background:transparent;color:#198044;font-size:22px;font-weight:800;line-height:1}.sm-consent-count{display:block;font-size:11px;line-height:1.2}.sm-result-consent{white-space:nowrap;font-size:12px}.sm-result-consent .sm-consent-count{display:inline;margin-left:3px}

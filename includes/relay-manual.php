@@ -99,14 +99,15 @@ function relay_manual_ui():void {
     try{relay_manual_editable($event);$plan=relay_manual_source($event);$revision=relay_manual_revision($event);}catch(\Throwable $e){echo '<p>'.esc_html($e->getMessage()).'</p></section>';return;}
     if(!$plan['teams']){echo '<p>尚无满足4男4女的队伍，请先完成报名。</p></section>';return;}
     echo '<form method="post" action="'.esc_url(admin_url('admin-post.php')).'"><input type="hidden" name="action" value="sports_meet_manual_relay"><input type="hidden" name="event_id" value="'.$event.'"><input type="hidden" name="manual_revision" value="'.esc_attr($revision).'">'.wp_nonce_field('sports_meet_manual_relay','manual_nonce',false,false);
-    $people=q('SELECT a.*,t.name AS school FROM race_enrollments n JOIN athletes a ON a.id=n.athlete_id JOIN teams t ON t.id=a.team_id WHERE n.event_id=? ORDER BY t.name,a.name,a.id',[$event])->fetchAll();
+    $accepted=disclaimer_acceptances();
+    $people=q('SELECT a.*,t.name AS school,c.bib AS race_bib FROM race_enrollments n JOIN athletes a ON a.id=n.athlete_id JOIN teams t ON t.id=a.team_id LEFT JOIN checkins c ON c.athlete_id=a.id WHERE n.event_id=? ORDER BY t.name,a.name,a.id',[$event])->fetchAll();
     $reserved=[];foreach($plan['teams'] as $team)if($team['school'])$reserved[(int)$team['school']]=true;
     foreach($plan['teams'] as $i=>$team){
         echo '<details class="race-activities-picker"><summary>'.esc_html($team['name']).' · 4男4女</summary><label>队名<input name="manual_teams['.$i.'][name]" maxlength="80" value="'.esc_attr($team['name']).'" required></label><div class="race-event-grid">';
         foreach(['M'=>'男','F'=>'女'] as $sex=>$label){$selected=array_values(array_filter($team['members'],fn($id)=>in_array($id,array_map('intval',array_column(array_filter($people,fn($a)=>$a['gender']===$sex),'id')),true)));
             for($slot=0;$slot<4;$slot++){echo '<label>'.$label.'队员'.($slot+1).'<select name="manual_teams['.$i.'][members][]" required><option value="">请选择</option>';foreach($people as $a)if($a['gender']===$sex&&($team['school']?(int)$a['team_id']===(int)$team['school']:!isset($reserved[(int)$a['team_id']])))echo '<option value="'.(int)$a['id'].'" '.selected((int)$a['id'],(int)($selected[$slot]??0),false).'>'.esc_html($a['school'].' · '.$a['name']).'</option>';echo '</select></label>';}
         }
-        echo '</div></details>';
+        echo '</div><h4>当前上场队员及免责状态</h4>';disclaimer_members_table(array_values(array_filter($people,fn($a)=>in_array((int)$a['id'],$team['members'],true))),$accepted);echo '</details>';
     }
     echo '<button>保存并锁定手动编排</button></form></section>';
 }

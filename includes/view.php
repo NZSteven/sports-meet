@@ -1,26 +1,26 @@
 <?php
 namespace SportsMeetWP;
 defined('ABSPATH') || exit;
-function table(array $head,array $rows):void { echo '<div class="scroll"><table><thead><tr>';foreach($head as $v) echo '<th>'.h($v).'</th>';echo '</tr></thead><tbody>';foreach($rows as $r){echo '<tr>';foreach($r as $v)echo '<td>'.h($v).'</td>';echo '</tr>';}echo '</tbody></table></div>'; }
+function table(array $head,array $rows):void { echo '<div class="scroll"><table><thead><tr>';foreach($head as $v) echo '<th'.($v==='免责声明'?' class="sm-consent-cell"':'').'>'.h($v).'</th>';echo '</tr></thead><tbody>';foreach($rows as $r){echo '<tr>';foreach($r as $v)echo $v instanceof DisclaimerCell?'<td class="sm-consent-cell">'.$v->html.'</td>':'<td>'.h($v).'</td>';echo '</tr>';}echo '</tbody></table></div>'; }
 
 function render(string $page='board',bool $public=false): string {
  $admin=!$public && current_user_can('manage_options');
  if(!$admin && !in_array($page,['board','results'],true)) return '';
- $settings=q('SELECT * FROM settings WHERE id=1')->fetch();$teams=all('teams');$athletes=all('athletes');$events=all('events');$scored=results();
+ $settings=q('SELECT * FROM settings WHERE id=1')->fetch();$teams=all('teams');$athletes=all('athletes');$events=all('events');$scored=results();$accepted=disclaimer_acceptances();
  ob_start();echo '<div class="sports-meet"><h2>'.h($settings['title']).'</h2>';
 if($page==='board') {
     if($admin) echo '<p><a href="'.h(export_url('standings')).'">导出队伍排行榜 CSV</a> · <a href="'.h(export_url('scores')).'">导出各项目名次与积分 CSV</a></p>';
     echo '<h2>队伍总积分</h2><p>个人与接力积分相加；总分相同并列。规则：'.h($settings['points']).'；接力 ×'.h($settings['relay_multiplier']).'。成绩更新后刷新页面即可查看。</p>';
     $totals=[];foreach($teams as $t)$totals[$t['id']]=['name'=>$t['name'],'individual'=>0,'relay'=>0,'total'=>0];foreach($scored as $r){$totals[$r['team_id']][$r['kind']]+=$r['points'];$totals[$r['team_id']]['total']+=$r['points'];}
     usort($totals,fn($a,$b)=>($b['total']<=>$a['total'])?:strcmp($a['name'],$b['name']));$rows=[];$prev=null;$rank=0;foreach($totals as $i=>$t){if($prev===null || $prev!=$t['total'])$rank=$i+1;$prev=$t['total'];$rows[]=[$rank,$t['name'],$t['individual'],$t['relay'],$t['total']];}table(['名次','队伍','个人积分','接力积分','总积分'],$rows);
-    echo '<h2>运动员个人积分</h2><p>只累计个人项目，接力积分计入队伍。</p>';$ar=[];foreach($athletes as $a)$ar[$a['id']]=['name'=>$a['name'],'bib'=>$a['bib'],'points'=>0];foreach($scored as $r)if($r['athlete_id'])$ar[$r['athlete_id']]['points']+=$r['points'];usort($ar,fn($a,$b)=>$b['points']<=>$a['points']);$rows=[];$prev=null;foreach($ar as $i=>$a){if($prev===null || $prev!=$a['points'])$rank=$i+1;$prev=$a['points'];$rows[]=[$rank,$a['bib'],$a['name'],$a['points']];}table(['名次','号码','姓名','积分'],$rows);
+    echo '<h2>运动员个人积分</h2><p>只累计个人项目，接力积分计入队伍。</p>';$ar=[];foreach($athletes as $a)$ar[$a['id']]=['id'=>$a['id'],'name'=>$a['name'],'bib'=>$a['bib'],'points'=>0];foreach($scored as $r)if($r['athlete_id'])$ar[$r['athlete_id']]['points']+=$r['points'];usort($ar,fn($a,$b)=>$b['points']<=>$a['points']);$rows=[];$prev=null;foreach($ar as $i=>$a){if($prev===null || $prev!=$a['points'])$rank=$i+1;$prev=$a['points'];$rows[]=[disclaimer_cell(race_one('athletes',(int)$a['id']),$accepted),$rank,$a['bib'],$a['name'],$a['points']];}table(['免责声明','名次','号码','姓名','积分'],$rows);
 } elseif($page==='results') {
     echo '<h2>项目成绩</h2>';
-    $rows=[];foreach($scored as $r)if(true)$rows[]=[$r['id'],$r['event_name'],$r['rank'],$r['display_name'],$r['team_name'],$r['status']==='OK'?rtrim(rtrim($r['performance'],'0'),'.').' '.$r['unit']:$r['status'],$r['points']];table(['成绩ID','项目','名次','运动员/接力分队','队伍','成绩','积分'],$rows);
+    $rows=[];foreach($scored as $r)if(true)$rows[]=[disclaimer_legacy_cell($r,$accepted),$r['id'],$r['event_name'],$r['rank'],$r['display_name'],$r['team_name'],$r['status']==='OK'?rtrim(rtrim($r['performance'],'0'),'.').' '.$r['unit']:$r['status'],$r['points']];table(['免责声明','成绩ID','项目','名次','运动员/接力分队','队伍','成绩','积分'],$rows);
 } elseif($page==='manage') {
     echo '<h2>队伍管理</h2>';formStart('team');field('id','队伍ID（新增填0，改名填现有ID）','number','0','min="0"');field('name','队伍名称');finish();table(['ID','队伍'],array_map(fn($t)=>[$t['id'],$t['name']],$teams));
     echo '<h2>运动员管理</h2><p>新增填ID 0；修改填现有ID。已有成绩时可修改姓名及号码，变更队伍、性别或组别前须删除相关成绩。</p>';formStart('athlete');field('id','运动员ID','number','0','min="0"');field('bib','号码（唯一）');field('name','姓名');selectBox('gender','性别',[['id'=>'M','name'=>'男'],['id'=>'F','name'=>'女']]);echo '<label>组别（可空）<input name="age_group"></label>';selectBox('team_id','队伍',$teams);finish();
-    $tn=array_column($teams,'name','id');table(['ID','号码','姓名','性别','组别','队伍'],array_map(fn($a)=>[$a['id'],$a['bib'],$a['name'],$a['gender'],$a['age_group'],$tn[$a['team_id']]??''],$athletes));
+    $tn=array_column($teams,'name','id');table(['免责声明','ID','号码','姓名','性别','组别','队伍'],array_map(fn($a)=>[disclaimer_cell($a,$accepted),$a['id'],$a['bib'],$a['name'],$a['gender'],$a['age_group'],$tn[$a['team_id']]??''],$athletes));
 } elseif($page==='events') {
     echo '<h2>新增比赛项目</h2><p>每个性别/年龄组分别建立一个项目，例如“小学组男子50米”。8×50米接力已预建，可按组别另建。计时统一输入秒，例如1分12秒填72。</p>';formStart('event');field('name','项目名称');selectBox('kind','类型',[['id'=>'individual','name'=>'个人项目'],['id'=>'relay','name'=>'8×50米混合接力']]);selectBox('gender','性别限制（接力忽略）',[['id'=>'X','name'=>'不限'],['id'=>'M','name'=>'男'],['id'=>'F','name'=>'女']]);echo '<label>组别限制（留空为不限）<input name="age_group"></label>';selectBox('direction','排名方向（接力固定越小越好）',[['id'=>'asc','name'=>'越小越好（跑步）'],['id'=>'desc','name'=>'越大越好（跳远等）']]);field('unit','单位','text','秒');finish();table(['ID','名称','类型','性别','组别','排名方向','单位'],array_map('array_values',$events));
 } elseif($page==='entry') {

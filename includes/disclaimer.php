@@ -85,6 +85,29 @@ function disclaimer_dot(array $athlete,array $accepted): string {
     $label=$yes?'已同意免责声明':'未同意免责声明';
     return '<span class="sm-consent-dot'.($yes?' is-agreed':'').'" role="img" aria-label="'.$label.'" title="'.$label.'">'.($yes?'✓':'').'</span>';
 }
+final class DisclaimerCell {
+    public function __construct(public readonly string $html){}
+}
+function disclaimer_cell(array $athlete,array $accepted):DisclaimerCell {return new DisclaimerCell(disclaimer_dot($athlete,$accepted));}
+function disclaimer_group_mark(array $athletes,array $accepted):string {
+    $signed=0;foreach($athletes as $athlete)if(disclaimer_agreed($athlete,$accepted))$signed++;
+    $total=count($athletes);$yes=$total>0&&$signed===$total;
+    $label='免责声明：'.$signed.'/'.$total.'人已同意';
+    return '<span class="sm-consent-dot'.($yes?' is-agreed':'').'" role="img" aria-label="'.esc_attr($label).'" title="'.esc_attr($label).'">'.($yes?'✓':'').'</span><small class="sm-consent-count">'.$signed.'/'.$total.'</small>';
+}
+function disclaimer_entry_mark(array $entry,array $accepted):string {
+    if(!empty($entry['athlete_id']))return disclaimer_dot(race_one('athletes',(int)$entry['athlete_id']),$accepted);
+    return disclaimer_group_mark(race_members((int)$entry['relay_id']),$accepted);
+}
+function disclaimer_legacy_cell(array $result,array $accepted):DisclaimerCell {
+    if(!empty($result['athlete_id']))return disclaimer_cell(race_one('athletes',(int)$result['athlete_id']),$accepted);
+    $members=q('SELECT a.* FROM relay_members m JOIN athletes a ON a.id=m.athlete_id WHERE m.result_id=?',[$result['id']])->fetchAll();
+    return new DisclaimerCell(disclaimer_group_mark($members,$accepted));
+}
+function disclaimer_members_table(array $members,array $accepted):void {
+    $rows=[];foreach($members as $athlete)$rows[]=[disclaimer_cell($athlete,$accepted),$athlete['team_name']??$athlete['school']??'', $athlete['name'],$athlete['race_bib']??'待检录'];
+    table(['免责声明','所属高校','姓名','比赛号码'],$rows);
+}
 
 function disclaimer_page(): string {
     $text=disclaimer_text();
@@ -208,13 +231,13 @@ function disclaimer_admin(): void {
     echo '<details><summary>查看当前版本的电子签署及影像授权</summary>';
     if(!$records)echo '<p>暂无电子签署。</p>';
     else{
-        echo '<div class="scroll"><table><thead><tr><th>参赛者</th><th>所属高校</th><th>签署人</th><th>联系电话</th><th>影像授权</th><th>签署时间</th></tr></thead><tbody>';
+        $accepted=disclaimer_acceptances();echo '<div class="scroll"><table><thead><tr><th class="sm-consent-cell">免责声明</th><th>参赛者</th><th>所属高校</th><th>签署人</th><th>联系电话</th><th>影像授权</th><th>签署时间</th></tr></thead><tbody>';
         foreach($records as $record){
             $data=json_decode($record['signature_data'],true);
             if(!is_array($data))continue;
             $signer=$data['signer_type']==='guardian'?$data['guardian'].'（'.$data['relation'].'）':$data['participant'].'（本人）';
             $media=['yes'=>'同意','no'=>'不同意'][$data['media_consent']]??'未选择';
-            echo '<tr>';
+            echo '<tr><td class="sm-consent-cell">'.disclaimer_dot(race_one('athletes',(int)$record['athlete_id']),$accepted).'</td>';
             foreach([$record['name'],$record['school'],$signer,$data['phone'],$media,$record['accepted_at']] as $value)echo '<td>'.esc_html($value).'</td>';
             echo '</tr>';
         }
@@ -245,5 +268,5 @@ add_filter('wp_nav_menu_items',function(string $items,$args): string {
 },10,2);
 
 add_action('wp_enqueue_scripts',function(){
-    wp_enqueue_script('sports-meet-disclaimer',plugins_url('disclaimer.js',dirname(__DIR__).'/sports-meet.php'),[],'2.5.57',true);
+    wp_enqueue_script('sports-meet-disclaimer',plugins_url('disclaimer.js',dirname(__DIR__).'/sports-meet.php'),[],'2.5.58',true);
 });

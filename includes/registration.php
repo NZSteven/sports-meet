@@ -124,12 +124,12 @@ function race_school_registration_view(): void {
     if($id&&!$edit)echo '<p role="alert">未找到本校的这条报名。</p>';
     else race_registration_form([],all('events'),$edit,true,$school);
     echo '<h2>本校报名名单</h2>';
-    $rows=q('SELECT id,name,gender,age_group FROM athletes WHERE team_id=? ORDER BY name,id',[$school])->fetchAll();
+    $rows=q('SELECT * FROM athletes WHERE team_id=? ORDER BY name,id',[$school])->fetchAll();
     if(!$rows){echo '<p>本校暂无报名。</p>';return;}
-    echo '<div class="scroll"><table><thead><tr><th>姓名</th><th>组别</th><th>项目</th><th>操作</th></tr></thead><tbody>';
+    $accepted=disclaimer_acceptances();echo '<div class="scroll"><table><thead><tr><th class="sm-consent-cell">免责声明</th><th>姓名</th><th>组别</th><th>项目</th><th>操作</th></tr></thead><tbody>';
     foreach($rows as $row){
         $url=add_query_arg('edit_athlete',(int)$row['id'],page_url('new_registration'));
-        echo '<tr><td>'.esc_html($row['name']).'</td><td>'.esc_html(race_category($row)).'</td><td>'
+        echo '<tr><td class="sm-consent-cell">'.disclaimer_dot($row,$accepted).'</td><td>'.esc_html($row['name']).'</td><td>'.esc_html(race_category($row)).'</td><td>'
             .esc_html(race_event_names((int)$row['id'])).'</td><td><a href="'.esc_url($url).'">编辑</a></td></tr>';
     }
     echo '</tbody></table></div>';
