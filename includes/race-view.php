@@ -190,12 +190,17 @@ function race_public_lineups():string {
             table($headers,$rows);
         }elseif($eventId){
             $event=race_event($eventId);
+            if($event['kind']==='relay'){
+                echo '<h2>'.esc_html($event['name']).'</h2>';
+                relay_auto_lineups($eventId,absint($_GET['relay_heat']??0));
+            }else{
             echo '<h2>'.esc_html($event['name']).'</h2><p>比赛分组尚未生成，以下为报名名单。</p>';
             $entries=q('SELECT a.name,t.name AS school,c.bib FROM race_enrollments n JOIN athletes a ON a.id=n.athlete_id
                 JOIN teams t ON t.id=a.team_id LEFT JOIN checkins c ON c.athlete_id=a.id WHERE n.event_id=? ORDER BY t.name,a.name,a.id',[$eventId])->fetchAll();
             $rows=[];
             foreach($entries as $entry)$rows[]=[$entry['school'],$entry['name'],$entry['bib']??'待检录'];
             table(['所属高校','姓名','比赛号码'],$rows);
+            }
         }else echo '<p>请从左侧选择项目及比赛分组。</p>';
     }catch(\Throwable $error){echo '<p>暂时无法显示这组名单，请重新选择项目。</p>';}
     echo '</div></div></section>';
@@ -239,6 +244,14 @@ function race_judge_round_links(?string $stage,bool $public=false):void {
                 .esc_html(race_round_label($round).' · '.$label).'</a>';
         }
         if(!$rows){
+            if($public&&$event['kind']==='relay'){
+                $plan=relay_auto_draw_plan((int)$event['id']);
+                foreach($plan['draw_groups'] as $i=>$group){
+                    $url=add_query_arg(['event_id'=>$event['id'],'relay_heat'=>$i+1],page_url('lineups'));
+                    echo '<a class="is-open" href="'.esc_url($url).'">'.esc_html((count($plan['draw_groups'])===1?'决赛':'预赛第'.($i+1).'组').' · 预编排').'</a>';
+                }
+                if($plan['draw_groups']){echo '</div></details>';continue;}
+            }
             $url=$public?add_query_arg('event_id',$event['id'],page_url('lineups')):race_url('rounds',['event_id'=>$event['id']]);
             echo '<a class="is-open" href="'.esc_url($url).'">名单待生成</a>';
         }

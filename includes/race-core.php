@@ -117,7 +117,7 @@ function race_generate(int $event,string $stage,int $capacity,bool $individualSp
         if(count($keys)>$limit)throw new \RuntimeException('本赛制最多编排'.$limit.'人／队，请先拆分项目。');
         if($stage==='final'&&count($keys)>$lanes)throw new \RuntimeException('超过'.$lanes.'人／队，请先生成预赛。');
         $stage=count($keys)<=$lanes?'final':'heat';
-        shuffle($keys);
+        if(!$relay)shuffle($keys);
         foreach(race_lane_groups($keys,$lanes) as $i=>$group){
             $round=race_create_round($event,$stage,$i+1);
             q('UPDATE race_rounds SET eight_lanes=? WHERE id=?',[$format,$round]);

@@ -59,13 +59,36 @@ function relay_auto_plan(array $schools):array {
             $members=array_merge($members,array_splice($pool[$id]['M'],0,$counts[0]),array_splice($pool[$id]['F'],0,$counts[1]));
             $names[]=$pool[$id]['name'];
         }
-        $teams[]=['name'=>'混合队'.$number++,'school'=>null,'members'=>$members,'parts'=>$best,'schools'=>$names];
+        $usedNames=array_column($teams,'name');
+        $name=relay_mixed_name($names);$base=$name;$suffix=2;
+        while(in_array($name,$usedNames,true))$name=$base.'（'.$suffix++.'）';
+        $teams[]=['name'=>$name,'school'=>null,'members'=>$members,'parts'=>$best,'schools'=>$names];
     }
     return ['schools'=>$schools,'independent'=>$independent,'teams'=>$teams,'remaining'=>$pool];
 }
+
+function relay_mixed_name(array $names):string {
+    $favorites=['天山','中天','大师','西川','华山','清华','吉祥','吉庆','华彩','南天','天华','华中','清泉','清禾','中原','津彩','南山','复兴','华夏','天马','吉星','广阔','清新','三剑','天南','山川','吉光','日新','中山王','华山派','天山客','清华吉','吉天华'];
+    $match=function(string $word,array $remaining)use(&$match):bool {
+        if($word==='')return !$remaining;
+        $char=mb_substr($word,0,1);$rest=mb_substr($word,1);
+        foreach($remaining as $i=>$name)if(str_contains($name,$char)){
+            $next=$remaining;unset($next[$i]);if($match($rest,$next))return true;
+        }
+        return false;
+    };
+    foreach($favorites as $word)if(mb_strlen($word)===count($names)&&$match($word,$names))return $word.'联队';
+    $aliases=['中山'=>'中','吉林'=>'吉','西安'=>'西','四川'=>'川','清华'=>'清','暨南'=>'暨','武汉'=>'武','华南师'=>'师','广东'=>'粤','广州'=>'广','复旦'=>'旦','上海'=>'上','华南农'=>'农','首都'=>'首','天津'=>'津','郑州'=>'郑'];
+    $chars=[];
+    foreach($names as $name){
+        $char='';foreach($aliases as $part=>$alias)if(str_contains($name,$part)&&str_contains($name,$alias)){$char=$alias;break;}
+        if($char==='')$char=mb_substr($name,0,1);$chars[]=$char;
+    }
+    return implode('',$chars).'联队';
+}
 function relay_auto_materialize(int $event):void {
     race_unstarted($event);
-    $plan=relay_auto_plan(relay_auto_school_rows($event));
+    $plan=relay_auto_draw_plan($event);
     // No results exist yet; the draw must use exactly the teams shown in preview.
     q('DELETE FROM race_relays WHERE event_id=?',[$event]);
     foreach($plan['teams'] as $team){
@@ -74,6 +97,34 @@ function relay_auto_materialize(int $event):void {
         if($team['school'])q('UPDATE race_relays SET school_id=? WHERE id=?',[$team['school'],$id]);
     }
 }
+
+function relay_auto_draw_plan(int $event):array {
+    $plan=relay_auto_plan(relay_auto_school_rows($event));
+    usort($plan['teams'],fn($a,$b)=>strcmp(hash('sha256',$event.':'.$a['name'].':'.implode(',',$a['members'])),hash('sha256',$event.':'.$b['name'].':'.implode(',',$b['members']))));
+    $plan['draw_groups']=race_lane_groups($plan['teams'],4);
+    return $plan;
+}
+function relay_auto_lineups(int $event,int $selected=0):void {
+    $saved=q("SELECT * FROM race_rounds WHERE event_id=? ORDER BY FIELD(stage,'heat','semi','final'),heat_no",[$event])->fetchAll();
+    if($saved){
+        echo '<p>正式分组已固定，接力赛道使用1、3、5、7；已开始的历史比赛保留原赛道。</p>';
+        foreach($saved as $round){
+            echo '<h3>'.esc_html(race_round_label($round)).'</h3>';$rows=[];
+            foreach(q('SELECT * FROM race_entries WHERE round_id=? ORDER BY lane,id',[$round['id']])->fetchAll() as $entry){$person=race_participant($entry);$rows[]=[$entry['lane']??'—',$person['name'],$person['team']];}
+            table(['赛道','接力队','组成高校'],$rows);
+        }
+        return;
+    }
+    $plan=relay_auto_draw_plan($event);$groups=$plan['draw_groups'];
+    echo '<p>根据当前接力组队自动预编排，每组最多4队，赛道为1、3、5、7。报名变化会重新计算；生成正式赛程后固定。</p>';
+    if(!$groups){echo '<p>尚无满足4男4女的接力队，等待报名组成队伍。</p>';return;}
+    foreach($groups as $i=>$teams){if($selected&&$selected!==$i+1)continue;
+        echo '<h3>'.(count($groups)===1?'决赛预编排':'预赛第'.($i+1).'组预编排').'</h3>';$rows=[];
+        foreach($teams as $j=>$team){$names=[];foreach(array_keys($team['parts']) as $school)$names[]=$plan['schools'][$school]['name'];$rows[]=[[1,3,5,7][$j],$team['name'],implode('＋',$names),'4男4女'];}
+        table(['赛道','接力队','组成高校','上场人数'],$rows);
+    }
+    echo '<p>完整组队及候补情况可在报名入口查看。半决赛、决赛名单按提交赛果自动晋级产生。</p>';
+}
 function relay_auto_table(array $rows):void {
     echo '<div class="scroll"><table class="sm-relay-team-table"><thead><tr><th>队名</th><th>组队状态</th><th>男</th><th>女</th><th>组成／候补</th></tr></thead><tbody>';
     foreach($rows as $row){echo '<tr>';foreach($row as $value)echo '<td>'.esc_html((string)$value).'</td>';echo '</tr>';}
@@ -81,7 +132,7 @@ function relay_auto_table(array $rows):void {
     echo '</tbody></table></div>';
 }
 function relay_auto_ui(int $school):void {
-    wp_enqueue_script('sports-meet-relay-auto',plugins_url('relay-auto.js',dirname(__DIR__).'/sports-meet.php'),[],'2.5.44',true);
+    wp_enqueue_script('sports-meet-relay-auto',plugins_url('relay-auto.js',dirname(__DIR__).'/sports-meet.php'),[],'2.5.45',true);
     $url=add_query_arg('action','sports_meet_relay_preview',admin_url('admin-ajax.php'));
     echo '<section class="sm-relay-auto" data-relay-auto-url="'.esc_url($url).'"><h2>接力自动组队</h2><p>每队4男4女。高校达到至少4男4女时自动独立成队，队名为高校名，其他报名者作本校候补。其余高校优先两校组合，必要时三校组合。报名变动后自动重新计算；生成赛程后锁定。</p>';
     foreach(all('events') as $event){

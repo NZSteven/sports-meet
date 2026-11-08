@@ -8,11 +8,12 @@ function race_assign_lanes(int $roundId):void {
     if(!race_eight_lane_event($event))return;
     $capacity=$event['kind']==='relay'?((int)$round['eight_lanes']===3?5:4):8;
     $rows=q('SELECT id,lane FROM race_entries WHERE round_id=? ORDER BY id',[$roundId])->fetchAll();
-    $available=array_values(array_diff(range(1,$capacity),array_filter(array_map('intval',array_column($rows,'lane')))));
-    shuffle($available);
+    $lanes=$event['kind']==='relay'&&$capacity===4?[1,3,5,7]:range(1,$capacity);
+    $available=array_values(array_diff($lanes,array_filter(array_map('intval',array_column($rows,'lane')))));
+    if($event['kind']!=='relay')shuffle($available);
     foreach($rows as $row)if(!$row['lane']){
         if(!$available)throw new \RuntimeException('本组人数超过可用赛道，请重新分组。');
-        q('UPDATE race_entries SET lane=? WHERE id=?',[array_pop($available),$row['id']]);
+        q('UPDATE race_entries SET lane=? WHERE id=?',[$event['kind']==='relay'?array_shift($available):array_pop($available),$row['id']]);
     }
 }
 
@@ -31,16 +32,19 @@ function race_upgrade_relay_draws():void {
 }
 
 add_action('init',function(){
-    if(get_option('sports_meet_portal_schema')==='2.5.44')return;
+    if(get_option('sports_meet_portal_schema')==='2.5.45')return;
     try{
         install_distances();install_registration_extras();
         q('UPDATE race_relays r JOIN (SELECT m.relay_id,MIN(a.team_id) AS school FROM race_members m JOIN athletes a ON a.id=m.athlete_id GROUP BY m.relay_id HAVING COUNT(*)=8 AND COUNT(DISTINCT a.team_id)=1) x ON x.relay_id=r.id SET r.school_id=x.school WHERE r.school_id IS NULL');
         race_upgrade_relay_draws();
+        foreach(q("SELECT r.id FROM race_rounds r JOIN events e ON e.id=r.event_id WHERE e.kind='relay' AND r.eight_lanes=4 AND r.status='open' AND r.version=1")->fetchAll(7) as $id)race_transaction(function()use($id){
+            if(q("SELECT id FROM race_rounds WHERE id=? AND status='open' AND version=1",[$id])->fetch())q('UPDATE race_entries SET lane=NULL WHERE round_id=?',[$id]);
+        });
         foreach(q("SELECT id FROM race_rounds WHERE status='open' ORDER BY id")->fetchAll(7) as $id)race_transaction(function()use($id){
             $round=q('SELECT * FROM race_rounds WHERE id=?',[$id])->fetch();
             if($round&&$round['status']==='open')race_assign_lanes((int)$id);
         });
-        update_option('sports_meet_portal_schema','2.5.44',false);
+        update_option('sports_meet_portal_schema','2.5.45',false);
     }catch(\Throwable $e){error_log('Sports Meet draw upgrade: '.$e->getMessage());}
 },24);
 
