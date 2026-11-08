@@ -16,11 +16,11 @@ function race_roster_rows():array {return q('SELECT a.*,t.name AS team_name,c.bi
 function race_event_names(int $athlete):string {return implode('、',q('SELECT e.name FROM race_enrollments n JOIN events e ON e.id=n.event_id WHERE n.athlete_id=? ORDER BY e.id',[$athlete])->fetchAll(7));}
 function race_public_roster():string {
     if(!race_roster_is_public()&&!current_user_can('manage_options')){
-        return race_public_navigation('roster').'<p>报名名单将于'.esc_html(race_registration_deadline_label()).'公开。</p>';
+        return race_registration_navigation('roster').'<p>报名名单将于'.esc_html(race_registration_deadline_label()).'公开。</p>';
     }
     $params=race_roster_params(wp_unslash($_GET));unset($params['roster_q']);$result=race_filter_roster($params);
     $pageId=get_queried_object_id();$url=get_permalink($pageId)?:home_url('/');
-    ob_start();echo race_public_navigation('roster').'<section id="sports-public-roster" class="sports-meet race-public-roster"><h2>高校及报名名单</h2><form class="race-roster-filter" method="get" action="'.esc_url($url).'#sports-public-roster">';
+    ob_start();echo race_registration_navigation('roster').'<section id="sports-public-roster" class="sports-meet race-public-roster"><h2>高校及报名名单</h2><form class="race-roster-filter" method="get" action="'.esc_url($url).'#sports-public-roster">';
     if(!get_option('permalink_structure')&&$pageId)echo '<input type="hidden" name="page_id" value="'.(int)$pageId.'">';
     race_roster_select('roster_school','所属高校',all('teams'),$params['roster_school']??'');
     race_roster_select('roster_category','组别',array_map(fn($c)=>['id'=>$c,'name'=>$c],array_keys(race_categories())),$params['roster_category']??'');

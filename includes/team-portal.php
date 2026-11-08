@@ -110,6 +110,7 @@ function team_portal_page():string {
     ob_start();echo '<section class="sports-meet race-workspace sm-team-portal"><p>报名及修改截止：'.esc_html(race_registration_deadline_label()).'。本页仅显示已验证高校的报名资料。</p>';
     $grant=team_portal_grant();$school=(int)($grant['school']??0);$closed=race_registration_closed();
     if(!$school||!empty($_GET['registration_entry'])){
+        echo race_registration_navigation();
         if($closed)echo '<p>报名已截止，输入本校密码可查看资料，不能修改或删除。</p>';
         echo '<div class="sm-registration-entry-cards">';
         echo '<section class="sm-registration-entry-card"><h2>首次进入</h2><p>为本校创建报名密码</p>';

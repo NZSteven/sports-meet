@@ -137,10 +137,16 @@ function race_section_cards(array $links,string $active,string $label): string {
 
 function race_public_navigation(string $active='board'): string {
     return race_section_cards([
-        'roster'=>['报名名单','按高校、组别或项目查看报名名单',page_url('roster')],
         'board'=>['成绩积分榜','查看各项目赛果及高校积分排名',page_url('board')],
         'lineups'=>['分组名单','查看预赛、半决赛及决赛名单',page_url('lineups')],
     ],$active,'比赛公布区');
+}
+
+function race_registration_navigation(string $active='registration'):string {
+    return race_section_cards([
+        'registration'=>['各队报名及接力组队','选择高校报名，查看接力自动组队',add_query_arg('registration_entry','1',page_url('new_registration'))],
+        'roster'=>['报名名单','按高校、组别、比赛及活动项目查看名单',page_url('roster')],
+    ],$active,'报名及接力组队');
 }
 
 function community_hub($attrs=[]): string {
