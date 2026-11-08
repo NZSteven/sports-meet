@@ -27,3 +27,7 @@
 @media (max-width: 600px) {
     .sd-header .sd-brand .sd-mark.sd-mascot-mark {flex-basis: 68px; width: 68px; height: 46px;}
 }
+/* Highlight the two participant actions in desktop and mobile menus. */
+:is(header,.site-header,.menu,.wp-block-navigation) a[href*="/sports-new-registration"]{color:#c2410c!important;font-weight:800!important}
+:is(header,.site-header,.menu,.wp-block-navigation) a[href*="/sports-disclaimer"]{color:#a21caf!important;font-weight:800!important}
+:is(header,.site-header,.menu,.wp-block-navigation) a:is([href*="/sports-new-registration"],[href*="/sports-disclaimer"]):is(:hover,:focus-visible){text-decoration:underline;text-underline-offset:4px}
