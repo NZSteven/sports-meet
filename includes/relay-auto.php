@@ -99,7 +99,7 @@ function relay_auto_materialize(int $event):void {
 }
 
 function relay_auto_draw_plan(int $event):array {
-    $plan=relay_auto_plan(relay_auto_school_rows($event));
+    $plan=relay_manual_effective_plan($event);
     usort($plan['teams'],fn($a,$b)=>strcmp(hash('sha256',$event.':'.$a['name'].':'.implode(',',$a['members'])),hash('sha256',$event.':'.$b['name'].':'.implode(',',$b['members']))));
     $plan['draw_groups']=race_lane_groups($plan['teams'],4);
     return $plan;
@@ -132,7 +132,7 @@ function relay_auto_table(array $rows):void {
     echo '</tbody></table></div>';
 }
 function relay_auto_ui(int $school):void {
-    wp_enqueue_script('sports-meet-relay-auto',plugins_url('relay-auto.js',dirname(__DIR__).'/sports-meet.php'),[],'2.5.52',true);
+    wp_enqueue_script('sports-meet-relay-auto',plugins_url('relay-auto.js',dirname(__DIR__).'/sports-meet.php'),[],'2.5.53',true);
     $url=add_query_arg('action','sports_meet_relay_preview',admin_url('admin-ajax.php'));
     echo '<section class="sm-relay-auto" data-relay-auto-url="'.esc_url($url).'"><h2>接力自动组队</h2><p>每队4男4女。高校达到至少4男4女时自动独立成队，队名为高校名，其他报名者作本校候补。其余高校优先两校组合，必要时三校组合。报名变动后自动重新计算；生成赛程后锁定。</p>';
     foreach(all('events') as $event){
@@ -143,7 +143,8 @@ function relay_auto_ui(int $school):void {
             foreach(q('SELECT * FROM race_relays WHERE event_id=? ORDER BY id',[$id])->fetchAll() as $team){$members=race_members((int)$team['id']);$names=array_unique(array_column($members,'team_name'));$m=count(array_filter($members,fn($a)=>$a['gender']==='M'));$rows[]=[$team['name'],'已锁定',$m,count($members)-$m,implode('＋',$names)];}
             relay_auto_table($rows);continue;
         }
-        $plan=relay_auto_plan(relay_auto_school_rows($id));
+        $plan=relay_manual_effective_plan($id);
+        if(!empty($plan['manual']))echo '<p>组委会已手动调整并锁定本项目编排，系统不会自动覆盖。</p>';
         echo '<div class="sm-relay-auto-columns"><div><h3>待组合高校</h3><table><thead><tr><th>高校</th><th>男</th><th>女</th></tr></thead><tbody>';
         $waiting=0;
         foreach($plan['schools'] as $sid=>$row){if(isset($plan['independent'][$sid]))continue;$waiting++;

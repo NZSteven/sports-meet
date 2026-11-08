@@ -66,6 +66,7 @@ function team_portal_save(array $input,int $school):int {
     $id=absint($input['id']??0);
     if($id&&!q('SELECT id FROM athletes WHERE id=? AND team_id=?',[$id,$school])->fetch())throw new \RuntimeException('只能操作本校报名。');
     if(($input['operation']??'')==='delete'){
+        relay_manual_registration_guard($id,['delete_athlete'=>true]);
         
         if(!$id||empty($input['delete_confirm']))throw new \RuntimeException('请确认删除本条报名。');
         foreach(q('SELECT event_id FROM race_enrollments WHERE athlete_id=?',[$id])->fetchAll(7) as $event)race_unstarted((int)$event);

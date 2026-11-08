@@ -142,7 +142,7 @@ function race_delete_ui():void {if(!current_user_can('manage_options'))return;ec
 function race_ui_events():void {
     echo '<h2>比赛项目</h2><p>不同性别、年龄组分别建立项目。比赛名次直接由裁判填写，不按计时自动排名。</p>';race_form('event','events');field('id','项目ID：新增填0','number','0','min="0"');field('name','项目名称');race_options('kind','项目类型',[['id'=>'individual','name'=>'个人项目'],['id'=>'relay','name'=>'8×50米混合接力']]);race_options('gender','个人项目性别',[['id'=>'X','name'=>'不限'],['id'=>'M','name'=>'男'],['id'=>'F','name'=>'女']],'X');echo '<label>年龄组（可空）<input name="age_group"></label>';finish();$rows=[];foreach(all('events') as $e)$rows[]=[$e['id'],$e['name'],$e['kind']==='relay'?'接力':'个人',$e['gender'],$e['age_group'],q('SELECT COUNT(*) FROM race_enrollments WHERE event_id=?',[$e['id']])->fetchColumn()];table(['ID','名称','类型','性别','组别','报名人数'],$rows);race_delete_ui();
 }
-function race_ui_relay():void {relay_auto_ui(0);}
+function race_ui_relay():void {relay_auto_ui(0);relay_manual_ui();}
 
 function race_ui_checkin_legacy():void {
     echo '<h2>检录及发号</h2><p>按队伍或姓名查找运动员。比赛号码全场唯一：输入001与1视为同一号码。多裁判同时操作时，后提交的重复号码会被拒绝；同一运动员的旧页面也不能覆盖新号码。</p>';
@@ -310,7 +310,7 @@ function race_round_detail(?string $stage=null):void {
         echo '<p class="notice">共 '.$groups.' 组预赛，每组前 '.$quota.' 名直接晋级，剩余 '.(8-$groups*$quota).' 席按预赛用时补足。有效成绩不足时决赛少于8席。用时填秒，无有效成绩填0。</p>';
     }
     if($round['status']==='finalized'){ $summaryRows=q('SELECT confirmed FROM race_entries WHERE round_id=?',[$round['id']])->fetchAll();echo '<p class="notice race-completed-summary">本轮已完成 · 名单'.count($summaryRows).'人／队 · 确认参赛'.array_sum(array_column($summaryRows,'confirmed')).'人／队 · 提交时间'.esc_html($round['updated']).'。以下显示已保存结果，前三名已置顶。</p>'; }
-    $distanceEvent=race_is_distance($event);if($distanceEvent)echo '<p class="notice">本项目填距离（米），由大到小自动排出前三。无有效距离填0；影响前三的同距选手须填写同距顺序1、2、3…。</p>';$editable=$ready&&$round['status']!=='finalized';if($editable){race_form('round','rounds');echo '<input type="hidden" name="round_id" value="'.(int)$round['id'].'"><input type="hidden" name="version" value="'.(int)$round['version'].'">';}
+    $distanceEvent=race_is_distance($event);if($distanceEvent)echo '<p class="notice">本项目填距离（米），由大到小自动排出前三。无有效距离填0；影响前三的同距选手须填写同距顺序1、2、3…。</p>';$editable=$ready&&$round['status']!=='finalized';if($editable){race_form('round','rounds');$manual=relay_manual_state((int)$event['id']);if($manual)echo '<input type="hidden" name="relay_manual_revision" value="'.esc_attr($manual['revision']).'">';echo '<input type="hidden" name="round_id" value="'.(int)$round['id'].'"><input type="hidden" name="version" value="'.(int)$round['version'].'">';}
     echo '<div class="scroll"><table '.($distanceEvent?'data-distance-table':'').'><thead><tr>'.(race_eight_lane_event($event)?'<th>赛道</th>':'').'<th>所属高校</th><th>姓名／接力队</th><th>比赛号码</th><th>确认参赛</th>'.($distanceEvent?'<th>距离（米）</th><th>同距顺序</th><th>自动名次</th>':($timedHeat?'<th>用时（秒）</th><th>同时间顺序</th><th>自动名次</th>':'<th>名次</th>')).'</tr></thead><tbody>';
     $displayRows=q('SELECT * FROM race_entries WHERE round_id=? ORDER BY COALESCE(lane,999),id',[$round['id']])->fetchAll();if($round['status']==='finalized')$displayRows=race_completed_order($displayRows);
     foreach($displayRows as $r){$p=race_participant($r);echo '<tr>'.(race_eight_lane_event($event)?'<td>'.esc_html($r['lane']??'—').'</td>':'').'<td>'.esc_html($p['team']).'</td><td>'.esc_html($p['name']).($r['relay_id']?'<small>'.esc_html($p['members']).'</small>':'').'</td><td>'.esc_html($p['bib']).'</td><td>';

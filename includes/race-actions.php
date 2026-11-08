@@ -4,6 +4,7 @@ defined('ABSPATH') || exit;
 
 function race_text($v,int $max,bool $required=true):string {if(!is_scalar($v))throw new \RuntimeException('文字格式错误。');$s=trim(sanitize_text_field((string)$v));if(($required&&$s==='')||mb_strlen($s)>$max)throw new \RuntimeException('必填文字为空或超出长度。');return $s;}
 function race_athlete_save(array $p):int {
+    relay_manual_registration_guard((int)($p['id']??0),$p);
     $id=(int)($p['id']??0);$bib=race_text($p['registration_id']??'',40);$name=race_text($p['name']??'',80);$gender=$p['gender']??'';$group=race_text($p['age_group']??'',80,false);$team=(int)($p['team_id']??0);race_one('teams',$team);
     if(!in_array($gender,['M','F'],true))throw new \RuntimeException('性别须为M或F。');
     if($id){$old=race_one('athletes',$id);$structural=(int)$old['team_id']!==$team||$old['gender']!==$gender||$old['age_group']!==$group;
@@ -65,12 +66,12 @@ function race_mutate(array $p):void {
         race_generate($event,'heat',4,true);break;
     case 'checkin':race_checkin((int)$p['athlete_id'],(string)$p['bib'],(int)$p['version']);break;
     case 'prepare_final':race_prepare_final((int)$p['event_id'],!empty($p['confirm_direct']));break;
-    case 'round':$empty=($p['decision']??'')==='empty';if($empty&&($p['empty_confirm']??'')!=='DNS')throw new \RuntimeException('无人出赛请在确认框输入DNS。');race_save_round((int)$p['round_id'],(int)$p['version'],(array)($p['entries']??[]),in_array($p['decision']??'',['finalize','empty'],true),$empty);break;
+    case 'round':$r=race_one('race_rounds',(int)$p['round_id']);$manual=relay_manual_state((int)$r['event_id']);if($manual&&!hash_equals($manual['revision'],(string)($p['relay_manual_revision']??'')))throw new \RuntimeException('接力队伍已被管理员调整，请刷新后再录入。');$empty=($p['decision']??'')==='empty';if($empty&&($p['empty_confirm']??'')!=='DNS')throw new \RuntimeException('无人出赛请在确认框输入DNS。');race_save_round((int)$p['round_id'],(int)$p['version'],(array)($p['entries']??[]),in_array($p['decision']??'',['finalize','empty'],true),$empty);break;
     case 'team':$name=race_text($p['name']??'',80);if(!empty($p['id'])){race_one('teams',(int)$p['id']);q('UPDATE teams SET name=? WHERE id=?',[$name,(int)$p['id']]);}else q('INSERT INTO teams(name) VALUES(?)',[$name]);break;
     case 'athlete':race_athlete_save($p);break;
     case 'registration':race_registration_save($p);break;
     case 'enroll':race_enroll((int)$p['event_id'],(int)$p['athlete_id']);break;
-    case 'unenroll':$e=(int)$p['event_id'];$a=(int)$p['athlete_id'];race_unstarted($e);q('DELETE FROM race_members WHERE event_id=? AND athlete_id=?',[$e,$a]);q('DELETE FROM race_enrollments WHERE event_id=? AND athlete_id=?',[$e,$a]);break;
+    case 'unenroll':$e=(int)$p['event_id'];$a=(int)$p['athlete_id'];relay_manual_registration_guard($a,['remove_event'=>$e]);race_unstarted($e);q('DELETE FROM race_members WHERE event_id=? AND athlete_id=?',[$e,$a]);q('DELETE FROM race_enrollments WHERE event_id=? AND athlete_id=?',[$e,$a]);break;
     case 'event':
         $id=(int)($p['id']??0);$name=race_text($p['name']??'',120);$kind=$p['kind']??'';$gender=$p['gender']??'X';$group=race_text($p['age_group']??'',80,false);
         if(!in_array($kind,['individual','relay'],true)||!in_array($gender,['X','M','F'],true))throw new \RuntimeException('项目类型或性别无效。');if($kind==='relay')$gender='X';
@@ -101,7 +102,7 @@ function race_mutate(array $p):void {
         q('UPDATE settings SET title=?,relay_males=? WHERE id=1',[race_text($p['title'],120),$male]);update_option('sports_meet_race_rules',$rules,false);break;
     case 'delete':
         if(($p['confirm']??'')!=='DELETE')throw new \RuntimeException('请输入DELETE确认。');$id=(int)$p['id'];$type=$p['type']??'';
-        if($type==='athlete'){race_one('athletes',$id);foreach(q('SELECT event_id FROM race_enrollments WHERE athlete_id=?',[$id])->fetchAll() as $r)race_unstarted((int)$r['event_id']);q('DELETE FROM race_members WHERE athlete_id=?',[$id]);q('DELETE FROM race_enrollments WHERE athlete_id=?',[$id]);q('DELETE FROM checkins WHERE athlete_id=?',[$id]);q('DELETE FROM athletes WHERE id=?',[$id]);}
+        if($type==='athlete'){relay_manual_registration_guard($id,['delete_athlete'=>true]);race_one('athletes',$id);foreach(q('SELECT event_id FROM race_enrollments WHERE athlete_id=?',[$id])->fetchAll() as $r)race_unstarted((int)$r['event_id']);q('DELETE FROM race_members WHERE athlete_id=?',[$id]);q('DELETE FROM race_enrollments WHERE athlete_id=?',[$id]);q('DELETE FROM checkins WHERE athlete_id=?',[$id]);q('DELETE FROM athletes WHERE id=?',[$id]);}
         elseif($type==='event'){if(race_registration_closed()&&q('SELECT id FROM race_enrollments WHERE event_id=? LIMIT 1',[$id])->fetch())throw new \RuntimeException('报名已截止，不能删除已有报名的项目。');race_unstarted($id);q('DELETE FROM race_members WHERE event_id=?',[$id]);q('DELETE FROM race_relays WHERE event_id=?',[$id]);q('DELETE FROM race_enrollments WHERE event_id=?',[$id]);q('DELETE FROM events WHERE id=?',[$id]);}
         elseif($type==='relay'){$r=race_one('race_relays',$id);race_unstarted((int)$r['event_id']);q('DELETE FROM race_relays WHERE id=?',[$id]);}
         elseif($type==='team')q('DELETE FROM teams WHERE id=?',[$id]);else throw new \RuntimeException('删除类型无效。');break;
