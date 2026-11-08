@@ -47,3 +47,11 @@
     .sm-song-cover{max-width:230px;}
     .sm-song-panel{height:13rem;}
 }
+
+.sm-song .sm-song-panel {position:static;height:auto;}
+.sm-song .sm-song-lyrics {flex:none;height:104px;line-height:1.5;}
+.sm-song .sm-song-cover img {width:auto;max-width:100%;max-height:130px;margin-inline:auto;}
+.sm-song .sm-song-cover audio {height:40px;}
+.sm-song {grid-template-columns:minmax(0,190px) minmax(0,1fr);}
+.sm-hero-right .sm-song {grid-template-columns:minmax(0,.7fr) minmax(0,1.3fr);}
+@media(max-width:700px){.sm-song,.sm-hero-right .sm-song{grid-template-columns:minmax(0,1fr);}.sm-song .sm-song-cover{max-width:230px;}}

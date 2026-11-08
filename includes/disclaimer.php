@@ -116,10 +116,10 @@ function disclaimer_page(): string {
     if(!get_option('sports_meet_community_ready')||!get_option('sports_meet_disclaimer_esign_installed'))return $html.'<p>会员注册与签署正在更新，请稍后再试。</p></section>';
     $html.='<div class="sm-disclaimer-text">'.wpautop(esc_html($text)).'</div>';
     if(!is_user_logged_in()&&!race_roster_is_public()){
-        return $html.'<p>有账号请登录。参赛者自助注册将于'.esc_html(race_registration_deadline_label()).'开放。</p>'
+        return $html.'<p>注册账号登录后，可以在本网站上传运动会照片及感言</p>'
             .wp_login_form(['echo'=>false,'redirect'=>page_url('disclaimer'),'label_log_in'=>'登录']).'</section>';
     }
-    if(!is_user_logged_in())return $html.'<p>有账号请登录。已报名的参赛者也可以在这里注册。</p>'
+    if(!is_user_logged_in())return $html.'<p>注册账号登录后，可以在本网站上传运动会照片及感言</p>'
         .wp_login_form(['echo'=>false,'redirect'=>page_url('disclaimer'),'label_log_in'=>'登录']).athlete_signup_form().'</section>';
 
     $athlete=q('SELECT a.id,a.name,a.team_id,t.name AS team_name FROM athlete_accounts aa
@@ -268,5 +268,5 @@ add_filter('wp_nav_menu_items',function(string $items,$args): string {
 },10,2);
 
 add_action('wp_enqueue_scripts',function(){
-    wp_enqueue_script('sports-meet-disclaimer',plugins_url('disclaimer.js',dirname(__DIR__).'/sports-meet.php'),[],'2.5.59',true);
+    wp_enqueue_script('sports-meet-disclaimer',plugins_url('disclaimer.js',dirname(__DIR__).'/sports-meet.php'),[],'2.5.60',true);
 });

@@ -12,7 +12,7 @@ function race_registration_test_mode(): bool {
 }
 
 function race_roster_is_public(): bool {
-    return race_registration_test_mode()||race_registration_closed();
+    return true;
 }
 
 add_action('admin_post_sports_meet_registration_test_mode',function(){
