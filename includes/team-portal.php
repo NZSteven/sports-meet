@@ -148,17 +148,28 @@ function team_portal_page():string {
     $key='sm_portal_password_'.hash('sha256',team_portal_token());$password=get_transient($key);
     if(is_string($password)){delete_transient($key);echo '<p role="status">本校报名密码（仅显示一次，请保存）：<code>'.esc_html($password).'</code></p>';}
     if(isset($_GET['saved']))echo '<p role="status">操作已完成。</p>';
-    team_portal_form('logout');echo '<button>退出／切换高校</button></form>';
+    echo '<div class="sm-school-roster-actions">';
+    if(!$closed)echo '<a class="sm-add-athlete" href="'.esc_url(add_query_arg('add_athlete','1',page_url('new_registration'))).'">＋ 添加队员</a>';
+    team_portal_form('logout');echo '<button>退出／切换高校</button></form></div>';
     if($closed)echo '<p>报名已截止，以下资料只供查看，不能修改或删除。</p>';
-    else{
+    elseif(!empty($_GET['add_athlete'])||!empty($_GET['edit_athlete'])){
         $id=absint($_GET['edit_athlete']??0);$edit=$id?q('SELECT * FROM athletes WHERE id=? AND team_id=?',[$id,$school])->fetch():[];
         if($id&&!$edit)echo '<p>未找到本校的这条报名。</p>';
-        else race_registration_form([],all('events'),$edit?:[],true,$school,true);
+        else{echo '<h3>'.($edit?'编辑队员报名':'添加队员').'</h3>';race_registration_form([],all('events'),$edit?:[],true,$school,true);}
+        echo '<p><a href="'.esc_url(page_url('new_registration')).'">返回本校报名名单</a></p></section>';return ob_get_clean();
     }
     $rows=q('SELECT * FROM athletes WHERE team_id=? ORDER BY name,id',[$school])->fetchAll();
     $totals=array_fill_keys(array_keys(registration_extra_options()),0);
     foreach(q('SELECT x.activity,COUNT(*) AS n FROM registration_extras x JOIN athletes a ON a.id=x.athlete_id WHERE a.team_id=? GROUP BY x.activity',[$school])->fetchAll() as $count)$totals[$count['activity']]=(int)$count['n'];
     echo '<p>本校报名 '.count($rows).' 人 · '.implode(' · ',array_map(fn($key)=>esc_html(registration_extra_options()[$key]).' '.$totals[$key].' 人',array_keys(registration_extra_options()))).'</p>';
+    $params=race_roster_params(wp_unslash($_GET));$params['roster_school']=(string)$school;
+    $result=race_filter_roster($params);$rows=$result['rows'];
+    echo '<form class="race-roster-filter sm-school-roster-filter" method="get" action="'.esc_url(page_url('new_registration')).'">';
+    if(!get_option('permalink_structure'))echo '<input type="hidden" name="page_id" value="'.(int)(get_option('sports_meet_pages',[])['new_registration']??0).'">';
+    echo '<label>姓名／比赛号码搜索<input type="search" name="roster_q" maxlength="120" placeholder="输入姓名或比赛号码" value="'.esc_attr($params['roster_q']??'').'"></label>';
+    race_roster_select('roster_category','组别',array_map(fn($label)=>['id'=>$label,'name'=>$label],array_keys(race_categories())),$params['roster_category']??'');
+    race_roster_select('roster_event','比赛及活动项目',race_roster_project_options(),$params['roster_event']??'');
+    echo '<div class="race-roster-filter-actions"><button>筛选</button><a href="'.esc_url(page_url('new_registration')).'">重置</a></div></form><p role="status">当前显示 '.count($rows).' 人。</p>';
     echo '<div class="scroll"><table class="sm-team-roster"><thead><tr><th>姓名</th><th>组别</th><th>比赛项目</th><th>参加活动</th><th>操作</th></tr></thead><tbody>';
     foreach($rows as $row){
         $id=(int)$row['id'];echo '<tr><td>'.esc_html($row['name']).'</td><td>'.esc_html(race_category($row)).'</td><td>'.esc_html(race_event_names($id)).'</td><td>'.esc_html(registration_extra_names($id)).'</td><td>';
@@ -168,6 +179,7 @@ function team_portal_page():string {
         }else echo '已锁定';
         echo '</td></tr>';
     }
+    if(!$rows)echo '<tr><td colspan="5">没有符合条件的本校报名。可调整筛选，或点击“添加队员”。</td></tr>';
     echo '</tbody></table></div></section>';return ob_get_clean();
 }
 add_shortcode('sports_meet_team_registration',__NAMESPACE__.'\\team_portal_page');

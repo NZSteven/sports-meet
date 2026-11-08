@@ -158,3 +158,9 @@
 .sm-registration-entry-card p{margin:4px 0;font-size:13px}
 .sm-registration-entry-card button{justify-self:start}
 @media(max-width:700px){.sm-registration-entry-cards{grid-template-columns:1fr}}
+.sm-school-roster-actions{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin:12px 0 16px}
+.sports-meet .sm-school-roster-actions>form{display:inline-flex!important;flex:0 0 auto;width:auto!important;margin:0!important;padding:0!important;border:0!important;background:transparent!important;box-shadow:none!important}
+.sm-school-roster-actions .sm-add-athlete{display:inline-flex;align-items:center;padding:11px 22px;border-radius:6px;background:#c2410c;color:#fff!important;font-size:17px;font-weight:800;text-decoration:none}
+.sm-school-roster-actions .sm-add-athlete:hover{background:#9a3412}
+.sm-school-roster-actions button{margin:0!important}
+.sm-school-roster-filter{margin:12px 0!important}
