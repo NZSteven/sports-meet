@@ -198,7 +198,7 @@ function race_public_lineups():string {
             $entries=q('SELECT a.id,a.name,a.team_id,t.name AS school,c.bib FROM race_enrollments n JOIN athletes a ON a.id=n.athlete_id
                 JOIN teams t ON t.id=a.team_id LEFT JOIN checkins c ON c.athlete_id=a.id WHERE n.event_id=? ORDER BY t.name,a.name,a.id',[$eventId])->fetchAll();
             $rows=[];
-            foreach($entries as $entry)$rows[]=[disclaimer_cell($entry,$accepted),$entry['school'],$entry['name'],$entry['bib']??'待检录'];
+            foreach($entries as $entry)$rows[]=[disclaimer_cell($entry,$accepted),$entry['school'],$entry['name'],$entry['bib']??'待分配'];
             table(['免责声明','所属高校','姓名','比赛号码'],$rows);
             }
         }else echo '<p>请从左侧选择项目及比赛分组。</p>';

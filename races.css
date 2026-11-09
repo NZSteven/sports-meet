@@ -189,3 +189,8 @@
 
 .sports-meet .sm-waiver-fill {display:inline-flex;align-items:center;justify-content:center;padding:3px 8px;border-radius:4px;background:#da5426;color:#fff;font-size:12px;line-height:1.5;text-decoration:none;white-space:nowrap;}
 .sports-meet .sm-waiver-fill:hover{background:#b84018;}
+
+.sports-meet .sm-athlete-roster th:first-child,.sports-meet .sm-athlete-roster td:first-child,
+.sports-meet .sm-public-athlete-roster th:nth-child(5),.sports-meet .sm-public-athlete-roster td:nth-child(5),
+.sports-meet .race-compact-roster th:nth-child(5),.sports-meet .race-compact-roster td:nth-child(5),
+.sports-meet .sm-team-roster th:nth-child(3),.sports-meet .sm-team-roster td:nth-child(3) {text-align:center!important;vertical-align:middle;}

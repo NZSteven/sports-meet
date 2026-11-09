@@ -49,7 +49,7 @@ function race_roster_project_options(?array $events=null):array {
 }
 function race_roster_bib(array $athlete):string {
     if(empty($athlete['entry_ids'])&&($athlete['activity_ids']??[])===['dinner'])return '';
-    return (string)($athlete['race_bib']??'待检录');
+    return (string)($athlete['race_bib']??'待分配');
 }
 function race_roster_select(string $name,string $label,array $items,string $value):void {
     echo '<label>'.esc_html($label).'<select name="'.esc_attr($name).'"><option value="">全部'.esc_html($label).'</option>';

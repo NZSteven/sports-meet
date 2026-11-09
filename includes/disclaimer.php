@@ -91,7 +91,7 @@ final class DisclaimerCell {
 function disclaimer_roster_mark(array $athlete,array $accepted): string {
     if(disclaimer_agreed($athlete,$accepted))return disclaimer_dot($athlete,$accepted);
     $url=add_query_arg('waiver_athlete',(int)$athlete['id'],page_url('disclaimer'));
-    return '<a class="sm-waiver-fill" href="'.esc_url($url).'" aria-label="'.esc_attr('填写'.$athlete['name'].'的免责声明').'">填写</a>';
+    return '<a class="sm-waiver-fill" href="'.esc_url($url).'" aria-label="'.esc_attr('签署'.$athlete['name'].'的免责声明').'">签署</a>';
 }
 function disclaimer_cell(array $athlete,array $accepted):DisclaimerCell {return new DisclaimerCell(disclaimer_dot($athlete,$accepted));}
 function disclaimer_group_mark(array $athletes,array $accepted):string {
@@ -110,7 +110,7 @@ function disclaimer_legacy_cell(array $result,array $accepted):DisclaimerCell {
     return new DisclaimerCell(disclaimer_group_mark($members,$accepted));
 }
 function disclaimer_members_table(array $members,array $accepted):void {
-    $rows=[];foreach($members as $athlete)$rows[]=[disclaimer_cell($athlete,$accepted),$athlete['team_name']??$athlete['school']??'', $athlete['name'],$athlete['race_bib']??'待检录'];
+    $rows=[];foreach($members as $athlete)$rows[]=[disclaimer_cell($athlete,$accepted),$athlete['team_name']??$athlete['school']??'', $athlete['name'],$athlete['race_bib']??'待分配'];
     table(['免责声明','所属高校','姓名','比赛号码'],$rows);
 }
 
@@ -281,5 +281,5 @@ add_filter('wp_nav_menu_items',function(string $items,$args): string {
 },10,2);
 
 add_action('wp_enqueue_scripts',function(){
-    wp_enqueue_script('sports-meet-disclaimer',plugins_url('disclaimer.js',dirname(__DIR__).'/sports-meet.php'),[],'2.5.68',true);
+    wp_enqueue_script('sports-meet-disclaimer',plugins_url('disclaimer.js',dirname(__DIR__).'/sports-meet.php'),[],'2.5.69',true);
 });
