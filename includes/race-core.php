@@ -29,6 +29,12 @@ function race_checkin(int $athlete,string $bib,int $version):void {
     }
     $bib=trim($bib);
     if(!preg_match('/^\d{1,8}$/',$bib)||(int)$bib===0)throw new \RuntimeException('比赛号码须为1至99999999的数字。');$bib=(string)(int)$bib;
+    $plan=bib_range_plan();
+    if($plan){
+        $range=$plan['ranges'][(int)$person['team_id']]??null;
+        if(!$range||(int)$bib<$range['start']||(int)$bib>$range['end'])throw new \RuntimeException('比赛号码必须在本校预留区间内。');
+        if(!bib_competitor($athlete))throw new \RuntimeException('只报晚宴的人员不发比赛号码。');
+    }
     $old=q('SELECT * FROM checkins WHERE athlete_id=?',[$athlete])->fetch();
     if(($old?(int)$old['version']:0)!==$version)throw new \RuntimeException('其他裁判已更新该运动员，请刷新后核对。');
     if($old && !current_user_can('manage_options'))throw new \RuntimeException('该运动员已发号；改号请由管理员操作。');

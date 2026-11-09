@@ -188,6 +188,7 @@ function disclaimer_signature_data(array $athlete,array $input): array {
 function record_disclaimer_acceptance(array $athlete,string $hash,int $user,array $signature): void {
     q('INSERT INTO disclaimer_acceptances (athlete_id,statement_hash,identity_hash,actor,accepted_at,signature_data) VALUES (?,?,?,?,?,?)
         ON DUPLICATE KEY UPDATE accepted_at=accepted_at',[(int)$athlete['id'],$hash,disclaimer_identity($athlete),$user,current_time('mysql'),wp_json_encode($signature)]);
+    bib_auto_issue($athlete);
 }
 
 function disclaimer_accept(): void {
@@ -280,5 +281,5 @@ add_filter('wp_nav_menu_items',function(string $items,$args): string {
 },10,2);
 
 add_action('wp_enqueue_scripts',function(){
-    wp_enqueue_script('sports-meet-disclaimer',plugins_url('disclaimer.js',dirname(__DIR__).'/sports-meet.php'),[],'2.5.67',true);
+    wp_enqueue_script('sports-meet-disclaimer',plugins_url('disclaimer.js',dirname(__DIR__).'/sports-meet.php'),[],'2.5.68',true);
 });

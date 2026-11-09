@@ -182,6 +182,7 @@ function race_registration_save(array $p):int {
         q('DELETE FROM registration_extras WHERE athlete_id=?',[$id]);
         foreach(array_unique($activities) as $activity)q('INSERT INTO registration_extras(athlete_id,activity) VALUES(?,?)',[$id,$activity]);
     }
+    bib_auto_issue(race_one('athletes',$id));
     race_audit('registration',$id,['events'=>array_keys($selected),'category'=>$category,'activities'=>$activities]);return $id;
 }
 function race_import_csv(string $path,bool $update=false):int {

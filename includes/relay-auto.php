@@ -132,7 +132,7 @@ function relay_auto_table(array $rows):void {
     echo '</tbody></table></div>';
 }
 function relay_auto_ui(int $school):void {
-    wp_enqueue_script('sports-meet-relay-auto',plugins_url('relay-auto.js',dirname(__DIR__).'/sports-meet.php'),[],'2.5.67',true);
+    wp_enqueue_script('sports-meet-relay-auto',plugins_url('relay-auto.js',dirname(__DIR__).'/sports-meet.php'),[],'2.5.68',true);
     $url=add_query_arg('action','sports_meet_relay_preview',admin_url('admin-ajax.php'));
     echo '<section class="sm-relay-auto" data-relay-auto-url="'.esc_url($url).'"><h2>接力自动组队</h2><p>每队4男4女。高校达到至少4男4女时自动独立成队，队名为高校名，其他报名者作本校候补。其余高校优先两校组合，必要时三校组合。报名变动后自动重新计算；生成赛程后锁定。</p>';
     foreach(all('events') as $event){

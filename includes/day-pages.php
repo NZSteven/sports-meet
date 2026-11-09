@@ -39,6 +39,7 @@ function race_day_page(string $key):string {
     finally{$GLOBALS['sports_meet_day_context']=$previous;}
 }
 function race_ui_checkin():void {
+    bib_range_ui();
     $params=race_checkin_params();$rows=race_roster_rows();$needle=mb_strtolower($params['find']??'');$matched=[];
     $enrolled=isset($params['checkin_event'])
         ?array_fill_keys(q('SELECT athlete_id FROM race_enrollments WHERE event_id=?',[(int)$params['checkin_event']])->fetchAll(7),true)
