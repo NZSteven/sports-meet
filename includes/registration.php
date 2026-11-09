@@ -129,7 +129,7 @@ function race_school_registration_view(): void {
     $accepted=disclaimer_acceptances();echo '<div class="scroll"><table><thead><tr><th class="sm-consent-cell">免责声明</th><th>姓名</th><th>组别</th><th>项目</th><th>操作</th></tr></thead><tbody>';
     foreach($rows as $row){
         $url=add_query_arg('edit_athlete',(int)$row['id'],page_url('new_registration'));
-        echo '<tr><td class="sm-consent-cell">'.disclaimer_dot($row,$accepted).'</td><td>'.esc_html($row['name']).'</td><td>'.esc_html(race_category($row)).'</td><td>'
+        echo '<tr><td class="sm-consent-cell">'.disclaimer_roster_mark($row,$accepted).'</td><td>'.esc_html($row['name']).'</td><td>'.esc_html(race_category($row)).'</td><td>'
             .esc_html(race_event_names((int)$row['id'])).'</td><td><a href="'.esc_url($url).'">编辑</a></td></tr>';
     }
     echo '</tbody></table></div>';

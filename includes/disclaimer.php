@@ -88,6 +88,11 @@ function disclaimer_dot(array $athlete,array $accepted): string {
 final class DisclaimerCell {
     public function __construct(public readonly string $html){}
 }
+function disclaimer_roster_mark(array $athlete,array $accepted): string {
+    if(disclaimer_agreed($athlete,$accepted))return disclaimer_dot($athlete,$accepted);
+    $url=add_query_arg('waiver_athlete',(int)$athlete['id'],page_url('disclaimer'));
+    return '<a class="sm-waiver-fill" href="'.esc_url($url).'" aria-label="'.esc_attr('填写'.$athlete['name'].'的免责声明').'">填写</a>';
+}
 function disclaimer_cell(array $athlete,array $accepted):DisclaimerCell {return new DisclaimerCell(disclaimer_dot($athlete,$accepted));}
 function disclaimer_group_mark(array $athletes,array $accepted):string {
     $signed=0;foreach($athletes as $athlete)if(disclaimer_agreed($athlete,$accepted))$signed++;
@@ -110,6 +115,8 @@ function disclaimer_members_table(array $members,array $accepted):void {
 }
 
 function disclaimer_page(): string {
+    $return=page_url('disclaimer');
+    if(!empty($_GET['waiver_athlete']))$return=add_query_arg('waiver_athlete',absint($_GET['waiver_athlete']),$return);
     $text=disclaimer_text();
     $html='<section class="sports-meet sm-disclaimer">';
     if($text===''||!get_option('sports_meet_disclaimer_ready'))return $html.'<p>免责声明尚未发布。</p></section>';
@@ -117,13 +124,18 @@ function disclaimer_page(): string {
     $html.='<div class="sm-disclaimer-text">'.wpautop(esc_html($text)).'</div>';
     if(!is_user_logged_in()&&!race_roster_is_public()){
         return $html.'<p>注册账号登录后，可以在本网站上传运动会照片及感言</p>'
-            .wp_login_form(['echo'=>false,'redirect'=>page_url('disclaimer'),'label_log_in'=>'登录']).'</section>';
+            .wp_login_form(['echo'=>false,'redirect'=>$return,'label_log_in'=>'登录']).'</section>';
     }
     if(!is_user_logged_in())return $html.'<p>注册账号登录后，可以在本网站上传运动会照片及感言</p>'
-        .wp_login_form(['echo'=>false,'redirect'=>page_url('disclaimer'),'label_log_in'=>'登录']).athlete_signup_form().'</section>';
+        .wp_login_form(['echo'=>false,'redirect'=>$return,'label_log_in'=>'登录']).athlete_signup_form().'</section>';
 
     $athlete=q('SELECT a.id,a.name,a.team_id,t.name AS team_name FROM athlete_accounts aa
         JOIN athletes a ON a.id=aa.athlete_id JOIN teams t ON t.id=a.team_id WHERE aa.user_id=?',[get_current_user_id()])->fetch();
+    $requested=absint($_GET['waiver_athlete']??0);
+    if($athlete&&$requested&&$requested!==(int)$athlete['id']){
+        $return=add_query_arg('waiver_athlete',$requested,page_url('disclaimer'));
+        return $html.'<p>当前账号已关联其他参赛者，请退出后使用该参赛者的账号登录或注册。</p><a href="'.esc_url(wp_logout_url($return)).'">退出并填写所选参赛者的声明</a></section>';
+    }
     if(!$athlete&&!race_roster_is_public()&&!current_user_can('manage_options')){
         return $html.'<p>参赛者身份关联将于'.esc_html(race_registration_deadline_label()).'开放。</p></section>';
     }
@@ -268,5 +280,5 @@ add_filter('wp_nav_menu_items',function(string $items,$args): string {
 },10,2);
 
 add_action('wp_enqueue_scripts',function(){
-    wp_enqueue_script('sports-meet-disclaimer',plugins_url('disclaimer.js',dirname(__DIR__).'/sports-meet.php'),[],'2.5.63',true);
+    wp_enqueue_script('sports-meet-disclaimer',plugins_url('disclaimer.js',dirname(__DIR__).'/sports-meet.php'),[],'2.5.64',true);
 });

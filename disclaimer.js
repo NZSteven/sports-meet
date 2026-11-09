@@ -17,6 +17,7 @@ document.querySelectorAll('.sm-disclaimer-form').forEach(form => {
     const athlete = form.querySelector('select[name=athlete_id]');
     if (!school || !athlete) return;
     const [placeholder, ...options] = athlete.options;
+    const initialAthlete = athlete.value;
 
     function filter() {
         athlete.replaceChildren(placeholder, ...options.filter(option => option.dataset.school === school.value));
@@ -25,4 +26,5 @@ document.querySelectorAll('.sm-disclaimer-form').forEach(form => {
     }
     school.addEventListener('change', filter);
     filter();
+    if (initialAthlete && Array.from(athlete.options).some(option => option.value === initialAthlete)) athlete.value = initialAthlete;
 });

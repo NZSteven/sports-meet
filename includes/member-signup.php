@@ -12,12 +12,15 @@ function athlete_account_fields(int $user=0): string {
                 .'<input type="hidden" name="school_id" value="'.(int)$athlete['team_id'].'"><input type="hidden" name="athlete_id" value="'.$id.'">';
         }
     }
+    $requested=absint($_GET['waiver_athlete']??0);
+    $prefill=null;
+    foreach($rows as $row)if((int)$row['id']===$requested){$prefill=$row;break;}
     $html='<label>所属高校<select name="school_id" required><option value="">请选择高校</option>';
-    foreach(all('teams') as $team)$html.='<option value="'.(int)$team['id'].'">'.esc_html($team['name']).'</option>';
+    foreach(all('teams') as $team)$html.='<option value="'.(int)$team['id'].'" '.selected((int)$team['id'],(int)($prefill['team_id']??0),false).'>'.esc_html($team['name']).'</option>';
     $html.='</select></label><label>运动员姓名<select name="athlete_id" required><option value="">请选择本人姓名</option>';
     foreach($rows as $athlete){
         $label=$athlete['name'].'（'.$athlete['team_name'].' · '.race_category($athlete).'）';
-        $html.='<option value="'.(int)$athlete['id'].'" data-school="'.(int)$athlete['team_id'].'">'.esc_html($label).'</option>';
+        $html.='<option value="'.(int)$athlete['id'].'" data-school="'.(int)$athlete['team_id'].'" '.selected((int)$athlete['id'],(int)($prefill['id']??0),false).'>'.esc_html($label).'</option>';
     }
     return $html.'</select></label>';
 }
@@ -36,7 +39,7 @@ add_action('delete_user',function(int $user){
 });
 
 function athlete_signup_form(): string {
-    return '<details id="sports-meet-signup"><summary>注册参赛者账号</summary>'
+    return '<details id="sports-meet-signup"'.(!empty($_GET['waiver_athlete'])?' open':'').'><summary>注册参赛者账号</summary>'
         .'<form class="sm-disclaimer-form" method="post" action="'.esc_url(admin_url('admin-post.php','relative')).'">'
         .'<input type="hidden" name="action" value="sports_meet_athlete_signup">'
         .wp_nonce_field('sports_meet_athlete_signup','sm_nonce',false,false).athlete_account_fields()
