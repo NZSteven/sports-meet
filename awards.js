@@ -33,7 +33,7 @@ document.querySelectorAll('.sm-awards').forEach(root => {
         const winners=state.teams.filter(t=>t.rank===rank && t.revealed);
         const label=['','冠军','亚军','季军'][rank];
         function show() {
-            celebration.replaceChildren(element('div',['','🥇','🥈','🥉'][rank],'sm-medal'),element('p',label+'荣耀揭晓'),element('h3',winners.length?winners.map(t=>t.name).join('、'):'本名次空缺'),element('p',winners.length?winners[0].score+' 分':'同分并列，名次顺延'));
+            celebration.replaceChildren(element('div',['','🥇','🥈','🥉'][rank],'sm-medal'),element('p',(state.demo?'【测试积分】':'')+label+'荣耀揭晓'),element('h3',winners.length?winners.map(t=>t.name).join('、'):'本名次空缺'),element('p',winners.length?winners[0].score+' 分':'同分并列，名次顺延'));
             overlay.style.background=rank===1?'radial-gradient(ellipse at 50% 15%,#ad842e,#172b32 65%)':rank===2?'radial-gradient(ellipse at 50% 15%,#8199af,#172b32 65%)':'radial-gradient(ellipse at 50% 15%,#ad7246,#172b32 65%)';
             if(!reduced()&&winners.length)for(let i=0;i<(rank===1?90:45);i++){const piece=element('i',undefined,'sm-confetti');piece.style.left=Math.random()*100+'%';piece.style.background=['#ffcb54','#42b6d2','#f48e78','#fff1c9'][i%4];piece.style.animationDelay=Math.random()*1.8+'s';overlay.append(piece);}
             timers.push(setTimeout(closeCelebration,rank===1?9000:6500));
@@ -58,24 +58,26 @@ document.querySelectorAll('.sm-awards').forEach(root => {
             card.append(cup,element('strong',team.name),element('span',team.revealed?'第'+team.rank+'名 · '+team.score+'分':'•••','sm-awards-score'+(team.revealed?'':' is-masked')));grid.append(card);
         });
         status.textContent=state.title;podiumRender();trophies();
-        if(state.stage===0)closeCelebration();
+        if(state.stage===0 || state.demo!==previous.demo)closeCelebration();
         if(animate&&state.revision!==previous.revision&&state.stage>=5)animateMedal(8-state.stage);
         updateControls();
     }
     async function command(action) {
         if(!admin||saving)return;saving=true;updateControls();
         try{
-            const response=await fetch(root.dataset.controlUrl,{method:'POST',credentials:'same-origin',headers:{'Content-Type':'application/json','X-WP-Nonce':root.dataset.nonce},body:JSON.stringify({action,revision:state.revision})});
+            const response=await fetch(root.dataset.controlUrl,{method:'POST',credentials:'same-origin',headers:{'Content-Type':'application/json','X-WP-Nonce':root.dataset.nonce},body:JSON.stringify({action,revision:state.revision,demo:!!state.demo})});
             const data=await response.json();if(!response.ok)throw Error(data.message||'公布失败，请重试。');render(data);
         }catch(error){status.textContent=error.message;}finally{saving=false;updateControls();}
     }
+    root.querySelector('[data-awards-demo-start]')?.addEventListener('click',()=>command('demo_start'));
+    root.querySelector('[data-awards-demo-end]')?.addEventListener('click',()=>command('demo_end'));
     controls.forEach(button=>button.addEventListener('click',()=>command(button.dataset.awardsAction)));
     root.querySelector('[data-awards-close]').addEventListener('click',closeCelebration);
     document.addEventListener('keydown',event=>{if(event.key==='Escape'&&!overlay.hidden)closeCelebration();});
     root.querySelector('[data-awards-reset]')?.addEventListener('click',()=>{const confirm=root.querySelector('[data-awards-reset-confirm]');if(confirm.checked){confirm.checked=false;command('reset');}else status.textContent='请先勾选确认重新开始公布。';});
     async function refresh(){
         if(document.hidden||saving||polling)return;polling=true;
-        try{const response=await fetch(root.dataset.awardsUrl,{cache:'no-store',credentials:'same-origin'});if(!response.ok)return;const next=await response.json();if(next.revision!==state.revision || (!state.stage&&JSON.stringify(next.teams)!==JSON.stringify(state.teams)))render(next);}
+        try{const response=await fetch(root.dataset.awardsUrl,{cache:'no-store',credentials:'same-origin'});if(!response.ok)return;const next=await response.json();if(next.demo!==state.demo || next.revision!==state.revision || (!state.stage&&JSON.stringify(next.teams)!==JSON.stringify(state.teams)))render(next);}
         catch(error){}finally{polling=false;}
     }
     render(state,false);setInterval(()=>{if(!document.hidden&&!reduced())trophies();},1000);setInterval(refresh,2500);document.addEventListener('visibilitychange',refresh);
