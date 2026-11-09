@@ -9,7 +9,7 @@ function athlete_account_fields(int $user=0): string {
         foreach($rows as $athlete){
             if((int)$athlete['id']!==$id)continue;
             return '<p>报名身份：'.esc_html($athlete['team_name'].' · '.$athlete['name']).'</p>'
-                .'<input type="hidden" name="school_id" value="'.(int)$athlete['team_id'].'"><input type="hidden" name="athlete_id" value="'.$id.'">';
+                .'<input type="hidden" name="school_id" value="'.(int)$athlete['team_id'].'"><input type="hidden" name="athlete_id" value="'.$id.'" data-name="'.esc_attr($athlete['name']).'">';
         }
     }
     $requested=absint($_GET['waiver_athlete']??0);
@@ -20,7 +20,7 @@ function athlete_account_fields(int $user=0): string {
     $html.='</select></label><label>运动员姓名<select name="athlete_id" required><option value="">请选择本人姓名</option>';
     foreach($rows as $athlete){
         $label=$athlete['name'].'（'.$athlete['team_name'].' · '.race_category($athlete).'）';
-        $html.='<option value="'.(int)$athlete['id'].'" data-school="'.(int)$athlete['team_id'].'" '.selected((int)$athlete['id'],(int)($prefill['id']??0),false).'>'.esc_html($label).'</option>';
+        $html.='<option value="'.(int)$athlete['id'].'" data-school="'.(int)$athlete['team_id'].'" data-name="'.esc_attr($athlete['name']).'" '.selected((int)$athlete['id'],(int)($prefill['id']??0),false).'>'.esc_html($label).'</option>';
     }
     return $html.'</select></label>';
 }
