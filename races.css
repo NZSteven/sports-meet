@@ -194,3 +194,5 @@
 .sports-meet .sm-public-athlete-roster th:nth-child(5),.sports-meet .sm-public-athlete-roster td:nth-child(5),
 .sports-meet .race-compact-roster th:nth-child(5),.sports-meet .race-compact-roster td:nth-child(5),
 .sports-meet .sm-team-roster th:nth-child(3),.sports-meet .sm-team-roster td:nth-child(3) {text-align:center!important;vertical-align:middle;}
+
+.sports-meet .sm-waiver-not-required{font-size:12px;color:#6d7c75;white-space:nowrap;}

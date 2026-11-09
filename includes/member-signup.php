@@ -9,7 +9,7 @@ function athlete_account_fields(int $user=0): string {
         foreach($rows as $athlete){
             if((int)$athlete['id']!==$id)continue;
             return '<p>报名身份：'.esc_html($athlete['team_name'].' · '.$athlete['name']).'</p>'
-                .'<input type="hidden" name="school_id" value="'.(int)$athlete['team_id'].'"><input type="hidden" name="athlete_id" value="'.$id.'" data-name="'.esc_attr($athlete['name']).'">';
+                .'<input type="hidden" name="school_id" value="'.(int)$athlete['team_id'].'"><input type="hidden" name="athlete_id" value="'.$id.'" data-waiver-exempt="'.(disclaimer_dinner_only($athlete)?'1':'0').'" data-name="'.esc_attr($athlete['name']).'">';
         }
     }
     $requested=absint($_GET['waiver_athlete']??0);
@@ -20,7 +20,7 @@ function athlete_account_fields(int $user=0): string {
     $html.='</select></label><label>运动员姓名<select name="athlete_id" required><option value="">请选择本人姓名</option>';
     foreach($rows as $athlete){
         $label=$athlete['name'].'（'.$athlete['team_name'].' · '.race_category($athlete).'）';
-        $html.='<option value="'.(int)$athlete['id'].'" data-school="'.(int)$athlete['team_id'].'" data-name="'.esc_attr($athlete['name']).'" '.selected((int)$athlete['id'],(int)($prefill['id']??0),false).'>'.esc_html($label).'</option>';
+        $html.='<option value="'.(int)$athlete['id'].'" data-school="'.(int)$athlete['team_id'].'" data-waiver-exempt="'.(disclaimer_dinner_only($athlete)?'1':'0').'" data-name="'.esc_attr($athlete['name']).'" '.selected((int)$athlete['id'],(int)($prefill['id']??0),false).'>'.esc_html($label).'</option>';
     }
     return $html.'</select></label>';
 }
@@ -61,9 +61,6 @@ add_action('admin_post_nopriv_sports_meet_athlete_signup',function(){
     $password=$data['password'];
     $text=disclaimer_text();
     $hash=hash('sha256',$text);
-    if($text===''||!get_option('sports_meet_disclaimer_ready')||($data['statement_hash']??'')!==$hash||($data['agree']??'')!=='1'){
-        wp_die('请重新打开免责声明页面，阅读并勾选同意后提交。','',['response'=>400,'back_link'=>true]);
-    }
     if(!ctype_digit($data['athlete_id'])||!ctype_digit($data['school_id'])||!is_email($email)
         ||strlen($password)<10||strlen($password)>128||$data['confirm_identity']!=='1'){
         wp_die('请确认本人身份，输入有效邮箱及至少 10 个字符的密码。','',['response'=>400,'back_link'=>true]);
@@ -72,7 +69,11 @@ add_action('admin_post_nopriv_sports_meet_athlete_signup',function(){
         $user=race_transaction(function() use($data,$email,$password,$hash){
             $athlete=q('SELECT id,name,team_id FROM athletes WHERE id=? AND team_id=?',[(int)$data['athlete_id'],(int)$data['school_id']])->fetch();
             if(!$athlete)throw new \RuntimeException('所选高校和姓名不匹配。');
-            $signature=disclaimer_signature_data($athlete,$data);
+            $exempt=disclaimer_dinner_only($athlete);$signature=[];
+            if(!$exempt){
+                if(disclaimer_text()===''||!get_option('sports_meet_disclaimer_ready')||($data['statement_hash']??'')!==$hash||($data['agree']??'')!=='1')throw new \RuntimeException('请阅读并勾选同意当前免责声明。');
+                $signature=disclaimer_signature_data($athlete,$data);
+            }
             if(email_exists($email))throw new \RuntimeException('该邮箱已有账号，请登录。');
             if(q('SELECT user_id FROM athlete_accounts WHERE athlete_id=?',[(int)$athlete['id']])->fetchColumn()){
                 throw new \RuntimeException('该报名已有账号，请登录或联系组委会。');
@@ -81,7 +82,7 @@ add_action('admin_post_nopriv_sports_meet_athlete_signup',function(){
                 'user_pass'=>$password,'display_name'=>$athlete['name'],'role'=>'subscriber']);
             if(is_wp_error($user))throw new \RuntimeException($user->get_error_message());
             bind_athlete_account((int)$athlete['id'],(int)$user);
-            record_disclaimer_acceptance($athlete,$hash,(int)$user,$signature);
+            if(!$exempt)record_disclaimer_acceptance($athlete,$hash,(int)$user,$signature);
             return (int)$user;
         });
     }catch(\Throwable $error){wp_die(esc_html($error->getMessage()),'',['response'=>400,'back_link'=>true]);}

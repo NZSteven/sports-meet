@@ -79,8 +79,16 @@ function disclaimer_acceptances(?int $athleteId=null): array {
 function disclaimer_agreed(array $athlete,array $accepted): bool {
     return isset($accepted[(int)$athlete['id']][disclaimer_identity($athlete)]);
 }
+function disclaimer_dinner_only(array $athlete):bool {
+    $id=(int)($athlete['id']??0);
+    if(!$id)return false;
+    if(isset($athlete['entry_ids'],$athlete['activity_ids']))return !$athlete['entry_ids']&&$athlete['activity_ids']===['dinner'];
+    return !bib_competitor($id)&&(bool)q("SELECT athlete_id FROM registration_extras WHERE athlete_id=? AND activity='dinner'",[$id])->fetch();
+}
+function disclaimer_not_required():string {return '<span class="sm-waiver-not-required">无需签署</span>';}
 
 function disclaimer_dot(array $athlete,array $accepted): string {
+    if(disclaimer_dinner_only($athlete))return disclaimer_not_required();
     $yes=disclaimer_agreed($athlete,$accepted);
     $label=$yes?'已同意免责声明':'未同意免责声明';
     return '<span class="sm-consent-dot'.($yes?' is-agreed':'').'" role="img" aria-label="'.$label.'" title="'.$label.'">'.($yes?'✓':'').'</span>';
@@ -89,6 +97,7 @@ final class DisclaimerCell {
     public function __construct(public readonly string $html){}
 }
 function disclaimer_roster_mark(array $athlete,array $accepted): string {
+    if(disclaimer_dinner_only($athlete))return disclaimer_not_required();
     if(disclaimer_agreed($athlete,$accepted))return disclaimer_dot($athlete,$accepted);
     $url=add_query_arg('waiver_athlete',(int)$athlete['id'],page_url('disclaimer'));
     return '<a class="sm-waiver-fill" href="'.esc_url($url).'" aria-label="'.esc_attr('签署'.$athlete['name'].'的免责声明').'">签署</a>';
@@ -139,6 +148,7 @@ function disclaimer_page(): string {
     if(!$athlete&&!race_roster_is_public()&&!current_user_can('manage_options')){
         return $html.'<p>参赛者身份关联将于'.esc_html(race_registration_deadline_label()).'开放。</p></section>';
     }
+    if($athlete&&disclaimer_dinner_only($athlete))return $html.'<p role="status">'.esc_html($athlete['name']).'：仅报名晚宴，无需签署参赛免责声明。</p></section>';
     $accepted=$athlete?disclaimer_acceptances((int)$athlete['id']):[];
     if($athlete&&disclaimer_agreed($athlete,$accepted)){
         return $html.'<p role="status" class="sm-message">'.disclaimer_dot($athlete,$accepted)
@@ -282,5 +292,5 @@ add_filter('wp_nav_menu_items',function(string $items,$args): string {
 },10,2);
 
 add_action('wp_enqueue_scripts',function(){
-    wp_enqueue_script('sports-meet-disclaimer',plugins_url('disclaimer.js',dirname(__DIR__).'/sports-meet.php'),[],'2.5.72',true);
+    wp_enqueue_script('sports-meet-disclaimer',plugins_url('disclaimer.js',dirname(__DIR__).'/sports-meet.php'),[],'2.5.73',true);
 });
