@@ -20,15 +20,17 @@ document.querySelectorAll('.sm-disclaimer-form').forEach(form => {
     const waiverInputs = waiverFields.flatMap(fieldset => [...fieldset.querySelectorAll('input,select,textarea')]);
     waiverInputs.forEach(input => input.dataset.originalRequired = input.required ? '1' : '0');
     function updateExemption(selected) {
-        const exempt = selected?.dataset.waiverExempt === '1';
+        const signed = selected?.dataset.waiverSigned === '1';
+        const exempt = selected?.dataset.waiverExempt === '1' || (signed && form.querySelector('[name=action]')?.value === 'sports_meet_athlete_signup');
         waiverFields.forEach(fieldset => fieldset.hidden = exempt);
         waiverInputs.forEach(input => {input.disabled = exempt; input.required = !exempt && input.dataset.originalRequired === '1';});
         if(!exempt && signer) signer.dispatchEvent(new Event('change'));
         let notice = form.querySelector('[data-waiver-exempt-notice]');
         if(!notice){notice=document.createElement('p');notice.dataset.waiverExemptNotice='';notice.textContent='仅报名晚宴，无需签署参赛免责声明。';form.append(notice);}
+        notice.textContent = signed ? '已完成当前免责声明签署，可直接注册账号。' : '仅报名晚宴，无需签署参赛免责声明。';
         notice.hidden=!exempt;
         const submit=form.querySelector('button[type=submit]');
-        if(submit){if(!submit.dataset.originalText)submit.dataset.originalText=submit.textContent;submit.textContent=exempt?'注册账号':submit.dataset.originalText;}
+        if(submit){if(!submit.dataset.originalText)submit.dataset.originalText=submit.textContent;const signup=form.querySelector('[name=action]')?.value === 'sports_meet_athlete_signup';submit.disabled=exempt&&!signup;submit.textContent=exempt?(signup?'注册账号':'无需签署'):submit.dataset.originalText;}
     }
     function syncName() {
         if (signature) signature.value = athlete?.selectedOptions[0]?.dataset.name || '';

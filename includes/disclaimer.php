@@ -131,35 +131,30 @@ function disclaimer_page(): string {
     if($text===''||!get_option('sports_meet_disclaimer_ready'))return $html.'<p>免责声明尚未发布。</p></section>';
     if(!get_option('sports_meet_community_ready')||!get_option('sports_meet_disclaimer_esign_installed'))return $html.'<p>会员注册与签署正在更新，请稍后再试。</p></section>';
     $html.='<div class="sm-disclaimer-text">'.wpautop(esc_html($text)).'</div>';
-    if(!is_user_logged_in()&&!race_roster_is_public()){
-        return $html.'<p>注册账号登录后，可以在本网站上传运动会照片及感言</p>'
-            .wp_login_form(['echo'=>false,'redirect'=>$return,'label_log_in'=>'登录']).'</section>';
-    }
-    if(!is_user_logged_in())return $html.'<p>注册账号登录后，可以在本网站上传运动会照片及感言</p>'
-        .wp_login_form(['echo'=>false,'redirect'=>$return,'label_log_in'=>'登录']).athlete_signup_form().'</section>';
-
+    $optional=disclaimer_account_options($return);
     $athlete=q('SELECT a.id,a.name,a.team_id,t.name AS team_name FROM athlete_accounts aa
         JOIN athletes a ON a.id=aa.athlete_id JOIN teams t ON t.id=a.team_id WHERE aa.user_id=?',[get_current_user_id()])->fetch();
     $requested=absint($_GET['waiver_athlete']??0);
-    if($athlete&&$requested&&$requested!==(int)$athlete['id']){
+    if(!$athlete&&$requested)$athlete=q('SELECT a.id,a.name,a.team_id,t.name AS team_name FROM athletes a JOIN teams t ON t.id=a.team_id WHERE a.id=?',[$requested])->fetch();
+    if(is_user_logged_in()&&$athlete&&$requested&&$requested!==(int)$athlete['id']){
         $return=add_query_arg('waiver_athlete',$requested,page_url('disclaimer'));
         return $html.'<p>当前账号已关联其他参赛者，请退出后使用该参赛者的账号登录或注册。</p><a href="'.esc_url(wp_logout_url($return)).'">退出并填写所选参赛者的声明</a></section>';
     }
     if(!$athlete&&!race_roster_is_public()&&!current_user_can('manage_options')){
         return $html.'<p>参赛者身份关联将于'.esc_html(race_registration_deadline_label()).'开放。</p></section>';
     }
-    if($athlete&&disclaimer_dinner_only($athlete))return $html.'<p role="status">'.esc_html($athlete['name']).'：仅报名晚宴，无需签署参赛免责声明。</p></section>';
+    if($athlete&&disclaimer_dinner_only($athlete))return $html.'<p role="status">'.esc_html($athlete['name']).'：仅报名晚宴，无需签署参赛免责声明。</p>'.$optional.'</section>';
     $accepted=$athlete?disclaimer_acceptances((int)$athlete['id']):[];
     if($athlete&&disclaimer_agreed($athlete,$accepted)){
         return $html.'<p role="status" class="sm-message">'.disclaimer_dot($athlete,$accepted)
-            .' 已同意免责声明，无需再次提交。<br>'.esc_html($athlete['team_name'].' · '.$athlete['name']).'</p></section>';
+            .' 已同意免责声明，无需再次提交。<br>'.esc_html($athlete['team_name'].' · '.$athlete['name']).'</p>'.$optional.'</section>';
     }
     $html.=photo_notice_html().'<form class="sm-disclaimer-form" method="post" action="'.esc_url(admin_url('admin-post.php','relative')).'">'
         .'<input type="hidden" name="action" value="sports_meet_accept_disclaimer">'
         .'<input type="hidden" name="statement_hash" value="'.hash('sha256',$text).'">'
         .wp_nonce_field('sports_meet_accept_disclaimer','sm_nonce',false,false)
         .athlete_account_fields(get_current_user_id());
-    return $html.disclaimer_signature_fields().'<button type="submit">提交电子签名</button></form></section>';
+    return $html.disclaimer_signature_fields().'<button type="submit">提交电子签名</button></form>'.$optional.'</section>';
 }
 add_shortcode('sports_meet_disclaimer',__NAMESPACE__.'\\disclaimer_page');
 
@@ -201,38 +196,28 @@ function record_disclaimer_acceptance(array $athlete,string $hash,int $user,arra
     bib_auto_issue($athlete);
 }
 
+function disclaimer_submit_signature(int $id,int $school,array $input):void {
+    $text=disclaimer_text();$hash=hash('sha256',$text);
+    if($text===''||!get_option('sports_meet_disclaimer_ready')||($input['statement_hash']??'')!==$hash)throw new \RuntimeException('免责声明已更新，请重新阅读后提交。');
+    if(($input['agree']??'')!=='1')throw new \RuntimeException('请确认本人同意免责声明。');
+    $athlete=q('SELECT id,name,team_id FROM athletes WHERE id=? AND team_id=?',[$id,$school])->fetch();
+    if(!$athlete)throw new \RuntimeException('请选择相符的高校和姓名。');
+    if(disclaimer_dinner_only($athlete))return;
+    $signature=disclaimer_signature_data($athlete,$input);$user=get_current_user_id();
+    if($user)bind_athlete_account($id,$user);
+    record_disclaimer_acceptance($athlete,$hash,$user,$signature);
+}
 function disclaimer_accept(): void {
-    if(!is_user_logged_in()||!current_user_can('read'))wp_die('请先登录。','',['response'=>403]);
+    if(is_user_logged_in()&&!current_user_can('read'))wp_die('当前账号不能提交。','',['response'=>403]);
     check_admin_referer('sports_meet_accept_disclaimer','sm_nonce');
-    $text=disclaimer_text();
-    $hash=hash('sha256',$text);
-    if($text===''||!get_option('sports_meet_disclaimer_ready')||($_POST['statement_hash']??'')!==$hash){
-        photo_notice('免责声明已更新，请阅读后重新提交。');
-    }elseif(($_POST['agree']??'')!=='1'){
-        photo_notice('请先确认本人同意免责声明。');
-    }else{
-        $school=$_POST['school_id']??'';
-        $id=$_POST['athlete_id']??'';
-        $athlete=is_string($id)&&ctype_digit($id)&&is_string($school)&&ctype_digit($school)
-            ?q('SELECT id,name,team_id FROM athletes WHERE id=? AND team_id=?',[(int)$id,(int)$school])->fetch():false;
-        if(!$athlete){
-            photo_notice('请选择相符的高校和运动员姓名。');
-        }else{
-            try {
-                race_transaction(function() use($athlete,$hash){
-                    $user=get_current_user_id();
-                    if(!race_roster_is_public()&&!current_user_can('manage_options')
-                        && !q('SELECT athlete_id FROM athlete_accounts WHERE user_id=? AND athlete_id=?',[$user,$athlete['id']])->fetch()){
-                        throw new \RuntimeException('参赛者身份关联尚未开放。');
-                    }
-                    $signature=disclaimer_signature_data($athlete,wp_unslash($_POST));
-                    bind_athlete_account((int)$athlete['id'],$user);
-                    record_disclaimer_acceptance($athlete,$hash,$user,$signature);
-                });
-            } catch(\Throwable $error) {photo_notice($error->getMessage());}
-        }
-    }
-    wp_safe_redirect(page_url('disclaimer'));exit;
+    $input=wp_unslash($_POST);$id=absint($input['athlete_id']??0);$school=absint($input['school_id']??0);
+    try{race_transaction(fn()=>disclaimer_submit_signature($id,$school,$input));}
+    catch(\Throwable $e){wp_die(esc_html($e->getMessage()),'提交未完成',['response'=>400,'back_link'=>true]);}
+    wp_safe_redirect(add_query_arg('waiver_athlete',$id,page_url('disclaimer')));exit;
+}
+function disclaimer_account_options(string $return):string {
+    if(is_user_logged_in())return '';
+    return '<div class="sm-waiver-account-options">'.athlete_signup_form().'<details><summary>已有账号？登录</summary>'.wp_login_form(['echo'=>false,'redirect'=>$return,'label_log_in'=>'登录']).'</details></div>';
 }
 add_action('admin_post_sports_meet_accept_disclaimer',__NAMESPACE__.'\\disclaimer_accept');
 add_action('admin_post_nopriv_sports_meet_accept_disclaimer',__NAMESPACE__.'\\disclaimer_accept');
@@ -292,5 +277,5 @@ add_filter('wp_nav_menu_items',function(string $items,$args): string {
 },10,2);
 
 add_action('wp_enqueue_scripts',function(){
-    wp_enqueue_script('sports-meet-disclaimer',plugins_url('disclaimer.js',dirname(__DIR__).'/sports-meet.php'),[],'2.5.73',true);
+    wp_enqueue_script('sports-meet-disclaimer',plugins_url('disclaimer.js',dirname(__DIR__).'/sports-meet.php'),[],'2.5.74',true);
 });

@@ -196,3 +196,5 @@
 .sports-meet .sm-team-roster th:nth-child(3),.sports-meet .sm-team-roster td:nth-child(3) {text-align:center!important;vertical-align:middle;}
 
 .sports-meet .sm-waiver-not-required{font-size:12px;color:#6d7c75;white-space:nowrap;}
+
+.sm-signup-note{display:inline-block;margin-left:14px;color:#62776b;font-size:13px;font-weight:400}.sm-waiver-account-options{margin-top:20px;border-top:1px solid #d4dfd7;padding-top:14px}.sm-waiver-account-options>details{margin-block:10px;}
