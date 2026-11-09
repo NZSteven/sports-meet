@@ -217,7 +217,7 @@ function disclaimer_accept(): void {
 }
 function disclaimer_account_options(string $return):string {
     if(is_user_logged_in())return '';
-    return '<div class="sm-waiver-account-options">'.athlete_signup_form().'<details><summary>已有账号？登录</summary>'.wp_login_form(['echo'=>false,'redirect'=>$return,'label_log_in'=>'登录']).'</details></div>';
+    return '<div class="sm-waiver-account-options">'.athlete_signup_form().'<details><summary class="sm-waiver-login-button">已有账号？登录</summary>'.wp_login_form(['echo'=>false,'redirect'=>$return,'label_log_in'=>'登录']).'</details></div>';
 }
 add_action('admin_post_sports_meet_accept_disclaimer',__NAMESPACE__.'\\disclaimer_accept');
 add_action('admin_post_nopriv_sports_meet_accept_disclaimer',__NAMESPACE__.'\\disclaimer_accept');
@@ -277,5 +277,5 @@ add_filter('wp_nav_menu_items',function(string $items,$args): string {
 },10,2);
 
 add_action('wp_enqueue_scripts',function(){
-    wp_enqueue_script('sports-meet-disclaimer',plugins_url('disclaimer.js',dirname(__DIR__).'/sports-meet.php'),[],'2.5.74',true);
+    wp_enqueue_script('sports-meet-disclaimer',plugins_url('disclaimer.js',dirname(__DIR__).'/sports-meet.php'),[],'2.5.75',true);
 });

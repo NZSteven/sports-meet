@@ -60,7 +60,7 @@ document.querySelectorAll('.sm-awards').forEach(root => {
         const cards=[...grid.children];cards.forEach(card=>{const cup=card.querySelector('.sm-awards-cup');cup.hidden=true;cup.classList.remove('is-large');});
         let chosen;
         if(!state.stage){chosen=cards.map(card=>({card,key:Math.random()})).sort((a,b)=>a.key-b.key).slice(0,6).map(x=>x.card);}
-        else chosen=cards.filter((card,i)=>state.teams[i].rank<=6);
+        else chosen=cards.filter((card,i)=>state.teams[i].trophy);
         chosen.forEach(card=>card.querySelector('.sm-awards-cup').hidden=false);
         if(!reduced())chosen.forEach(card=>{if(Math.random()>.55)card.querySelector('.sm-awards-cup').classList.add('is-large');});
     }
