@@ -126,13 +126,13 @@ function relay_auto_lineups(int $event,int $selected=0):void {
     echo '<p>完整组队及候补情况可在报名入口查看。半决赛、决赛名单按提交赛果自动晋级产生。</p>';
 }
 function relay_auto_table(array $rows):void {
-    echo '<div class="scroll"><table class="sm-relay-team-table"><thead><tr><th>队名／高校</th><th>组队状态</th><th>男</th><th>女</th><th>组成／候补</th></tr></thead><tbody>';
+    echo '<div class="scroll"><table class="sm-relay-team-table"><thead><tr><th>队名</th><th>组队状态</th><th>男</th><th>女</th><th>组成／候补</th></tr></thead><tbody>';
     foreach($rows as $row){echo '<tr>';foreach($row as $value)echo '<td>'.esc_html((string)$value).'</td>';echo '</tr>';}
     if(!$rows)echo '<tr><td colspan="5">暂无满足4男4女的组合</td></tr>';
     echo '</tbody></table></div>';
 }
 function relay_auto_ui(int $school):void {
-    wp_enqueue_script('sports-meet-relay-auto',plugins_url('relay-auto.js',dirname(__DIR__).'/sports-meet.php'),[],'2.5.66',true);
+    wp_enqueue_script('sports-meet-relay-auto',plugins_url('relay-auto.js',dirname(__DIR__).'/sports-meet.php'),[],'2.5.67',true);
     $url=add_query_arg('action','sports_meet_relay_preview',admin_url('admin-ajax.php'));
     echo '<section class="sm-relay-auto" data-relay-auto-url="'.esc_url($url).'"><h2>接力自动组队</h2><p>每队4男4女。高校达到至少4男4女时自动独立成队，队名为高校名，其他报名者作本校候补。其余高校优先两校组合，必要时三校组合。报名变动后自动重新计算；生成赛程后锁定。</p>';
     foreach(all('events') as $event){
@@ -145,27 +145,27 @@ function relay_auto_ui(int $school):void {
         }
         $plan=relay_manual_effective_plan($id);
         if(!empty($plan['manual']))echo '<p>组委会已手动调整并锁定本项目编排，系统不会自动覆盖。</p>';
-        echo '<h3>接力组队及待组合情况</h3>';
+        echo '<div class="sm-relay-auto-columns"><div><h3>待组合高校</h3><div class="scroll"><table><thead><tr><th rowspan="2">高校</th><th colspan="2">报名人数</th><th colspan="2">剩余待组合</th></tr><tr><th>男</th><th>女</th><th>男</th><th>女</th></tr></thead><tbody>';
+        $waiting=0;
+        foreach($plan['schools'] as $sid=>$row){
+            if(isset($plan['independent'][$sid]))continue;
+            $remaining=$plan['remaining'][$sid]??['M'=>[],'F'=>[]];$waiting++;
+            echo '<tr><td>'.esc_html($row['name']).'</td><td>'.count($row['M']).'</td><td>'.count($row['F']).'</td><td>'.count($remaining['M']).'</td><td>'.count($remaining['F']).'</td></tr>';
+        }
+        if(!$waiting)echo '<tr><td colspan="5">暂无待组合高校</td></tr>';
+        echo '</tbody></table></div></div><div><h3>自动组队结果</h3>';
         $teamRows=[];
         foreach($plan['teams'] as $team){
             $description='';
             if($team['school']){
                 $row=$plan['schools'][$team['school']];$description='已报'.count($row['M']).'男'.count($row['F']).'女；候补'.(count($row['M'])+count($row['F'])-8).'人';
             }else{
-                $parts=[];foreach($team['parts'] as $sid=>$counts)$parts[]=$plan['schools'][$sid]['name'].' '.$counts[0].'男'.$counts[1].'女（已报'.count($plan['schools'][$sid]['M']).'男'.count($plan['schools'][$sid]['F']).'女）';$description=implode('＋',$parts);
+                $parts=[];foreach($team['parts'] as $sid=>$counts)$parts[]=$plan['schools'][$sid]['name'].' '.$counts[0].'男'.$counts[1].'女';$description=implode('＋',$parts);
             }
             $teamRows[]=[$team['name'],$team['school']?'自成组队':'混合队',4,4,$description];
         }
-        foreach($plan['remaining'] as $row){
-            $m=count($row['M']);$f=count($row['F']);if(!$m&&!$f)continue;
-            $source=$plan['schools'][$row['id']];
-            $usedM=count($source['M'])-$m;$usedF=count($source['F'])-$f;
-            $description='已报'.count($source['M']).'男'.count($source['F']).'女';
-            if($usedM+$usedF)$description.='；已编入混合队'.$usedM.'男'.$usedF.'女';
-            $teamRows[]=[$row['name'],'待组合',$m,$f,$description];
-        }
         relay_auto_table($teamRows);
-        echo '<p>男女人数：已组队行显示上场人数，待组合行显示剩余人数。以上为动态预编排；不足4男4女或需要超过三校的剩余人员继续待组合。同一人不会重复入队，独立校队候补不参与混合组队。</p>';
+        echo '<p>以上为动态预编排；不足4男4女或需要超过三校的剩余人员继续待组合。同一人不会重复入队，独立校队候补不参与混合组队。</p></div></div>';
     }
     echo '</section>';
 }
