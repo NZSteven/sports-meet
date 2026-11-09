@@ -20,6 +20,7 @@ document.querySelectorAll('.sm-disclaimer-form').forEach(form => {
     const waiverInputs = waiverFields.flatMap(fieldset => [...fieldset.querySelectorAll('input,select,textarea')]);
     waiverInputs.forEach(input => input.dataset.originalRequired = input.required ? '1' : '0');
     function updateExemption(selected) {
+        if(form.querySelector('[name=action]')?.value === 'sports_meet_athlete_signup') return;
         const signed = selected?.dataset.waiverSigned === '1';
         const exempt = selected?.dataset.waiverExempt === '1' || (signed && form.querySelector('[name=action]')?.value === 'sports_meet_athlete_signup');
         waiverFields.forEach(fieldset => fieldset.hidden = exempt);

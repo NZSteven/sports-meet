@@ -44,7 +44,7 @@ add_action('rest_api_init',function(){
     register_rest_route('sports-meet/v1','/awards/control',['methods'=>'POST','permission_callback'=>fn()=>current_user_can('manage_options'),'callback'=>function(\WP_REST_Request $request){try{$p=$request->get_json_params();$data=race_transaction(fn()=>awards_advance(sanitize_key($p['action']??''),(int)($p['revision']??-1),isset($p['demo'])?(bool)$p['demo']:null));return new \WP_REST_Response($data);}catch(\Throwable $e){return new \WP_Error('awards_control',$e->getMessage(),['status'=>409]);}}]);
 });
 function awards_page():string {
-    $main=dirname(__DIR__).'/sports-meet.php';wp_enqueue_style('sports-meet-awards',plugins_url('awards.css',$main),[],'2.5.75');wp_enqueue_script('sports-meet-awards',plugins_url('awards.js',$main),[],'2.5.75',true);
+    $main=dirname(__DIR__).'/sports-meet.php';wp_enqueue_style('sports-meet-awards',plugins_url('awards.css',$main),[],'2.5.76');wp_enqueue_script('sports-meet-awards',plugins_url('awards.js',$main),[],'2.5.76',true);
     $state=awards_public_state();$admin=current_user_can('manage_options');
     $html='<section class="sm-awards" data-awards-url="'.esc_url(rest_url('sports-meet/v1/awards')).'" data-control-url="'.esc_url(rest_url('sports-meet/v1/awards/control')).'"'.($admin?' data-nonce="'.esc_attr(wp_create_nonce('wp_rest')).'"':'').'><header><p>为Fun而奔 · 荣耀此刻</p><h2>奔Fun运动会 · 荣誉揭晓</h2><p data-awards-status role="status">'.esc_html($state['title']).'</p></header><div class="sm-awards-grid" data-awards-grid>';
     foreach($state['teams'] as $t)$html.='<article><span class="sm-awards-cup" hidden>🏆</span><strong>'.esc_html($t['name']).'</strong><span class="sm-awards-score'.($t['revealed']?'':' is-masked').'">'.esc_html($t['revealed']?'第'.$t['rank'].'名 · '.$t['score'].'分':'•••').'</span></article>';
@@ -58,8 +58,8 @@ add_shortcode('sports_meet_awards',__NAMESPACE__.'\\awards_page');
 add_action('wp_enqueue_scripts',function(){
     if(!is_singular()||!has_shortcode((string)get_post_field('post_content',get_queried_object_id()),'sports_meet_awards'))return;
     $main=dirname(__DIR__).'/sports-meet.php';
-    wp_enqueue_style('sports-meet-awards',plugins_url('awards.css',$main),[],'2.5.75');
-    wp_enqueue_script('sports-meet-awards',plugins_url('awards.js',$main),[],'2.5.75',true);
+    wp_enqueue_style('sports-meet-awards',plugins_url('awards.css',$main),[],'2.5.76');
+    wp_enqueue_script('sports-meet-awards',plugins_url('awards.js',$main),[],'2.5.76',true);
 });
 add_action('admin_init',function(){
     if(!current_user_can('manage_options'))return;$id=(int)get_option('sports_meet_awards_page');
