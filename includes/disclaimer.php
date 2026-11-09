@@ -228,6 +228,7 @@ add_action('admin_post_sports_meet_accept_disclaimer',__NAMESPACE__.'\\disclaime
 add_action('admin_post_nopriv_sports_meet_accept_disclaimer',__NAMESPACE__.'\\disclaimer_accept');
 
 function disclaimer_admin(): void {
+    disclaimer_name_corrections_ui();
     echo '<h2>免责声明设置</h2>'.photo_notice_html()
         .'<form method="post" action="'.esc_url(admin_url('admin-post.php')).'">'
         .'<input type="hidden" name="action" value="sports_meet_save_disclaimer">'
@@ -236,7 +237,7 @@ function disclaimer_admin(): void {
         .'<p>保存新正文后，参赛者需同意当前版本。留空时暂停收集同意。</p><button type="submit">保存正文</button></form>';
     $text=disclaimer_text();
     if($text==='')return;
-    $records=q('SELECT d.signature_data,d.accepted_at,a.name,t.name AS school
+    $records=q('SELECT d.athlete_id,d.signature_data,d.accepted_at,a.name,t.name AS school
         FROM disclaimer_acceptances d JOIN athletes a ON a.id=d.athlete_id JOIN teams t ON t.id=a.team_id
         WHERE d.statement_hash=? AND d.signature_data IS NOT NULL
         AND CAST(d.identity_hash AS BINARY)=CAST(SHA2(CONCAT(a.team_id,CHAR(58),a.name),256) AS BINARY)
@@ -281,5 +282,5 @@ add_filter('wp_nav_menu_items',function(string $items,$args): string {
 },10,2);
 
 add_action('wp_enqueue_scripts',function(){
-    wp_enqueue_script('sports-meet-disclaimer',plugins_url('disclaimer.js',dirname(__DIR__).'/sports-meet.php'),[],'2.5.69',true);
+    wp_enqueue_script('sports-meet-disclaimer',plugins_url('disclaimer.js',dirname(__DIR__).'/sports-meet.php'),[],'2.5.70',true);
 });
