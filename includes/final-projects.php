@@ -33,5 +33,5 @@ if(!$events){echo '<p>尚无比赛项目，请管理员先添加项目和报名�
     echo '<h3>'.esc_html($event['name']).'</h3>';
     if($heats){$pending=array_filter($heats,fn($r)=>$r['status']!=='finalized');if($pending){echo '<p class="notice">等待预赛完成及晋级名单。请先在预赛页面提交所有组的结果。</p>';return 0;}if(!race_qualifiers($selected)){echo '<p>预赛已完成，没有符合晋级条件的参赛者。</p>';return 0;}race_form('prepare_final','rounds');echo '<input type="hidden" name="event_id" value="'.$selected.'"><button>生成晋级选手决赛名单</button></form>';return 0;}
     if(empty($counts[$selected])){echo '<p>此项目尚无报名，请先添加参赛者。</p>';return 0;}
-    echo '<p>此项目尚未安排预赛或决赛。如本项目直接决赛，可在此生成报名名单后录入确认与名次。</p>';race_form('prepare_final','rounds');echo '<input type="hidden" name="event_id" value="'.$selected.'"><label><input type="checkbox" name="confirm_direct" value="1" required> 确认本项目不设预赛，并锁定报名名单</label><button>生成决赛名单并开始录入</button></form>';return 0;
+    echo '<p>此项目尚未安排预赛或决赛。如本项目直接决赛，可在此生成报名名单后录入确认与名次。</p>';race_form('prepare_final','rounds');echo '<input type="hidden" name="event_id" value="'.$selected.'"><label class="sm-inline-confirm"><input type="checkbox" name="confirm_direct" value="1" required> 确认本项目不设预赛，并锁定报名名单</label><button>生成决赛名单并开始录入</button></form>';return 0;
 }

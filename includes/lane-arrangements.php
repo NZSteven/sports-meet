@@ -32,7 +32,7 @@ function race_upgrade_relay_draws():void {
 }
 
 add_action('init',function(){
-    if(get_option('sports_meet_portal_schema')==='2.5.77')return;
+    if(get_option('sports_meet_portal_schema')==='2.5.78')return;
     try{
         install_distances();install_registration_extras();
         q('UPDATE race_relays r JOIN (SELECT m.relay_id,MIN(a.team_id) AS school FROM race_members m JOIN athletes a ON a.id=m.athlete_id GROUP BY m.relay_id HAVING COUNT(*)=8 AND COUNT(DISTINCT a.team_id)=1) x ON x.relay_id=r.id SET r.school_id=x.school WHERE r.school_id IS NULL');
@@ -44,7 +44,7 @@ add_action('init',function(){
             $round=q('SELECT * FROM race_rounds WHERE id=?',[$id])->fetch();
             if($round&&$round['status']==='open')race_assign_lanes((int)$id);
         });
-        update_option('sports_meet_portal_schema','2.5.77',false);
+        update_option('sports_meet_portal_schema','2.5.78',false);
     }catch(\Throwable $e){error_log('Sports Meet draw upgrade: '.$e->getMessage());}
 },24);
 

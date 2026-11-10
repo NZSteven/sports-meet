@@ -209,3 +209,15 @@
 @media(max-width:600px){.sports-meet .sm-waiver-account-options > details > summary{width:100%;font-size:15px;}}
 
 .sm-chief .sm-chief-nav{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;margin:14px 0 18px}.sm-chief .sm-chief-nav>a{display:flex;align-items:center;justify-content:center;padding:12px 8px;border:1px solid #bfd3c7;border-radius:7px;background:#fff;color:#174c3e;text-decoration:none;font-weight:700}.sm-chief .sm-chief-nav>a[aria-current=page]{background:#195647;color:#fff;border-color:#195647}.sm-chief header h2{margin-bottom:6px}.sm-chief header p{margin-top:0;font-size:13px}@media(max-width:700px){.sm-chief .sm-chief-nav{grid-template-columns:repeat(2,minmax(0,1fr));}}
+
+.sm-chief #race-roster .race-compact-roster .sm-roster-actions {white-space:nowrap!important;}
+.sm-chief #race-roster .race-compact-roster .sm-roster-actions form {display:inline-flex!important;flex-direction:row!important;flex-wrap:nowrap!important;align-items:center!important;gap:6px!important;width:auto!important;margin:0 0 0 8px!important;padding:0!important;background:transparent!important;border:0!important;border-radius:0!important;box-shadow:none!important;}
+.sm-chief #race-roster .race-compact-roster .sm-roster-actions form label {display:inline-flex!important;flex-direction:row!important;align-items:center!important;gap:4px!important;width:auto!important;margin:0!important;padding:0!important;white-space:nowrap!important;}
+.sm-chief #race-roster .race-compact-roster .sm-roster-actions input[type=checkbox] {width:14px!important;height:14px!important;margin:0!important;flex:none!important;}
+.sm-chief #race-roster .race-compact-roster .sm-roster-actions button {display:inline-flex!important;width:auto!important;margin:0!important;padding:3px 7px!important;min-height:25px!important;}
+
+.sports-meet .sm-pdf-download{display:inline-flex;padding:6px 12px;border-radius:5px;background:#256d96;color:white;text-decoration:none;font-weight:700;}
+.sm-chief label:has(>input[type=checkbox]),.race-workspace label:has(>input[type=checkbox]){display:inline-flex!important;flex-direction:row!important;align-items:center!important;justify-content:flex-start!important;gap:7px!important;width:auto!important;}
+.sm-chief label>input[type=checkbox],.race-workspace label>input[type=checkbox]{order:-1;width:16px!important;height:16px!important;flex:none;margin:0!important;}
+
+.sports-meet .sm-inline-confirm{display:inline-flex!important;flex-direction:row!important;justify-content:flex-start!important;align-items:center!important;gap:7px!important;width:auto!important;}.sports-meet .sm-inline-confirm>input[type=checkbox]{order:-1!important;width:16px!important;height:16px!important;flex:none!important;margin:0!important;}

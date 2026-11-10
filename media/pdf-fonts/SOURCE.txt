@@ -1,0 +1,4 @@
+SportsMeetSans is a modified/merged font: DroidSansFallback (Apache 2.0, AOSP) plus NotoSansSC Latin glyphs (SIL OFL 1.1).
+https://github.com/aosp-mirror/platform_frameworks_base/tree/master/data/fonts
+https://github.com/google/fonts/tree/main/ofl/notosanssc
+Chinese coverage retained; normalized to 1000 units/em; renamed SportsMeetSans. Font is gzip-compressed for distribution and subset-embedded in exported PDFs.

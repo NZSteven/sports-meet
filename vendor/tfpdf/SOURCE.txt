@@ -1,0 +1,4 @@
+tFPDF 1.34, LGPL; upstream commit 69b06444b929e0d54ffbb5efcadfe97ecbad831b
+https://github.com/Setasign/tFPDF
+Local changes: isolated namespace SportsMeetWP\PdfVendor; private font-directory constant.
+Also isolated font-parser constants with SM_PDF_ prefix and qualified the Exception class.
