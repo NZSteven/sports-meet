@@ -13,9 +13,9 @@ function athlete_account_page():string {
         if($athlete){$html.='<p>报名身份：'.esc_html($athlete['team_name'].' · '.$athlete['name']).'</p>';if(disclaimer_dinner_only($athlete))$html.='<p>仅报名晚宴，无需签署参赛免责声明。</p>';else $html.='<p>免责声明：'.disclaimer_dot($athlete,disclaimer_acceptances((int)$athlete['id'])).'</p>';}
         return $html.community_buttons([['上传运动会照片',page_url('upload')],['说出你的感言',page_url('messages').'#sm-message-form'],['查看／签署免责声明',page_url('disclaimer')],['退出登录',wp_logout_url(athlete_account_url())]]).'</section>';
     }
-    $html.='<p>登录后，可以在本网站上传运动会照片及感言。注册账号与参赛免责声明签署分别办理。</p><div class="sm-athlete-auth-grid"><section class="sm-athlete-card"><h3>已有账号？登录</h3>'
+    $html.='<div class="sm-athlete-auth-single"><h3>想分享运动会照片和感言吗？</h3><p class="sm-athlete-auth-prompt" data-auth-prompt>请登录</p><div data-auth-login>'
         .wp_login_form(['echo'=>false,'redirect'=>athlete_account_url(),'label_username'=>'用户名或邮箱','label_password'=>'密码','label_remember'=>'记住登录','label_log_in'=>'登录'])
-        .'<p><a href="'.esc_url(wp_lostpassword_url(athlete_account_url())).'">忘记密码？</a></p></section><section class="sm-athlete-card"><h3>首次使用？注册</h3><p>选择所属高校及本人报名姓名，填写邮箱并设置密码。</p><div class="sm-waiver-account-options">'.athlete_signup_form(true).'</div></section></div></section>';
+        .'<p class="sm-auth-forgot"><a href="'.esc_url(wp_lostpassword_url(athlete_account_url())).'">忘记密码？</a></p></div><div class="sm-waiver-account-options">'.athlete_signup_form(true).'</div></div></section>';
     return $html;
 }
 add_shortcode('sports_meet_athlete_account',__NAMESPACE__.'\\athlete_account_page');

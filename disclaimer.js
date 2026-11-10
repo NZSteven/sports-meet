@@ -58,3 +58,17 @@ document.querySelectorAll('.sm-disclaimer-form').forEach(form => {
     if (initialAthlete && Array.from(athlete.options).some(option => option.value === initialAthlete)) athlete.value = initialAthlete;
     syncName();
 });
+
+document.querySelectorAll('.sm-athlete-auth-single').forEach(panel => {
+    const details = panel.querySelector('#sports-meet-signup');
+    const login = panel.querySelector('[data-auth-login]');
+    const prompt = panel.querySelector('[data-auth-prompt]');
+    if(!details || !login) return;
+    const update = () => {
+        login.hidden = details.open;
+        details.querySelector('summary').textContent = details.open ? '已有账号？请登录' : '没有账号？请注册';
+        if(prompt) prompt.textContent = details.open ? '请注册' : '请登录';
+    };
+    details.addEventListener('toggle', update);
+    update();
+});

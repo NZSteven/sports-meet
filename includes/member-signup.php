@@ -39,7 +39,7 @@ add_action('delete_user',function(int $user){
 });
 
 function athlete_signup_form(bool $standalone=false): string {
-    return '<details id="sports-meet-signup"><summary class="sm-waiver-register-button">要在运动会中上传您的照片杰作和感言吗？请注册</summary>'
+    return '<details id="sports-meet-signup"><summary class="sm-waiver-register-button">'.($standalone?'没有账号？请注册':'要在运动会中上传您的照片杰作和感言吗？请注册').'</summary>'
         .'<form class="sm-disclaimer-form" method="post" action="'.esc_url(admin_url('admin-post.php','relative')).'">'
         .'<input type="hidden" name="action" value="sports_meet_athlete_signup">'
         .wp_nonce_field('sports_meet_athlete_signup','sm_nonce',false,false).($standalone?'<input type="hidden" name="return_account" value="1">':'').athlete_account_fields()
