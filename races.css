@@ -239,3 +239,15 @@
 .sports-meet .sm-athlete-auth-single .sm-waiver-account-options>details>summary{background:transparent;box-shadow:none;color:#246aa2;min-height:0;padding:0;border-radius:0;font-size:15px;justify-content:flex-start;}
 .sports-meet .sm-athlete-auth-single .sm-auth-forgot{margin:10px 0 0;font-size:13px;}
 @media(max-width:600px){.sports-meet .sm-athlete-auth-single{margin:12px 0;padding:18px;}}
+
+.sm-chief-score-layout{display:grid;grid-template-columns:minmax(300px,.9fr) minmax(0,1.7fr);gap:20px;align-items:start;}
+.sm-chief-score-layout>div{min-width:0;}
+.sports-meet .sm-chief-score-column h2,.sports-meet .sm-chief-results-column>section>h2{font-size:24px;margin:0 0 12px;line-height:1.3;}
+.sports-meet .sm-chief-score-column>p{margin:0 0 10px;}
+.sports-meet .sm-chief-score-column section>p{font-size:12px;line-height:1.6;margin:0 0 12px;}
+.sports-meet .sm-chief-score-column th,.sports-meet .sm-chief-score-column td{padding:6px 7px;font-size:13px;}
+.sm-chief-score-column .sm-live-board{margin:0;max-width:none;}
+.sm-chief-score-column .sm-ranking-list{grid-template-columns:minmax(0,1fr)!important;}
+.sm-chief-results-column .race-results-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;}
+@media(max-width:900px){.sm-chief-score-layout{grid-template-columns:minmax(0,1fr);gap:24px;}}
+@media(max-width:560px){.sm-chief-results-column .race-results-grid{grid-template-columns:minmax(0,1fr);}}
