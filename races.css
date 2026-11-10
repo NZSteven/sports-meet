@@ -257,3 +257,5 @@
 .sports-meet table input[type=number],.sports-meet table input[name=bib]{text-align:center;}
 
 .sm-relay-manual .sm-relay-member-grid{grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;}.sm-relay-member-grid>label{min-width:0;}.sm-relay-member-grid select{width:100%;min-width:0;}@media(max-width:600px){.sm-relay-manual .sm-relay-member-grid{grid-template-columns:repeat(2,minmax(0,1fr));}}
+
+.sm-relay-team-actions{float:right;display:inline-flex;gap:8px;margin-left:12px}.sm-relay-team-actions button{padding:4px 14px!important;min-height:28px!important;font-size:13px!important}.sm-relay-team-actions [hidden]{display:none!important}.sm-relay-team-fields{border:0;padding:8px 0;margin:0;min-width:0}.sm-relay-team-fields:disabled{opacity:.8}
