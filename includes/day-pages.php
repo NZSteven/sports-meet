@@ -8,7 +8,7 @@ function race_ensure_day_pages():void {
         $id=wp_insert_post(['post_title'=>$def[0],'post_name'=>$def[1],'post_type'=>'page','post_status'=>'publish','post_content'=>'<!-- wp:shortcode -->['.$def[2].']<!-- /wp:shortcode -->','comment_status'=>'closed'],true);if(is_wp_error($id))throw new \RuntimeException('裁判页面创建失败：'.$id->get_error_message());$pages[$key]=$id;update_option('sports_meet_pages',$pages,false);
     }
     if(empty($pages['officials'])||!get_post_status($pages['officials'])||get_post_status($pages['officials'])==='trash'){
-        $id=wp_insert_post(['post_title'=>'裁判入口','post_name'=>'sports-officials','post_type'=>'page','post_status'=>'publish','post_content'=>'<!-- wp:shortcode -->[sports_meet_official_portal]<!-- /wp:shortcode -->','comment_status'=>'closed'],true);if(is_wp_error($id))throw new \RuntimeException('裁判入口创建失败。');$pages['officials']=$id;update_option('sports_meet_pages',$pages,false);
+        $id=wp_insert_post(['post_title'=>'裁判专区','post_name'=>'sports-officials','post_type'=>'page','post_status'=>'publish','post_content'=>'<!-- wp:shortcode -->[sports_meet_official_portal]<!-- /wp:shortcode -->','comment_status'=>'closed'],true);if(is_wp_error($id))throw new \RuntimeException('裁判入口创建失败。');$pages['officials']=$id;update_option('sports_meet_pages',$pages,false);
     }
 }
 function race_day_context():string {return $GLOBALS['sports_meet_day_context']??'';}
@@ -18,14 +18,11 @@ function race_day_links():string {
     return '<section class="sm-site race-day-links">'.race_judge_navigation().'</section>';
 }
 function race_judge_navigation(string $active=''):string {
-    if($active==='finals')$active='heats';
+    if($active==='finals'||$active==='heats')$active='rounds';
     if(!empty($_GET['number_ranges']))$active='bib_ranges';
-    return race_section_cards([
-        'checkin'=>['检录发号','搜索选手、筛选高校及项目、发放号码',page_url('checkin')],
-        'relay'=>['接力组队','按高校自动组队或组合跨校队伍',add_query_arg('race_tab','relay',page_url('judge'))],
-        'heats'=>['比赛录入','选择预赛、半决赛或决赛，确认参赛并录入成绩',page_url('heats')],
-        'bib_ranges'=>['各校号码区间表','查看实际预留区间、已发及剩余号码',add_query_arg('number_ranges','1',page_url('checkin'))],
-    ],$active,'裁判专区');
+    $links=['checkin'=>['检录发号','搜索选手、筛选高校及项目、发放号码',chief_page_url(['race_tab'=>'checkin'])],'rounds'=>['比赛录入','确认参赛、录入成绩及名次',chief_page_url(['race_tab'=>'rounds'])],'bib_ranges'=>['各校号码区间表','查看实际预留区间、已发及剩余号码',chief_page_url(['race_tab'=>'bib_ranges'])]];
+    if(race_can_manage())$links['relay']=['接力组队','裁判长调整校队及混合队',chief_page_url(['race_tab'=>'relay'])];
+    return race_section_cards($links,$active,'裁判专区');
 }
 function home_section():string {return home_section_original();}
 function race_checkin_params(?array $source=null):array {
@@ -71,17 +68,12 @@ add_action('template_redirect',function(){
 });
 // The previous homepage shortcode is intentionally retired: entries now live in the footer.
 add_shortcode('sports_meet_official_links',fn()=>'');
-function race_official_portal():string {
-    if(!is_user_logged_in())return '<section class="sports-meet race-day-login"><h2>裁判登录</h2><p>请输入裁判账号和密码。</p>'.wp_login_form(['echo'=>false,'redirect'=>page_url('officials'),'label_username'=>'裁判用户名或邮箱','label_password'=>'密码','label_remember'=>'记住登录','label_log_in'=>'登录']).'</section>';
-    if(!race_can_judge())return '<section class="sports-meet"><p class="error">当前账号没有裁判权限，请联系管理员分配“运动会裁判”角色。</p><a href="'.esc_url(wp_logout_url(page_url('officials'))).'">退出并更换账号</a></section>';
-    return race_day_links();
-}
+function race_official_portal():string {return chief_page();}
 add_shortcode('sports_meet_official_portal',__NAMESPACE__.'\\race_official_portal');
 function race_footer_officials():void {
     if(is_admin())return;
     echo '<footer id="sports-meet-official-footer" class="race-official-footer"><nav aria-label="裁判入口">';
-    if(race_can_judge()){echo '<span>裁判工作：</span>';foreach(race_day_definitions() as $key=>$def)echo '<a href="'.esc_url(page_url($key)).'">'.esc_html($def[0]).'</a>';}
-    else echo '<a class="race-footer-login" href="'.esc_url(wp_login_url(page_url('officials'))).'">裁判登录</a>';
+    echo '<a class="race-footer-login" href="'.esc_url(chief_page_url()).'">裁判专区</a>';
     echo '</nav></footer>';
 }
 add_action('wp_footer',__NAMESPACE__.'\\race_footer_officials',5);

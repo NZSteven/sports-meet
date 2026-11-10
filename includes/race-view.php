@@ -278,7 +278,7 @@ function race_round_detail(?string $stage=null):void {
                 echo '<h2>'.esc_html($event['name']).' · 系统自动组队</h2>';
                 relay_auto_lineups((int)$event['id'],absint($_GET['relay_heat']??0));
                 $plan=relay_auto_draw_plan((int)$event['id']);
-                if($plan['teams']){
+                if($admin&&$plan['teams']){
                     echo '<p>采用后固定本项目的8人上场名单、分组和赛道，并锁定接力报名；已生成的赛程不会被覆盖。</p>';
                     race_form('prepare_relay','rounds');echo '<input type="hidden" name="event_id" value="'.(int)$event['id'].'"><button>采用系统组队并生成正式赛程</button></form>';
                 }
@@ -286,10 +286,9 @@ function race_round_detail(?string $stage=null):void {
             }
         }
     }
-    echo '<details class="race-sprint-draw"><summary>100米预先随机分组</summary><p>报名名单核对完成后，由管理员生成各组名单。超过8人时随机均分预赛，每组最多8人；8人以内直接决赛。已生成赛程的项目会跳过，生成后该项目报名锁定。</p>';
+    if($admin)echo '<details class="race-sprint-draw"><summary>100米预先随机分组</summary><p>报名名单核对完成后，由管理员生成各组名单。超过8人时随机均分预赛，每组最多8人；8人以内直接决赛。已生成赛程的项目会跳过，生成后该项目报名锁定。</p>';
     if($admin){race_form('prepare_sprints','rounds');finish('生成全部100米项目分组');}
-    else echo '<p>请联系管理员使用管理员账号登录此页生成分组。裁判可在下方录入已生成的比赛。</p>';
-    echo '</details>';
+    if($admin)echo '</details>';
     if($stage==='final'||(!$stage&&empty($_GET['round_id'])&&!empty($_GET['event_id']))){
         $selectedRound=race_final_projects(false);
         if(!$selectedRound)return;
@@ -354,4 +353,4 @@ function race_export():void {
 }
 add_action('admin_post_sports_meet_race_export',__NAMESPACE__.'\\race_export');
 add_shortcode('sports_meet_roster',__NAMESPACE__.'\\race_public_roster');
-add_shortcode('sports_meet_judge',fn()=>race_workspace(true));
+add_shortcode('sports_meet_judge',fn()=>chief_page());

@@ -111,7 +111,7 @@ function community_buttons(array $links): string {
 
 function community_menu(): string {
     $menu='';
-    foreach(['intro'=>'奔Fun简介','board'=>'成绩积分榜','race_hub'=>'赛场直通车','officials'=>'裁判工作台',
+    foreach(['intro'=>'奔Fun简介','board'=>'成绩积分榜','race_hub'=>'赛场直通车','officials'=>'裁判专区',
         'committee'=>'组委会','sponsors'=>'赞助伙伴','media_hub'=>'图文现场'] as $key=>$label){
         $menu.='<li class="menu-item"><a href="'.esc_url(page_url($key)).'">'.esc_html($label).'</a></li>';
     }

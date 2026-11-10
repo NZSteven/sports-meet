@@ -53,12 +53,13 @@ function race_reopen(int $id):void {
 }
 function race_mutate(array $p):void {
     $action=$p['race_action']??'';$admin=race_can_manage();
+    if(!$admin&&in_array($action,['generate','prepare_sprints','prepare_final','prepare_relay','move','reopen','relay'],true))throw new \RuntimeException('分组、赛程生成及调整仅限裁判长或管理员操作。');
     if(race_registration_closed()&&(in_array($action,['registration','athlete','enroll','unenroll','import'],true)
         ||($action==='delete'&&($p['type']??'')==='athlete'))){
         throw new \RuntimeException('报名已截止，报名资料已锁定。');
     }
     if(!$admin&&current_user_can('sports_meet_school_registration'))$p=race_school_registration_input($p);
-    elseif(!$admin&&!in_array($action,['checkin','round','relay','prepare_final','prepare_relay'],true))throw new \RuntimeException('此操作需要管理员权限。');
+    elseif(!$admin&&!in_array($action,['checkin','round'],true))throw new \RuntimeException('此操作需要管理员权限。');
     switch($action){
     case 'prepare_relay':
         $event=absint($p['event_id']??0);
