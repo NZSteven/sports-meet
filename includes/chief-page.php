@@ -27,7 +27,7 @@ function chief_page():string {
             case 'events':race_ui_events();race_ui_rules();break;
             case 'scores':
                 echo '<div class="sm-chief-score-layout"><div class="sm-chief-score-column">';
-                echo race_can_manage()?'<p><a href="'.esc_url(race_export_url('scores')).'">导出积分CSV</a></p>'.race_admin_board():race_public_board();
+                echo race_can_manage()?race_admin_board():race_public_board();
                 echo '</div><div class="sm-chief-results-column">'.race_public_results().'</div></div>';break;
 
         }

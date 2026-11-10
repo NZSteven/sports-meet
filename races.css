@@ -251,3 +251,7 @@
 .sm-chief-results-column .race-results-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;}
 @media(max-width:900px){.sm-chief-score-layout{grid-template-columns:minmax(0,1fr);gap:24px;}}
 @media(max-width:560px){.sm-chief-results-column .race-results-grid{grid-template-columns:minmax(0,1fr);}}
+
+/* Tables: numbers and short labels use consistent centered alignment. */
+.sports-meet table th,.sports-meet table td{ text-align:center!important;vertical-align:middle; }
+.sports-meet table input[type=number],.sports-meet table input[name=bib]{text-align:center;}
