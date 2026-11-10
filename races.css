@@ -207,3 +207,5 @@
 .sports-meet .sm-waiver-account-options > details > summary:focus-visible {outline:3px solid #f2b84d;outline-offset:3px;}
 .sports-meet .sm-waiver-account-options > details[open] > summary {margin-bottom:14px;}
 @media(max-width:600px){.sports-meet .sm-waiver-account-options > details > summary{width:100%;font-size:15px;}}
+
+.sm-chief .sm-chief-nav{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;margin:14px 0 18px}.sm-chief .sm-chief-nav>a{display:flex;align-items:center;justify-content:center;padding:12px 8px;border:1px solid #bfd3c7;border-radius:7px;background:#fff;color:#174c3e;text-decoration:none;font-weight:700}.sm-chief .sm-chief-nav>a[aria-current=page]{background:#195647;color:#fff;border-color:#195647}.sm-chief header h2{margin-bottom:6px}.sm-chief header p{margin-top:0;font-size:13px}@media(max-width:700px){.sm-chief .sm-chief-nav{grid-template-columns:repeat(2,minmax(0,1fr));}}

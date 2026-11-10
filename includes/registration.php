@@ -16,7 +16,7 @@ function race_roster_is_public(): bool {
 }
 
 add_action('admin_post_sports_meet_registration_test_mode',function(){
-    if(!current_user_can('manage_options'))wp_die('需要管理员权限。','',['response'=>403]);
+    if(!race_can_manage())wp_die('需要管理员权限。','',['response'=>403]);
     check_admin_referer('sports_meet_registration_test_mode');
     update_option('sports_meet_registration_test_mode',!empty($_POST['enabled']),false);
     wp_safe_redirect(race_url('registration'));exit;
@@ -49,7 +49,7 @@ function race_school_admin(array $teams): void {
 }
 
 add_action('admin_post_sports_meet_issue_school_password',function(){
-    if(!current_user_can('manage_options'))wp_die('需要管理员权限。','',['response'=>403]);
+    if(!race_can_manage())wp_die('需要管理员权限。','',['response'=>403]);
     check_admin_referer('sports_meet_issue_school_password','sm_nonce');
     if(race_registration_closed())wp_die('报名已截止。','',['response'=>403]);
     $id=absint($_POST['school_id']??0);

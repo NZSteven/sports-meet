@@ -76,7 +76,7 @@ function relay_manual_effective_plan(int $event):array {
     return ['schools'=>$schools,'teams'=>$teams,'independent'=>$independent,'remaining'=>$remaining,'manual'=>true];
 }
 function relay_manual_save(int $event,array $input):void {
-    if(!current_user_can('manage_options'))throw new \RuntimeException('仅管理员可调整接力队。');
+    if(!race_can_manage())throw new \RuntimeException('仅管理员可调整接力队。');
     relay_manual_editable($event);
     if(!hash_equals(relay_manual_revision($event),(string)($input['manual_revision']??'')))throw new \RuntimeException('报名、编排或其他管理员的调整已变化，请刷新后再保存。');
     $source=relay_manual_source($event);$submitted=$input['manual_teams']??[];
@@ -91,14 +91,15 @@ function relay_manual_save(int $event,array $input):void {
     race_audit('manual_relay',$event,['teams'=>$teams]);
 }
 function relay_manual_ui():void {
-    if(!current_user_can('manage_options'))return;
+    if(!race_can_manage())return;
     echo '<section class="sm-relay-manual"><h2>手动调整接力队（组委会）</h2><p>可改队名、换队员或在混合队之间交换队员。每队4男4女；同一人不可重复；独立校队人员不能加入混合队。保存后锁定整份手动编排，系统不再自动覆盖。已有暂存或赛果的项目不能改队。</p>';
     $events=array_values(array_filter(all('events'),fn($e)=>$e['kind']==='relay'));$event=absint($_GET['manual_relay_event']??($events[0]['id']??0));
-    echo '<form method="get"><input type="hidden" name="race_tab" value="relay">';if(is_admin())echo '<input type="hidden" name="page" value="sports-meet"><input type="hidden" name="tab" value="races">';elseif(!get_option('permalink_structure'))echo '<input type="hidden" name="page_id" value="'.(int)(get_option('sports_meet_pages',[])['judge']??0).'">';race_options('manual_relay_event','接力项目',$events,(string)$event);echo '<button>打开手动调整</button></form>';
+    echo '<form method="get"><input type="hidden" name="race_tab" value="relay">';if(is_admin())echo '<input type="hidden" name="page" value="sports-meet"><input type="hidden" name="tab" value="races">';elseif(!get_option('permalink_structure'))echo '<input type="hidden" name="page_id" value="'.(int)(get_option('sports_meet_pages',[])[race_day_context()==='chief'?'chief':'judge']??0).'">';race_options('manual_relay_event','接力项目',$events,(string)$event);echo '<button>打开手动调整</button></form>';
     if(!$event){echo '</section>';return;}
     try{relay_manual_editable($event);$plan=relay_manual_source($event);$revision=relay_manual_revision($event);}catch(\Throwable $e){echo '<p>'.esc_html($e->getMessage()).'</p></section>';return;}
     if(!$plan['teams']){echo '<p>尚无满足4男4女的队伍，请先完成报名。</p></section>';return;}
     echo '<form method="post" action="'.esc_url(admin_url('admin-post.php')).'"><input type="hidden" name="action" value="sports_meet_manual_relay"><input type="hidden" name="event_id" value="'.$event.'"><input type="hidden" name="manual_revision" value="'.esc_attr($revision).'">'.wp_nonce_field('sports_meet_manual_relay','manual_nonce',false,false);
+    if(race_day_context()==='chief')echo '<input type="hidden" name="return_chief" value="1">';
     $accepted=disclaimer_acceptances();
     $people=q('SELECT a.*,t.name AS school,c.bib AS race_bib FROM race_enrollments n JOIN athletes a ON a.id=n.athlete_id JOIN teams t ON t.id=a.team_id LEFT JOIN checkins c ON c.athlete_id=a.id WHERE n.event_id=? ORDER BY t.name,a.name,a.id',[$event])->fetchAll();
     $reserved=[];foreach($plan['teams'] as $team)if($team['school'])$reserved[(int)$team['school']]=true;
@@ -112,9 +113,9 @@ function relay_manual_ui():void {
     echo '<button>保存并锁定手动编排</button></form></section>';
 }
 add_action('admin_post_sports_meet_manual_relay',function(){
-    if(!current_user_can('manage_options'))wp_die('仅管理员可调整接力队。','',['response'=>403]);check_admin_referer('sports_meet_manual_relay','manual_nonce');
+    if(!race_can_manage())wp_die('仅管理员可调整接力队。','',['response'=>403]);check_admin_referer('sports_meet_manual_relay','manual_nonce');
     $event=absint($_POST['event_id']??0);
     try{race_transaction(fn()=>relay_manual_save($event,wp_unslash($_POST)));}
     catch(\Throwable $e){wp_die(esc_html($e instanceof DatabaseException?'保存失败，请刷新后核对队名、队员及比赛状态。':$e->getMessage()),'接力手动调整',['response'=>400,'back_link'=>true]);}
-    wp_safe_redirect(add_query_arg('manual_relay_event',$event,race_url('relay')));exit;
+    wp_safe_redirect(!empty($_POST['return_chief'])?chief_page_url(['race_tab'=>'relay','manual_relay_event'=>$event]):add_query_arg('manual_relay_event',$event,race_url('relay')));exit;
 });

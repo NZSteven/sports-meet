@@ -8,7 +8,7 @@ function install_races():void {
     add_role('sports_meet_referee','运动会裁判',['read'=>true,'sports_meet_judge'=>true]);$role=get_role('administrator');if($role)$role->add_cap('sports_meet_judge');
     add_role('sports_meet_school_registrar','高校报名共用账号',['read'=>true,'sports_meet_school_registration'=>true]);
 }
-function race_can_judge():bool {return current_user_can('manage_options')||current_user_can('sports_meet_judge');}
+function race_can_judge():bool {return race_can_manage()||current_user_can('sports_meet_judge');}
 function race_one(string $table,int $id):array {if(!in_array($table,['athletes','teams','events','race_relays','race_rounds'],true))throw new \RuntimeException('资料类型无效');$r=q("SELECT * FROM $table WHERE id=?",[$id])->fetch();if(!$r)throw new \RuntimeException('资料不存在，请刷新页面。');return $r;}
 function race_audit(string $action,int $id,array $payload=[]):void {q('INSERT INTO race_audit(actor,action,record_id,payload,created) VALUES(?,?,?,?,?)',[get_current_user_id(),$action,$id,wp_json_encode($payload),current_time('mysql')]);}
 function race_transaction(callable $fn){$started=false;try{q('START TRANSACTION');$started=true;q('SELECT id FROM settings WHERE id=1 FOR UPDATE')->fetch();$r=$fn();q('COMMIT');return $r;}catch(\Throwable $e){if($started)q('ROLLBACK');throw $e;}}
@@ -37,7 +37,7 @@ function race_checkin(int $athlete,string $bib,int $version):void {
     }
     $old=q('SELECT * FROM checkins WHERE athlete_id=?',[$athlete])->fetch();
     if(($old?(int)$old['version']:0)!==$version)throw new \RuntimeException('其他裁判已更新该运动员，请刷新后核对。');
-    if($old && !current_user_can('manage_options'))throw new \RuntimeException('该运动员已发号；改号请由管理员操作。');
+    if($old && !race_can_manage())throw new \RuntimeException('该运动员已发号；改号请由管理员操作。');
     $used=q('SELECT athlete_id FROM checkins WHERE bib=? AND athlete_id<>?',[$bib,$athlete])->fetch();if($used)throw new \RuntimeException('此比赛号码已被使用，请换一个号码。');
     [$actor,$now]=race_actor();if($old)q('UPDATE checkins SET bib=?,version=version+1,actor=?,updated=? WHERE athlete_id=?',[$bib,$actor,$now,$athlete]);else q('INSERT INTO checkins(athlete_id,bib,actor,updated) VALUES(?,?,?,?)',[$athlete,$bib,$actor,$now]);
     race_audit('checkin',$athlete,['old'=>$old['bib']??null,'bib'=>$bib]);

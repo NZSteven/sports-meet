@@ -52,7 +52,7 @@ function race_reopen(int $id):void {
     race_audit('reopen',$id,q('SELECT * FROM race_entries WHERE round_id=?',[$id])->fetchAll());q("UPDATE race_rounds SET status='open',version=version+1 WHERE id=?",[$id]);if($r['stage']==='heat'&&(int)($r['eight_lanes']??0)<2)race_sync_final((int)$r['event_id']);
 }
 function race_mutate(array $p):void {
-    $action=$p['race_action']??'';$admin=current_user_can('manage_options');
+    $action=$p['race_action']??'';$admin=race_can_manage();
     if(race_registration_closed()&&(in_array($action,['registration','athlete','enroll','unenroll','import'],true)
         ||($action==='delete'&&($p['type']??'')==='athlete'))){
         throw new \RuntimeException('报名已截止，报名资料已锁定。');
@@ -127,6 +127,7 @@ function race_handler():void {
         if($error&&!empty($p['id']))$url=add_query_arg('edit_athlete',absint($p['id']),$url);
         wp_safe_redirect($url);exit;
     }
+    if($day==='chief'&&!empty($p['frontend'])){wp_safe_redirect(chief_page_url($params));exit;}
     if(!isset(race_day_definitions()[$day]))$day='judge';
     if(($p['race_action']??'')==='prepare_final'&&!empty($p['event_id'])){$params['event_id']=(int)$p['event_id'];if(!empty($p['frontend']))$day='heats';}
     if(!empty($p['frontend']))$url=add_query_arg($params,page_url($day));else{$url=add_query_arg($params,admin_url('admin.php?page=sports-meet&tab=races'));}

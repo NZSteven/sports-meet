@@ -63,12 +63,12 @@ function bib_initialize():void {
     bib_sync_signed();
 }
 add_action('admin_post_sports_meet_init_bib_ranges',function(){
-    if(!current_user_can('manage_options'))wp_die('需要管理员权限。','',['response'=>403]);
+    if(!race_can_manage())wp_die('需要管理员权限。','',['response'=>403]);
     check_admin_referer('sports_meet_init_bib_ranges');
     try{race_transaction(fn()=>bib_initialize());$message='已清除旧比赛号码，固定101–400各校区间，并为已签署的参赛者自动发号。';}
     catch(\Throwable $e){wp_cache_delete('sports_meet_bib_ranges','options');wp_cache_delete('notoptions','options');$message=$e->getMessage();}
     set_transient(race_notice_key(),[false,$message],120);
-    wp_safe_redirect(admin_url('admin.php?page=sports-meet&tab=races&race_tab=checkin'));exit;
+    wp_safe_redirect(!empty($_POST['return_chief'])?chief_page_url(['race_tab'=>'checkin']):admin_url('admin.php?page=sports-meet&tab=races&race_tab=checkin'));exit;
 });
 add_action('init',function(){
     if(!get_option('sports_meet_bib_ranges')||get_transient('sports_meet_bib_sync_recent'))return;
@@ -76,14 +76,14 @@ add_action('init',function(){
     try{race_transaction(fn()=>bib_sync_signed());}catch(\Throwable $e){error_log('Sports Meet auto bib: '.$e->getMessage());}
 },40);
 function bib_range_ui():void {
-    if(!current_user_can('manage_options'))return;
+    if(!race_can_manage())return;
     $plan=bib_range_plan();
     echo '<details><summary>高校比赛号码预留（101–400）</summary>';
     if(!$plan){
         try{$preview=bib_range_propose(bib_range_counts());$plan=$preview;}
         catch(\Throwable $e){echo '<p>'.esc_html($e->getMessage()).'</p></details>';return;}
         echo '<p>按当前各校报名人数预留额外号码；未报名高校按预计总人数220人分配。初始化会清除现有比赛号码并立即为已签署的参赛者重新发号，仅执行一次。只报晚宴不发号。</p>';
-        echo '<form method="post" action="'.esc_url(admin_url('admin-post.php')).'"><input type="hidden" name="action" value="sports_meet_init_bib_ranges">'.wp_nonce_field('sports_meet_init_bib_ranges','_wpnonce',false,false).'<button>初始化区间、清除旧号并自动发号</button></form>';
+        echo '<form method="post" action="'.esc_url(admin_url('admin-post.php')).'"><input type="hidden" name="action" value="sports_meet_init_bib_ranges">'.wp_nonce_field('sports_meet_init_bib_ranges','_wpnonce',false,false).(race_day_context()==='chief'?'<input type="hidden" name="return_chief" value="1">':'').'<button>初始化区间、清除旧号并自动发号</button></form>';
     }else echo '<p>区间已固定；签署当前免责声明后自动领取本校空余号码。区间不足时须联系管理员调整，不会跨校占号。</p>';
     $rows=[];
     foreach(bib_range_counts() as $s){$r=$plan['ranges'][(int)$s['id']]??null;$issued=(int)q('SELECT COUNT(*) FROM checkins c JOIN athletes a ON a.id=c.athlete_id WHERE a.team_id=?',[$s['id']])->fetchColumn();$eligible=0;$pending=0;$accepted=disclaimer_acceptances();foreach(q('SELECT * FROM athletes WHERE team_id=?',[$s['id']])->fetchAll() as $a)if(bib_competitor((int)$a['id'])&&disclaimer_agreed($a,$accepted)){$eligible++;if(!q('SELECT bib FROM checkins WHERE athlete_id=?',[$a['id']])->fetchColumn())$pending++;}
