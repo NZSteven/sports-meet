@@ -38,11 +38,11 @@ add_action('delete_user',function(int $user){
     if(get_option('sports_meet_community_ready'))q('DELETE FROM athlete_accounts WHERE user_id=?',[$user]);
 });
 
-function athlete_signup_form(): string {
+function athlete_signup_form(bool $standalone=false): string {
     return '<details id="sports-meet-signup"><summary class="sm-waiver-register-button">要在运动会中上传您的照片杰作和感言吗？请注册</summary>'
         .'<form class="sm-disclaimer-form" method="post" action="'.esc_url(admin_url('admin-post.php','relative')).'">'
         .'<input type="hidden" name="action" value="sports_meet_athlete_signup">'
-        .wp_nonce_field('sports_meet_athlete_signup','sm_nonce',false,false).athlete_account_fields()
+        .wp_nonce_field('sports_meet_athlete_signup','sm_nonce',false,false).($standalone?'<input type="hidden" name="return_account" value="1">':'').athlete_account_fields()
         .'<label>邮箱<input type="email" name="email" autocomplete="email" required></label>'
         .'<label>密码<input type="password" name="password" minlength="10" maxlength="128" autocomplete="new-password" required></label>'
         .'<label><input type="checkbox" name="confirm_identity" value="1" required> 我确认所选高校和姓名与参赛者报名资料一致</label>'
@@ -81,5 +81,5 @@ add_action('admin_post_nopriv_sports_meet_athlete_signup',function(){
     }catch(\Throwable $error){wp_die(esc_html($error->getMessage()),'',['response'=>400,'back_link'=>true]);}
     wp_set_current_user($user);
     wp_set_auth_cookie($user);
-    wp_safe_redirect(page_url('disclaimer'));exit;
+    wp_safe_redirect(($_POST['return_account']??'')==='1'?athlete_account_url():page_url('disclaimer'));exit;
 });

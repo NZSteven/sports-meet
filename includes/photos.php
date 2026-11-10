@@ -5,12 +5,13 @@ defined('ABSPATH') || exit;
 function install_photos(): void {
     q("CREATE TABLE IF NOT EXISTS photos (id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT, owner BIGINT UNSIGNED NOT NULL, title VARCHAR(180) NOT NULL, image LONGBLOB NOT NULL, width SMALLINT UNSIGNED NOT NULL, height SMALLINT UNSIGNED NOT NULL, bytes INT UNSIGNED NOT NULL, status VARCHAR(12) NOT NULL DEFAULT 'pending', created DATETIME NOT NULL, PRIMARY KEY(id), KEY gallery(status,id), KEY user_date(owner,created)) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
 }
-add_action('admin_init',function(){if(current_user_can('manage_options') && get_option('sports_meet_db_version')!=='2.5.82')activate();});
+add_action('admin_init',function(){if(current_user_can('manage_options') && get_option('sports_meet_db_version')!=='2.5.83')activate();});
 function page_url(string $key): string {
     $pages=get_option('sports_meet_pages',[]);
     $id=(int)($pages[$key]??0);
     if($id && get_post_status($id)==='publish')return get_permalink($id);
     $fallbacks=[
+        'athlete_account'=>['sports_meet_athlete_account',['sports-athlete-login']],
         'upload'=>['sports_meet_upload',['上传照片','sports-upload']],
         'gallery'=>['sports_meet_gallery',['精彩相册','sports-gallery']],
         'board'=>['sports_meet_board',['排行榜','积分榜','sports-ranking']],
@@ -183,7 +184,7 @@ add_shortcode('sports_meet_gallery',__NAMESPACE__.'\\photo_gallery');
 function photo_upload_form(): string {
     if(!photo_upload_enabled())return '<section class="sm-site sm-upload"><p>照片上传已暂停。</p></section>';
     $html='<section class="sm-site sm-upload"><p class="sm-eyebrow">SHARE THE ENERGY / 分享热爱</p><h2>把精彩，留在这里。</h2><p>大照片会先在浏览器保持原比例缩小到不超过1920×1080，再逐张上传。</p>';
-    if(!is_user_logged_in())return $html.'<div class="sm-login"><h3>登录后分享照片</h3>'.wp_login_form(['echo'=>false,'redirect'=>page_url('upload'),'label_username'=>'用户名或邮箱','label_password'=>'密码','label_remember'=>'记住我','label_log_in'=>'登录并上传']).'<p><a href="'.esc_url(wp_lostpassword_url(page_url('upload'))).'">忘记密码？</a></p><p><a href="'.esc_url(page_url('disclaimer')).'#sports-meet-signup">参赛者自助注册</a></p></div></section>';
+    if(!is_user_logged_in())return $html.'<div class="sm-login"><h3>登录后分享照片</h3>'.wp_login_form(['echo'=>false,'redirect'=>page_url('upload'),'label_username'=>'用户名或邮箱','label_password'=>'密码','label_remember'=>'记住我','label_log_in'=>'登录并上传']).'<p><a href="'.esc_url(wp_lostpassword_url(page_url('upload'))).'">忘记密码？</a></p><p><a href="'.esc_url(athlete_account_url()).'#sports-meet-signup">参赛者自助注册</a></p></div></section>';
     if(community_banned(get_current_user_id(),'photos'))return $html.'<p>该账号的照片上传功能已暂停。</p></section>';
     $html.=photo_notice_html().'<form class="sm-upload-form" method="post" enctype="multipart/form-data" action="'.esc_url(admin_url('admin-post.php','relative')).'"><input type="hidden" name="action" value="sports_meet_upload">'.wp_nonce_field('sports_meet_upload','sm_nonce',false,false).'<label>照片说明（可选）<input name="photo_title" maxlength="180" placeholder="例如：最后一棒，向终点冲刺"></label><label class="sm-drop sm-photo-picker"><strong class="sm-picker-label">① 选择照片</strong><input type="file" name="photos[]" accept="image/jpeg,image/png,image/webp" multiple required><span>每批最多5张 · JPG / PNG / WebP · 每张不超过'.esc_html(size_format(min(12582912,wp_max_upload_size()))).'</span></label><p>照片上传后会立即公开。 请只上传你有权分享的活动照片。</p><button class="sm-btn" type="submit">② 上传已选照片</button></form>';
     $preview='<p class="sm-preview-status" role="status"></p><div class="sm-photo-previews" aria-label="所选照片预览"></div><p class="sm-upload-progress" role="status"></p><ul class="sm-upload-results" aria-label="各张照片上传结果"></ul>';

@@ -9,9 +9,9 @@ function chief_page_url(array $args=[]):string {
 function chief_page():string {
     if(!is_user_logged_in())return '<section class="sports-meet race-day-login"><h2>裁判专区</h2><p>请使用运动会裁判、裁判长或管理员账号登录。</p>'.wp_login_form(['echo'=>false,'redirect'=>chief_page_url(),'label_log_in'=>'登录裁判专区']).'</section>';
     if(!race_can_judge())return '<section class="sports-meet"><p>此页面仅供运动会裁判、裁判长及管理员使用。请联系管理员设置账号角色。</p></section>';
-    $tabs=['checkin'=>'检录发号','bib_ranges'=>'各校号码区间表','rounds'=>'比赛录入／更正','relay'=>'接力组队','registration'=>'报名名单','pdf'=>'项目表格PDF','events'=>'比赛项目','scores'=>'积分榜','results'=>'成绩榜','rules'=>'积分设置','audit'=>'操作记录'];
+    $tabs=['checkin'=>'检录发号','bib_ranges'=>'各校号码区间表','rounds'=>'比赛录入／更正','relay'=>'接力组队','registration'=>'报名名单','pdf'=>'项目表格PDF','events'=>'项目与积分设置','scores'=>'积分榜','results'=>'成绩榜'];
     if(!race_can_manage())$tabs=array_intersect_key($tabs,array_flip(['checkin','bib_ranges','rounds','scores','results']));
-    $tab=sanitize_key($_GET['race_tab']??'checkin');if(!isset($tabs[$tab]))$tab='checkin';
+    $tab=sanitize_key($_GET['race_tab']??'checkin');if($tab==='rules')$tab='events';if(!isset($tabs[$tab]))$tab='checkin';
     $previous=race_day_context();$GLOBALS['sports_meet_day_context']='chief';ob_start();
     try{
         echo '<section class="sports-meet sm-chief"><header><h2>裁判专区</h2><p>当前登录：'.esc_html(wp_get_current_user()->display_name).'（'.(race_can_manage()?'裁判长／管理员':'裁判').'） · <a href="'.esc_url(wp_logout_url(chief_page_url())).'">退出登录</a></p></header><nav class="sm-chief-nav" aria-label="裁判专区功能">';
@@ -24,11 +24,10 @@ function chief_page():string {
             case 'relay':race_ui_relay();break;
             case 'registration':race_ui_registration();break;
             case 'pdf':chief_pdf_ui();break;
-            case 'events':race_ui_events();break;
+            case 'events':race_ui_events();race_ui_rules();break;
             case 'scores':echo race_can_manage()?'<p><a href="'.esc_url(race_export_url('scores')).'">导出积分CSV</a></p>'.race_admin_board():race_public_board();break;
             case 'results':echo race_public_results(false);break;
-            case 'rules':race_ui_rules();break;
-            case 'audit':$rows=[];foreach(q('SELECT * FROM race_audit ORDER BY id DESC LIMIT 100')->fetchAll() as $r){$actor=get_userdata((int)$r['actor']);$rows[]=[$r['created'],$actor?$actor->display_name:'系统／游客',$r['action'],$r['record_id'],$r['payload']];}table(['时间','操作人','动作','记录ID','变更记录'],$rows);break;
+
         }
         echo '</section>';return ob_get_clean();
     }catch(\Throwable $e){ob_end_clean();error_log('Sports Meet chief: '.$e->getMessage());return '<p>工作台暂时无法显示，请刷新或联系管理员。</p>';}

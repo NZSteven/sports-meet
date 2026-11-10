@@ -31,3 +31,5 @@
 :is(header,.site-header,.menu,.wp-block-navigation) a[href*="/sports-new-registration"]{color:#c2410c!important;font-weight:800!important}
 :is(header,.site-header,.menu,.wp-block-navigation) a[href*="/sports-disclaimer"]{color:#a21caf!important;font-weight:800!important}
 :is(header,.site-header,.menu,.wp-block-navigation) a:is([href*="/sports-new-registration"],[href*="/sports-disclaimer"]):is(:hover,:focus-visible){text-decoration:underline;text-underline-offset:4px}
+
+.sd-header .sm-athlete-menu>a{color:#246aa2;font-weight:750;}

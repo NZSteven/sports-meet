@@ -112,7 +112,7 @@ function community_buttons(array $links): string {
 function community_menu(): string {
     $menu='';
     foreach(['intro'=>'奔Fun简介','board'=>'成绩积分榜','race_hub'=>'赛场直通车','officials'=>'裁判专区',
-        'committee'=>'组委会','sponsors'=>'赞助伙伴','media_hub'=>'图文现场'] as $key=>$label){
+        'committee'=>'组委会','sponsors'=>'赞助伙伴','media_hub'=>'图文现场','athlete_account'=>(is_user_logged_in()?'运动员中心':'运动员登录／注册')] as $key=>$label){
         $menu.='<li class="menu-item"><a href="'.esc_url(page_url($key)).'">'.esc_html($label).'</a></li>';
     }
     return $menu;
@@ -222,7 +222,7 @@ function guestbook_page(): string {
     $order=get_option('sports_meet_guestbook_pins_ready')?'pinned DESC,id DESC':'id DESC';
     $rows=q("SELECT * FROM guest_messages WHERE status='published' ORDER BY $order LIMIT 25 OFFSET $offset")->fetchAll();
     $html='<section class="sm-site sm-community sm-guestbook-list">'.photo_notice_html();
-    if(!is_user_logged_in())$html.='<p>登录后可以留言。</p>'.community_buttons([['登录或注册',page_url('disclaimer')]]);
+    if(!is_user_logged_in())$html.='<p>登录后可以留言。</p>'.community_buttons([['登录或注册',athlete_account_url()]]);
     elseif(community_banned(get_current_user_id(),'messages'))$html.='<p>该账号的留言功能已暂停。</p>';
     else $html.='<form id="sm-message-form" method="post" action="'.esc_url(admin_url('admin-post.php')).'">'
         .'<input type="hidden" name="action" value="sports_meet_guest_message">'.wp_nonce_field('sports_meet_guest_message','sm_nonce',false,false)
