@@ -122,7 +122,7 @@ function race_registration_form(array $teams,array $events,array $edit=[],bool $
 function race_new_registration_page():string {return team_portal_page();}
 
 function race_ui_registration():void {
-    registration_extras_summary();
+    if(is_admin())registration_extras_summary();
     $teams=all('teams');$events=all('events');
     $edit=!race_registration_closed()&&!empty($_GET['edit_athlete'])?race_one('athletes',(int)$_GET['edit_athlete']):[];
     $page=(int)(get_option('sports_meet_pages',[])['new_registration']??0);
