@@ -2,7 +2,7 @@
 /**
  * Plugin Name: 运动会报名与赛事管理 Sports Meet
  * Description: CSV报名、并发检录、裁判确认、预赛晋级、决赛名次与参赛积分、混合接力及会员照片相册。
- * Version: 2.5.79
+ * Version: 2.5.80
  * Requires at least: 6.4
  * Requires PHP: 8.1
  * Author: Sports Meet
@@ -30,6 +30,7 @@ require_once __DIR__.'/includes/member-signup.php';
 require_once __DIR__.'/includes/community.php';
 require_once __DIR__.'/includes/race-core.php';
 require_once __DIR__.'/includes/bib-ranges.php';
+require_once __DIR__.'/includes/bib-ranges-view.php';
 require_once __DIR__.'/includes/registration.php';
 require_once __DIR__.'/includes/roster-filter.php';
 require_once __DIR__.'/includes/day-pages.php';
@@ -62,7 +63,7 @@ function activate(bool $network_wide=false): void {
         race_ensure_day_pages();
         install_disclaimer();
         install_community();
-        update_option('sports_meet_db_version','2.5.79',false);
+        update_option('sports_meet_db_version','2.5.80',false);
     } catch(\Throwable $e) { wp_die(esc_html('建表失败。请检查数据库CREATE、ALTER权限和InnoDB支持，排除问题后重新启用。'.$e->getMessage())); }
 }
 register_activation_hook(__FILE__,__NAMESPACE__.'\\activate');
@@ -101,11 +102,11 @@ function shortcode_view(string $view): string {
 }
 add_shortcode('sports_meet_board',fn()=>shortcode_view('board'));
 add_shortcode('sports_meet_results',fn()=>shortcode_view('results'));
-function enqueue_style(): void {wp_enqueue_style('sports-meet',plugins_url('style.css',__FILE__),[],'2.5.79');wp_enqueue_style('sports-meet-photos',plugins_url('photos.css',__FILE__),[],'2.5.79');wp_enqueue_style('sports-meet-races',plugins_url('races.css',__FILE__),[],'2.5.79');wp_enqueue_script('sports-meet-distance',plugins_url('distance-results.js',__FILE__),[],'2.5.79',true);wp_enqueue_script('sports-meet-registration-filter',plugins_url('registration-filter.js',__FILE__),[],'2.5.79',true);}
+function enqueue_style(): void {wp_enqueue_style('sports-meet',plugins_url('style.css',__FILE__),[],'2.5.80');wp_enqueue_style('sports-meet-photos',plugins_url('photos.css',__FILE__),[],'2.5.80');wp_enqueue_style('sports-meet-races',plugins_url('races.css',__FILE__),[],'2.5.80');wp_enqueue_script('sports-meet-distance',plugins_url('distance-results.js',__FILE__),[],'2.5.80',true);wp_enqueue_script('sports-meet-registration-filter',plugins_url('registration-filter.js',__FILE__),[],'2.5.80',true);}
 add_action('wp_enqueue_scripts',__NAMESPACE__.'\\enqueue_style');
 function enqueue_photo_tools(): void {
-    wp_enqueue_script('sports-meet-race-display',plugins_url('race-display.js',__FILE__),[],'2.5.79',true);
-    wp_enqueue_script('sports-meet-photo-tools', plugins_url('photo-tools.js', __FILE__), [], '2.5.79', true);
+    wp_enqueue_script('sports-meet-race-display',plugins_url('race-display.js',__FILE__),[],'2.5.80',true);
+    wp_enqueue_script('sports-meet-photo-tools', plugins_url('photo-tools.js', __FILE__), [], '2.5.80', true);
 }
 add_action('wp_enqueue_scripts',__NAMESPACE__.'\\enqueue_photo_tools');
 add_action('admin_enqueue_scripts',function($hook){if($hook==='toplevel_page_sports-meet')enqueue_photo_tools();});

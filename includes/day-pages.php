@@ -19,10 +19,12 @@ function race_day_links():string {
 }
 function race_judge_navigation(string $active=''):string {
     if($active==='finals')$active='heats';
+    if(!empty($_GET['number_ranges']))$active='bib_ranges';
     return race_section_cards([
         'checkin'=>['检录发号','搜索选手、筛选高校及项目、发放号码',page_url('checkin')],
         'relay'=>['接力组队','按高校自动组队或组合跨校队伍',add_query_arg('race_tab','relay',page_url('judge'))],
         'heats'=>['比赛录入','选择预赛、半决赛或决赛，确认参赛并录入成绩',page_url('heats')],
+        'bib_ranges'=>['各校号码区间表','查看实际预留区间、已发及剩余号码',add_query_arg('number_ranges','1',page_url('checkin'))],
     ],$active,'裁判专区');
 }
 function home_section():string {return home_section_original();}
@@ -34,7 +36,7 @@ function race_day_page(string $key):string {
     if(!is_user_logged_in())return '<section class="sports-meet race-day-login"><h2>'.esc_html($defs[$key][0]).'</h2><p>请输入裁判账号及密码登录后操作。</p>'.wp_login_form(['echo'=>false,'redirect'=>page_url($key),'label_username'=>'裁判用户名或邮箱','label_password'=>'密码','label_remember'=>'记住登录','label_log_in'=>'登录进入']).'<p>没有裁判账号？请联系管理员创建，角色选择“运动会裁判”。</p></section>';
     if(!race_can_judge())return '<section class="sports-meet"><p class="error">此页面仅供管理员或运动会裁判使用。当前账号没有裁判权限，请联系管理员。</p></section>';
     $previous=race_day_context();$GLOBALS['sports_meet_day_context']=$key;ob_start();
-    try{echo '<section class="sports-meet race-workspace race-day-page">'.race_judge_navigation($key);race_notice();if($key==='checkin')race_ui_checkin();else race_ui_rounds();echo '</section>';return ob_get_clean();}
+    try{echo '<section class="sports-meet race-workspace race-day-page">'.race_judge_navigation($key);race_notice();if(!empty($_GET['number_ranges']))bib_range_readonly();elseif($key==='checkin')race_ui_checkin();else race_ui_rounds();echo '</section>';return ob_get_clean();}
     catch(\Throwable $e){ob_end_clean();error_log('Sports Meet day: '.$e->getMessage());return '<p>无法显示赛事工作页面，请刷新或联系管理员。</p>';}
     finally{$GLOBALS['sports_meet_day_context']=$previous;}
 }

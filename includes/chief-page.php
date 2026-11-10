@@ -9,7 +9,7 @@ function chief_page_url(array $args=[]):string {
 function chief_page():string {
     if(!is_user_logged_in())return '<section class="sports-meet race-day-login"><h2>裁判长工作台</h2><p>请使用管理员或运动会裁判长账号登录。</p>'.wp_login_form(['echo'=>false,'redirect'=>chief_page_url(),'label_log_in'=>'登录裁判长工作台']).'</section>';
     if(!race_can_manage())return '<section class="sports-meet"><p>此页面仅供运动会裁判长及管理员使用。请联系管理员设置账号角色。</p></section>';
-    $tabs=['checkin'=>'检录发号','rounds'=>'比赛录入／更正','relay'=>'接力组队','registration'=>'报名名单','pdf'=>'项目表格PDF','events'=>'比赛项目','scores'=>'积分榜','results'=>'成绩榜','rules'=>'积分设置','audit'=>'操作记录'];
+    $tabs=['checkin'=>'检录发号','bib_ranges'=>'各校号码区间表','rounds'=>'比赛录入／更正','relay'=>'接力组队','registration'=>'报名名单','pdf'=>'项目表格PDF','events'=>'比赛项目','scores'=>'积分榜','results'=>'成绩榜','rules'=>'积分设置','audit'=>'操作记录'];
     $tab=sanitize_key($_GET['race_tab']??'checkin');if(!isset($tabs[$tab]))$tab='checkin';
     $previous=race_day_context();$GLOBALS['sports_meet_day_context']='chief';ob_start();
     try{
@@ -18,6 +18,7 @@ function chief_page():string {
         echo '</nav>';race_notice();
         switch($tab){
             case 'checkin':race_ui_checkin();break;
+            case 'bib_ranges':bib_range_readonly();break;
             case 'rounds':race_ui_rounds();break;
             case 'relay':race_ui_relay();break;
             case 'registration':race_ui_registration();break;
