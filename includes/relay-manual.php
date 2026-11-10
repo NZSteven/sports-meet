@@ -104,7 +104,7 @@ function relay_manual_ui():void {
     $people=q('SELECT a.*,t.name AS school,c.bib AS race_bib FROM race_enrollments n JOIN athletes a ON a.id=n.athlete_id JOIN teams t ON t.id=a.team_id LEFT JOIN checkins c ON c.athlete_id=a.id WHERE n.event_id=? ORDER BY t.name,a.name,a.id',[$event])->fetchAll();
     $reserved=[];foreach($plan['teams'] as $team)if($team['school'])$reserved[(int)$team['school']]=true;
     foreach($plan['teams'] as $i=>$team){
-        echo '<details class="race-activities-picker"><summary>'.esc_html($team['name']).' · 4男4女</summary><label>队名<input name="manual_teams['.$i.'][name]" maxlength="80" value="'.esc_attr($team['name']).'" required></label><div class="race-event-grid">';
+        echo '<details class="race-activities-picker"><summary>'.esc_html($team['name']).' · 4男4女</summary><label>队名<input name="manual_teams['.$i.'][name]" maxlength="80" value="'.esc_attr($team['name']).'" required></label><div class="race-event-grid sm-relay-member-grid">';
         foreach(['M'=>'男','F'=>'女'] as $sex=>$label){$selected=array_values(array_filter($team['members'],fn($id)=>in_array($id,array_map('intval',array_column(array_filter($people,fn($a)=>$a['gender']===$sex),'id')),true)));
             for($slot=0;$slot<4;$slot++){echo '<label>'.$label.'队员'.($slot+1).'<select name="manual_teams['.$i.'][members][]" required><option value="">请选择</option>';foreach($people as $a)if($a['gender']===$sex&&($team['school']?(int)$a['team_id']===(int)$team['school']:!isset($reserved[(int)$a['team_id']])))echo '<option value="'.(int)$a['id'].'" '.selected((int)$a['id'],(int)($selected[$slot]??0),false).'>'.esc_html($a['school'].' · '.$a['name']).'</option>';echo '</select></label>';}
         }

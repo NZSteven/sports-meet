@@ -255,3 +255,5 @@
 /* Tables: numbers and short labels use consistent centered alignment. */
 .sports-meet table th,.sports-meet table td{ text-align:center!important;vertical-align:middle; }
 .sports-meet table input[type=number],.sports-meet table input[name=bib]{text-align:center;}
+
+.sm-relay-manual .sm-relay-member-grid{grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;}.sm-relay-member-grid>label{min-width:0;}.sm-relay-member-grid select{width:100%;min-width:0;}@media(max-width:600px){.sm-relay-manual .sm-relay-member-grid{grid-template-columns:repeat(2,minmax(0,1fr));}}
