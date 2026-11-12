@@ -2,7 +2,7 @@
 namespace SportsMeetWP;
 defined('ABSPATH') || exit;
 function race_registration_closed(?int $now=null): bool {
-    $deadline=new \DateTimeImmutable('2026-11-12 00:00:00',new \DateTimeZone('Pacific/Auckland'));
+    $deadline=new \DateTimeImmutable('2026-11-12 20:00:00',new \DateTimeZone('Pacific/Auckland'));
     return ($now??time()) >= $deadline->getTimestamp();
 }
 
@@ -22,7 +22,7 @@ add_action('admin_post_sports_meet_registration_test_mode',function(){
     wp_safe_redirect(race_url('registration'));exit;
 });
 
-function race_registration_deadline_label(): string {return '新西兰时间 2026 年 11 月 12 日 00:00';}
+function race_registration_deadline_label(): string {return '新西兰时间 2026 年 11 月 12 日 20:00';}
 
 function race_school_session_key(): string {
     $token=wp_get_session_token();
