@@ -51,6 +51,22 @@ function race_roster_bib(array $athlete):string {
     if(empty($athlete['entry_ids'])&&($athlete['activity_ids']??[])===['dinner'])return '';
     return (string)($athlete['race_bib']??'待分配');
 }
+function race_unsigned_school_summary():string {
+    $accepted=disclaimer_acceptances();
+    $counts=[];
+    foreach(race_filter_roster([])['rows'] as $athlete){
+        if(disclaimer_dinner_only($athlete)||disclaimer_agreed($athlete,$accepted))continue;
+        $school=(int)$athlete['team_id'];
+        if(!isset($counts[$school]))$counts[$school]=['name'=>$athlete['team_name'],'count'=>0];
+        $counts[$school]['count']++;
+    }
+    $html='<div class="sm-unsigned-schools" aria-label="各校未签署人数"><strong>未签署</strong>';
+    if(!$counts)$html.='<span class="sm-unsigned-complete">需签署人员已全部完成</span>';
+    foreach($counts as $school){
+        $html.='<span class="sm-unsigned-school">'.esc_html($school['name']).' <b>'.(int)$school['count'].'人</b></span>';
+    }
+    return $html.'</div>';
+}
 function race_roster_select(string $name,string $label,array $items,string $value):void {
     echo '<label>'.esc_html($label).'<select name="'.esc_attr($name).'"><option value="">全部'.esc_html($label).'</option>';
     foreach($items as $item)echo '<option value="'.esc_attr($item['id']).'" '.selected((string)$item['id'],$value,false).'>'.esc_html($item['name']).'</option>';echo '</select></label>';
@@ -61,7 +77,7 @@ function race_render_roster(array $teams,array $events):void {
     echo '<section id="race-roster"><h2>报名名单</h2><form class="race-roster-filter" method="get" action="'.esc_url($chief?chief_page_url():admin_url('admin.php')).'#race-roster">'.($chief?'':'<input type="hidden" name="page" value="sports-meet"><input type="hidden" name="tab" value="races">').'<input type="hidden" name="race_tab" value="registration"><label>搜索<input type="search" name="roster_q" value="'.esc_attr($params['roster_q']??'').'" placeholder="姓名、比赛号码、高校或项目" maxlength="120"></label>';
     if($chief&&!get_option('permalink_structure'))echo '<input type="hidden" name="page_id" value="'.(int)(get_option('sports_meet_pages',[])['chief']??0).'">';
     race_roster_select('roster_school','所属高校',$teams,$params['roster_school']??'');race_roster_select('roster_category','组别',array_map(fn($c)=>['id'=>$c,'name'=>$c],array_keys(race_categories())),$params['roster_category']??'');race_roster_select('roster_event','比赛及活动项目',race_roster_project_options($events),$params['roster_event']??'');
-    echo '<div class="race-roster-filter-actions"><button type="submit">搜索／筛选</button><a href="'.esc_url(race_url('registration')).'#race-roster">重置</a></div></form><p role="status" class="race-roster-count">显示 '.count($result['rows']).' 人，共 '.$result['total'].' 人。搜索和筛选条件同时生效。</p><div class="scroll"><table class="race-compact-roster sm-athlete-roster"><thead><tr><th>免责声明</th><th>所属高校</th><th>姓名</th><th>组别</th><th>比赛号码</th><th>参赛项目</th><th>晚宴</th><th>操作</th></tr></thead><tbody>';
+    echo '<div class="race-roster-filter-actions"><button type="submit">搜索／筛选</button><a href="'.esc_url(race_url('registration')).'#race-roster">重置</a>'.race_unsigned_school_summary().'</div></form><p role="status" class="race-roster-count">显示 '.count($result['rows']).' 人，共 '.$result['total'].' 人。搜索和筛选条件同时生效。</p><div class="scroll"><table class="race-compact-roster sm-athlete-roster"><thead><tr><th>免责声明</th><th>所属高校</th><th>姓名</th><th>组别</th><th>比赛号码</th><th>参赛项目</th><th>晚宴</th><th>操作</th></tr></thead><tbody>';
     foreach($result['rows'] as $a){echo '<tr><td>'.disclaimer_roster_mark($a,$accepted).'</td><td>'.esc_html($a['team_name']).'</td><td>'.esc_html($a['name']).'</td><td>'.esc_html(race_category($a)).'</td><td>'.esc_html(race_roster_bib($a)).'</td><td>'.esc_html($a['entry_names']).'</td><td>'.esc_html($a['activity_names']).'</td><td class="sm-roster-actions"><a href="'.esc_url(race_url('registration',array_merge($params,['edit_athlete'=>$a['id']]))).'">编辑</a>';race_form('delete','registration');echo '<input type="hidden" name="type" value="athlete"><input type="hidden" name="id" value="'.(int)$a['id'].'"><label><input type="checkbox" name="confirm" value="DELETE" required> 确定删除</label><button>删除</button></form></td></tr>';}
     if(!$result['rows'])echo '<tr><td colspan="8" class="race-roster-empty">没有符合条件的报名记录，请调整搜索或筛选条件。</td></tr>';
     echo '</tbody></table></div></section>';

@@ -259,3 +259,9 @@
 .sm-relay-manual .sm-relay-member-grid{grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;}.sm-relay-member-grid>label{min-width:0;}.sm-relay-member-grid select{width:100%;min-width:0;}@media(max-width:600px){.sm-relay-manual .sm-relay-member-grid{grid-template-columns:repeat(2,minmax(0,1fr));}}
 
 .sm-relay-team-actions{float:right;display:inline-flex;gap:8px;margin-left:12px}.sm-relay-team-actions button{padding:4px 14px!important;min-height:28px!important;font-size:13px!important}.sm-relay-team-actions [hidden]{display:none!important}.sm-relay-team-fields{border:0;padding:8px 0;margin:0;min-width:0}.sm-relay-team-fields:disabled{opacity:.8}
+
+.sports-meet .race-roster-filter-actions:has(.sm-unsigned-schools){display:flex;flex-wrap:wrap;align-items:center;gap:10px 18px;}
+.sm-unsigned-schools{display:flex;flex:1 1 360px;flex-wrap:wrap;align-items:center;gap:6px 12px;min-width:0;font-size:13px;line-height:1.6;}
+.sm-unsigned-school{display:inline-flex;align-items:center;gap:5px;background:#fff2ec;border:1px solid #efcfbf;border-radius:5px;padding:3px 8px;}
+.sm-unsigned-school b{color:#b82e20;text-align:center;}
+.sm-unsigned-complete{color:#237743;}

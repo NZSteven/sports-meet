@@ -25,7 +25,7 @@ function race_public_roster():string {
     race_roster_select('roster_school','所属高校',all('teams'),$params['roster_school']??'');
     race_roster_select('roster_category','组别',array_map(fn($c)=>['id'=>$c,'name'=>$c],array_keys(race_categories())),$params['roster_category']??'');
     race_roster_select('roster_event','比赛及活动项目',race_roster_project_options(),$params['roster_event']??'');
-    echo '<div class="race-roster-filter-actions"><button type="submit">筛选</button><a href="'.esc_url($url).'#sports-public-roster">重置</a></div></form><p role="status">显示 '.count($result['rows']).' 人，共 '.$result['total'].' 人。按所属高校排序，筛选条件同时生效。</p>';
+    echo '<div class="race-roster-filter-actions"><button type="submit">筛选</button><a href="'.esc_url($url).'#sports-public-roster">重置</a>'.race_unsigned_school_summary().'</div></form><p role="status">显示 '.count($result['rows']).' 人，共 '.$result['total'].' 人。按所属高校排序，筛选条件同时生效。</p>';
     if(!$result['rows'])echo '<p>没有符合条件的报名记录，请调整筛选条件。</p>';
     else{
         $accepted=disclaimer_acceptances();
